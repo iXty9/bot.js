@@ -1,9 +1,9 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
 const readline = require('readline');
-const { handleMessage } = require('./messageHandler');
-const { handleCommand, showHelp } = require('./commandHandler');
-const { updateConsole } = require('./consoleManager');
+const BotManager = require('./src/BotManager');
+const ConsoleUI = require('./src/ConsoleUI');
+const CommandHandler = require('./src/CommandHandler');
 
 const client = new Client({
   intents: [
@@ -18,36 +18,28 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
+const botManager = new BotManager(client, process.env.WEBHOOK_URL);
+const consoleUI = new ConsoleUI(rl, client);
+const commandHandler = new CommandHandler(client, botManager, consoleUI);
+
 client.once('ready', () => {
-  console.log(`Logged in as ${client.user.tag}!`);
-  console.log('Type "/help" for a list of commands.');
-  updateConsole();
-  promptUser();
+  consoleUI.addLog(`Logged in as ${client.user.tag}!`);
+  consoleUI.addLog('Type "/help" for a list of commands.');
+  consoleUI.updateConsole();
+  consoleUI.promptUser(commandHandler.handleInput.bind(commandHandler));
 });
 
-client.on('messageCreate', handleMessage);
+client.on('messageCreate', async (message) => {
+  if (message.author.bot) return;
+  await botManager.handleIncomingMessage(message);
+  consoleUI.updateConsole();
+});
 
-function promptUser() {
-  rl.question('Enter a command or message (type "/help" for options): ', async (input) => {
-    updateConsole();
+client.login(process.env.DISCORD_TOKEN).catch((error) => {
+  console.error('Failed to log in:', error);
+  process.exit(1);
+});
 
-    if (input.startsWith('/')) {
-      const [command, ...args] = input.slice(1).split(' ');
-      await handleCommand(client, command.toLowerCase(), args);
-    } else {
-      await handleCommand(client, 'send', ['general', input]);
-    }
-
-    updateConsole();
-    promptUser();
-  });
-}
-
-client.login(process.env.DISCORD_TOKEN).catch(console.error);
-
-process.on('SIGINT', () => {
-  console.log('\nGracefully shutting down...');
-  client.destroy();
-  rl.close();
-  process.exit(0);
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled promise rejection:', error);
 });
