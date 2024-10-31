@@ -1,56 +1,79 @@
+const readline = require('readline');
+
 class ConsoleUI {
-    constructor(readline, client) {
-      this.rl = readline;
-      this.client = client;
-      this.logs = [];
-      this.maxLogs = 10;
-    }
-  
-    addLog(log) {
-      this.logs.push(log);
-      if (this.logs.length > this.maxLogs) {
-        this.logs.shift();
-      }
-    }
-  
-    updateConsole() {
-      console.clear();
-  
-      const availableLines = process.stdout.rows - 3;
-      let flatLogs = this.logs.flatMap(log => log.split('\n'));
-  
-      while (flatLogs.length > availableLines) {
-        flatLogs.shift();
-      }
-  
-      flatLogs.forEach(log => console.log(log));
-      
-      const emptyLines = availableLines - flatLogs.length;
-      for (let i = 0; i < emptyLines; i++) {
-        console.log();
-      }
-  
-      this.printStatusBar();
-      this.rl.prompt(true);
-    }
-  
-    printStatusBar() {
-      const userName = this.client.user ? this.client.user.username : 'Not logged in';
-      const status = this.client.user ? this.client.user.presence.status : 'offline';
-      const statusBarContent = `${userName} | ${status}`;
-      const padding = process.stdout.columns - statusBarContent.length - 4;
-      const statusBar = `--[${statusBarContent}]${'-'.repeat(Math.max(padding, 0))}--`;
-      console.log(statusBar.slice(0, process.stdout.columns));
-    }
-  
-    promptUser(callback) {
-      this.rl.question('Enter a command or message (type "/help" for options): ', async (input) => {
-        this.updateConsole();
-        await callback(input);
-        this.updateConsole();
-        this.promptUser(callback);
-      });
-    }
+  /**
+   * Initializes an instance of ConsoleUI.
+   * @param {readline.Interface} rl - The readline interface for I/O.
+   */
+  constructor(rl) {
+    this.rl = rl;
+    this.logs = [];
+    this.statusBar = '';
+    this.composer = '';
   }
-  
-  module.exports = ConsoleUI;
+
+  /**
+   * Updates the status bar with new information.
+   * @param {string} status - The new status to display.
+   */
+  updateStatusBar(status) {
+    this.statusBar = status;
+    this.render();
+  }
+
+  /**
+   * Updates the composer area with new text.
+   * @param {string} text - The new text for the composer.
+   */
+  updateComposer(text) {
+    this.composer = text;
+    this.render();
+  }
+
+  /**
+   * Adds a new log message to the console.
+   * @param {string} message - The message to log.
+   */
+  addLog(message) {
+    this.logs.push(message);
+    if (this.logs.length > 10) {
+      this.logs.shift();
+    }
+    this.render();
+  }
+
+  /**
+   * Renders the entire console UI.
+   */
+  render() {
+    console.clear();
+    console.log(this.statusBar);
+    console.log('-'.repeat(process.stdout.columns));
+    this.logs.forEach(log => console.log(log));
+    console.log('-'.repeat(process.stdout.columns));
+    console.log('Composer:');
+    console.log(this.composer);
+    console.log('-'.repeat(process.stdout.columns));
+    this.rl.prompt();
+  }
+
+  /**
+   * Prompts the user for input and handles the response.
+   * @param {Function} callback - The function to call with user input.
+   */
+  promptUser(callback) {
+    this.rl.question('> ', (input) => {
+      callback(input);
+      this.promptUser(callback);
+    });
+
+    // Handle Ctrl+S to send the message
+    process.stdin.on('keypress', (str, key) => {
+      if (key.ctrl && key.name === 's') {
+        callback('/send');
+      }
+    });
+  }
+}
+
+module.exports = ConsoleUI;
