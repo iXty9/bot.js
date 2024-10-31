@@ -6,7 +6,9 @@ class CommandHandler {
     this.botManager = botManager;
     this.consoleUI = consoleUI;
     this.currentChannel = null;
+    this.currentThread = null;
     this.composingMessage = '';
+    this.awaitingChannelSelection = false;
   }
 
   async initialize() {
@@ -18,16 +20,23 @@ class CommandHandler {
   updateStatusBar() {
     const status = this.client.user.presence.status;
     const channelName = this.currentChannel ? `${this.currentChannel.name} (${this.currentChannel.guildName})` : 'No channel selected';
-    this.consoleUI.updateStatusBar(`${this.client.user.tag} | ${status} | Channel: ${channelName}`);
+    const threadName = this.currentThread ? ` > ${this.currentThread.name}` : '';
+    this.consoleUI.updateStatusBar(`${this.client.user.tag} | ${status} | Channel: ${channelName}${threadName}`);
   }
 
   getStatusBarContent() {
     const status = this.client.user.presence.status;
     const channelName = this.currentChannel ? `${this.currentChannel.name} (${this.currentChannel.guildName})` : 'No channel selected';
-    return `${this.client.user.tag} | ${status} | Channel: ${channelName}`;
+    const threadName = this.currentThread ? ` > ${this.currentThread.name}` : '';
+    return `${this.client.user.tag} | ${status} | Channel: ${channelName}${threadName}`;
   }
 
   async handleInput(input) {
+    if (this.awaitingChannelSelection) {
+      this.handleChannelSelection(input);
+      return;
+    }
+
     if (input.startsWith('/')) {
       const [command, ...args] = input.slice(1).split(' ');
       await this.handleCommand(command.toLowerCase(), args);
@@ -47,6 +56,9 @@ class CommandHandler {
         break;
       case 'channel':
         await this.changeChannel(args.join(' '));
+        break;
+      case 'thread':
+        await this.changeThread(args.join(' '));
         break;
       case 'send':
         await this.sendComposedMessage();
@@ -71,14 +83,17 @@ class CommandHandler {
       chalk.yellow('Available commands:'),
       chalk.cyan('  /help               ') + '- Show this help message',
       chalk.cyan('  /status <newStatus> ') + '- Change bot status (online, idle, dnd, invisible)',
-      chalk.cyan('  /channel <name>     ') + '- Change the current channel',
+      chalk.cyan('  /channel <name>     ') + '- Change the current channel (will prompt if multiple channels have the same name)',
+      chalk.cyan('  /thread <name>      ') + '- Change the current thread (in forum channels)',
       chalk.cyan('  /send               ') + '- Send the composed message',
       chalk.cyan('  /clear              ') + '- Clear the message composer',
-      chalk.cyan('  /list               ') + '- List all available channels',
+      chalk.cyan('  /list               ') + '- List all available channels and threads',
       chalk.cyan('  /exit               ') + '- Exit the program',
-      chalk.green('Compose your message by typing or pasting. Use Ctrl+S to send.')
-    ];
-    helpText.forEach(line => this.consoleUI.addLog(line));
+      '',
+      chalk.green('Compose your message by typing or pasting. Use /send to send the message.')
+    ].join('\n');
+    
+    this.consoleUI.addLog(helpText);
   }
 
   async changeStatus(newStatus) {
@@ -93,13 +108,61 @@ class CommandHandler {
 
   async changeChannel(channelName) {
     const channels = await this.botManager.listChannels();
-    const channel = channels.find(ch => ch.name === channelName);
-    if (channel) {
-      this.currentChannel = channel;
-      this.updateStatusBar();
-      this.consoleUI.addLog(`Switched to channel: ${channel.name} (${channel.guildName})`);
-    } else {
+    const matchingChannels = channels.filter(ch => ch.name === channelName);
+
+    if (matchingChannels.length === 0) {
       this.consoleUI.addLog(`Channel "${channelName}" not found.`);
+      return;
+    }
+
+    if (matchingChannels.length === 1) {
+      this.setCurrentChannel(matchingChannels[0]);
+    } else {
+      this.promptChannelSelection(matchingChannels);
+    }
+  }
+
+  setCurrentChannel(channel) {
+    this.currentChannel = channel;
+    this.currentThread = null;
+    this.updateStatusBar();
+    this.consoleUI.addLog(`Switched to ${channel.type} channel: ${channel.name} (${channel.guildName})`);
+  }
+
+  promptChannelSelection(channels) {
+    this.consoleUI.addLog(chalk.yellow('Multiple channels found with the same name. Please select one:'));
+    channels.forEach((ch, index) => {
+      this.consoleUI.addLog(chalk.cyan(`${index + 1}. ${ch.name} (${ch.guildName}) - ${ch.type}`));
+    });
+    this.consoleUI.addLog(chalk.green('Enter the number of the channel you want to select:'));
+    this.awaitingChannelSelection = true;
+    this.channelSelectionOptions = channels;
+  }
+
+  handleChannelSelection(input) {
+    const selection = parseInt(input) - 1;
+    if (selection >= 0 && selection < this.channelSelectionOptions.length) {
+      this.setCurrentChannel(this.channelSelectionOptions[selection]);
+    } else {
+      this.consoleUI.addLog(chalk.red('Invalid selection. Please use /channel command again.'));
+    }
+    this.awaitingChannelSelection = false;
+    this.channelSelectionOptions = null;
+  }
+
+  async changeThread(threadName) {
+    if (!this.currentChannel || this.currentChannel.type !== 'forum') {
+      this.consoleUI.addLog('Current channel is not a forum. Select a forum channel first.');
+      return;
+    }
+
+    const thread = this.currentChannel.threads.find(t => t.name === threadName);
+    if (thread) {
+      this.currentThread = thread;
+      this.updateStatusBar();
+      this.consoleUI.addLog(`Switched to thread: ${thread.name}`);
+    } else {
+      this.consoleUI.addLog(`Thread "${threadName}" not found in the current forum channel.`);
     }
   }
 
@@ -113,7 +176,11 @@ class CommandHandler {
       return;
     }
     try {
-      const result = await this.botManager.sendMessage(this.composingMessage.trim(), this.currentChannel.id);
+      const result = await this.botManager.sendMessage(
+        this.composingMessage.trim(),
+        this.currentChannel.id,
+        this.currentThread ? this.currentThread.id : null
+      );
       this.consoleUI.addLog(result);
       this.clearComposer();
     } catch (error) {
@@ -128,9 +195,14 @@ class CommandHandler {
 
   async listChannels() {
     const channels = await this.botManager.listChannels();
-    let output = chalk.yellow('Available channels:\n');
+    let output = chalk.yellow('Available channels and threads:\n');
     channels.forEach(ch => {
-      output += chalk.cyan(`${ch.name} (${ch.guildName})\n`);
+      output += chalk.cyan(`${ch.name} (${ch.guildName}) - ${ch.type}\n`);
+      if (ch.type === 'forum' && ch.threads) {
+        ch.threads.forEach(thread => {
+          output += chalk.green(`  └─ ${thread.name}\n`);
+        });
+      }
     });
     this.consoleUI.addLog(output.trim());
   }

@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { ChannelType } = require('discord.js');
 
 class BotManager {
   constructor(client, webhookUrl) {
@@ -15,14 +16,24 @@ class BotManager {
     }
   }
 
-  async sendMessage(message, channelId) {
+  async sendMessage(message, channelId, threadId = null) {
     try {
       const channel = await this.client.channels.fetch(channelId);
       if (!channel) {
         throw new Error(`Channel with ID "${channelId}" not found`);
       }
-      await channel.send(message);
-      return `Message sent to ${channel.name}`;
+      
+      let targetChannel = channel;
+      if (threadId) {
+        const thread = await channel.threads.fetch(threadId);
+        if (!thread) {
+          throw new Error(`Thread with ID "${threadId}" not found in channel "${channel.name}"`);
+        }
+        targetChannel = thread;
+      }
+      
+      await targetChannel.send(message);
+      return `Message sent to ${channel.name}${threadId ? ` (thread: ${targetChannel.name})` : ''}`;
     } catch (error) {
       throw new Error(`Failed to send message: ${error.message}`);
     }
@@ -37,11 +48,12 @@ class BotManager {
           channel: message.channel.name,
           guild: message.guild ? message.guild.name : null,
           timestamp: message.createdTimestamp,
-          // Adding important IDs
           messageId: message.id,
           authorId: message.author.id,
           channelId: message.channel.id,
-          guildId: message.guild ? message.guild.id : null
+          guildId: message.guild ? message.guild.id : null,
+          threadId: message.channel.isThread() ? message.channel.id : null,
+          threadName: message.channel.isThread() ? message.channel.name : null
         };
 
         console.log('Sending webhook data:', JSON.stringify(webhookData, null, 2));
@@ -57,22 +69,37 @@ class BotManager {
         }
       }
     } else {
-      console.log(`Message received: ${message.content} (from ${message.author.username} in ${message.guild.name}#${message.channel.name})`);
+      console.log(`Message received: ${message.content} (from ${message.author.username} in ${message.guild.name}#${message.channel.name}${message.channel.isThread() ? ` (thread: ${message.channel.name})` : ''})`);
     }
   }
 
   async listChannels() {
-    const textChannels = [];
+    const channels = [];
     for (const guild of this.client.guilds.cache.values()) {
-      const channels = await guild.channels.fetch();
-      textChannels.push(...channels.filter(channel => channel.type === 0).map(channel => ({
-        id: channel.id,
-        name: channel.name,
-        guildName: guild.name,
-        guildId: guild.id
-      })));
+      const guildChannels = await guild.channels.fetch();
+      for (const channel of guildChannels.values()) {
+        if (channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildForum) {
+          const channelInfo = {
+            id: channel.id,
+            name: channel.name,
+            guildName: guild.name,
+            guildId: guild.id,
+            type: channel.type === ChannelType.GuildForum ? 'forum' : 'text'
+          };
+
+          if (channel.type === ChannelType.GuildForum) {
+            const threads = await channel.threads.fetch();
+            channelInfo.threads = threads.threads.map(thread => ({
+              id: thread.id,
+              name: thread.name
+            }));
+          }
+
+          channels.push(channelInfo);
+        }
+      }
     }
-    return textChannels;
+    return channels;
   }
 }
 

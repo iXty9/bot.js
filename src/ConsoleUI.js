@@ -3,68 +3,95 @@ const chalk = require('chalk');
 const boxen = require('boxen');
 
 class ConsoleUI {
-  /**
-   * Initializes an instance of ConsoleUI.
-   * @param {readline.Interface} rl - The readline interface for I/O.
-   */
   constructor(rl) {
     this.rl = rl;
-    this.logs = [];
+    this.output = '';
     this.statusBar = '';
     this.composer = '';
+    this.terminalWidth = process.stdout.columns;
+    this.terminalHeight = process.stdout.rows;
   }
 
-  /**
-   * Updates the status bar with new information.
-   * @param {string} status - The new status to display.
-   */
   updateStatusBar(status) {
     this.statusBar = status;
     this.render();
   }
 
-  /**
-   * Updates the composer area with new text.
-   * @param {string} text - The new text for the composer.
-   */
   updateComposer(text) {
     this.composer = text;
     this.render();
   }
 
-  /**
-   * Adds a new log message to the console.
-   * @param {string} message - The message to log.
-   */
   addLog(message) {
-    this.logs.push(message);
-    if (this.logs.length > 10) {
-      this.logs.shift();
-    }
+    this.output = message;
     this.render();
   }
 
-  /**
-   * Renders the entire console UI.
-   */
+  clearScreen() {
+    process.stdout.write('\x1b[2J');
+    process.stdout.write('\x1b[3J');
+    process.stdout.write('\x1b[H');
+    readline.cursorTo(process.stdout, 0, 0);
+    readline.clearScreenDown(process.stdout);
+  }
+
+  formatChannelsAndThreads(content) {
+    const lines = content.split('\n');
+    let formatted = '';
+    let currentLine = '';
+
+    for (const line of lines) {
+      if (currentLine.length + line.length + 2 > this.terminalWidth - 4) {
+        formatted += currentLine.trim() + '\n';
+        currentLine = '';
+      }
+      currentLine += line + '  ';
+    }
+    formatted += currentLine.trim();
+
+    return formatted;
+  }
+
+  formatHelpText(helpText) {
+    return helpText.map(line => {
+      if (line.startsWith('  ')) {
+        const [command, description] = line.split(' - ');
+        return chalk.cyan(command.padEnd(30)) + ' - ' + description;
+      }
+      return chalk.yellow(line);
+    }).join('\n');
+  }
+
   render() {
-    console.clear();
+    this.clearScreen();
     
-    // Status Bar
     console.log(chalk.bgBlue.white.bold(` ${this.statusBar} `));
     
-    // Logs
-    const logBox = boxen(this.logs.join('\n'), {
+    let formattedOutput = this.output;
+
+    if (this.output.includes('Available commands:')) {
+      const [preHelp, helpContent] = this.output.split('Available commands:');
+      const helpLines = helpContent.trim().split('\n');
+      const formattedHelp = this.formatHelpText(helpLines);
+      formattedOutput = preHelp + 'Available commands:\n' + formattedHelp;
+    } else if (this.output.includes('Available channels and threads:')) {
+      const [preChannels, channelsContent] = this.output.split('Available channels and threads:');
+      const formattedChannels = this.formatChannelsAndThreads(channelsContent);
+      formattedOutput = preChannels + 'Available channels and threads:\n' + formattedChannels;
+    }
+
+    const outputBox = boxen(formattedOutput, {
       padding: 1,
       margin: 1,
       borderStyle: 'round',
       borderColor: 'cyan',
-      title: chalk.yellow('Logs'),
-      titleAlignment: 'center'
+      title: chalk.yellow('Output'),
+      titleAlignment: 'center',
+      width: this.terminalWidth - 4,
+      height: this.terminalHeight - 10
     });
-    console.log(logBox);
+    console.log(outputBox);
     
-    // Composer
     const composerBox = boxen(this.composer || 'Type your message here...', {
       padding: 1,
       margin: 1,
@@ -75,26 +102,14 @@ class ConsoleUI {
     });
     console.log(composerBox);
     
-    // Command prompt
     console.log(chalk.cyan('Enter a command or message:'));
     this.rl.prompt();
   }
 
-  /**
-   * Prompts the user for input and handles the response.
-   * @param {Function} callback - The function to call with user input.
-   */
   promptUser(callback) {
     this.rl.question(chalk.green('> '), (input) => {
       callback(input);
       this.promptUser(callback);
-    });
-
-    // Handle Ctrl+S to send the message
-    process.stdin.on('keypress', (str, key) => {
-      if (key.ctrl && key.name === 's') {
-        callback('/send');
-      }
     });
   }
 }
