@@ -1,4 +1,5 @@
 const chalk = require('chalk');
+const axios = require('axios');
 
 class CommandHandler {
   constructor(client, botManager, consoleUI) {
@@ -205,6 +206,19 @@ class CommandHandler {
       }
     });
     this.consoleUI.addLog(output.trim());
+  }
+
+  async handleFactCommand(interaction) {
+    await interaction.deferReply();
+
+    try {
+      const response = await axios.get('https://uselessfacts.jsph.pl/random.json?language=en');
+      const fact = response.data.text;
+      await interaction.editReply(`Here's a random fact: ${fact}`);
+    } catch (error) {
+      console.error('Error fetching random fact:', error);
+      await interaction.editReply('Sorry, I couldn\'t fetch a random fact at the moment.');
+    }
   }
 }
 

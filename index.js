@@ -1,7 +1,7 @@
 // Load environment variables from the .env file.
 require('dotenv').config();
 
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
 const readline = require('readline');
 const BotManager = require('./src/BotManager');
 const ConsoleUI = require('./src/ConsoleUI');
@@ -27,12 +27,40 @@ const botManager = new BotManager(client, process.env.WEBHOOK_URL);
 const consoleUI = new ConsoleUI(rl);
 const commandHandler = new CommandHandler(client, botManager, consoleUI);
 
+// Define slash commands
+const commands = [
+  {
+    name: 'fact',
+    description: 'Get a random fact',
+  },
+  // Add more slash commands here as needed
+];
+
+// Function to register slash commands
+async function registerSlashCommands() {
+  try {
+    console.log('Started refreshing application (/) commands.');
+
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
+    await rest.put(
+      Routes.applicationCommands(client.user.id),
+      { body: commands },
+    );
+
+    console.log('Successfully reloaded application (/) commands.');
+  } catch (error) {
+    console.error('Error registering slash commands:', error);
+  }
+}
+
 // Event listener for when the client is ready.
 client.once('ready', async () => {
   consoleUI.addLog(`Logged in as ${client.user.tag}!`);
   consoleUI.addLog('Type "/help" for a list of commands.');
   
   await commandHandler.initialize(); // Initialize the current channel
+  await registerSlashCommands(); // Register slash commands
   
   consoleUI.promptUser(commandHandler.handleInput.bind(commandHandler));
 });
@@ -42,6 +70,16 @@ client.on('messageCreate', async (message) => {
   if (message.author.bot) return; // Ignore messages from bots
   await botManager.handleIncomingMessage(message);
   consoleUI.updateStatusBar(commandHandler.getStatusBarContent());
+});
+
+// Event listener for slash commands
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isCommand()) return;
+
+  if (interaction.commandName === 'fact') {
+    await commandHandler.handleFactCommand(interaction);
+  }
+  // Add more command handlers here as needed
 });
 
 // Log in to Discord.
