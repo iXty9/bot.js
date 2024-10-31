@@ -39,7 +39,7 @@ client.once('ready', async () => {
 
 // Event listener for new messages.
 client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
+  if (message.author.bot) return; // Ignore messages from bots
   await botManager.handleIncomingMessage(message);
   consoleUI.updateStatusBar(commandHandler.getStatusBarContent());
 });
@@ -54,3 +54,6 @@ client.login(process.env.DISCORD_TOKEN).catch((error) => {
 process.on('unhandledRejection', (error) => {
   console.error('Unhandled promise rejection:', error);
 });
+
+// Log the current working directory
+console.log('Current working directory:', process.cwd());

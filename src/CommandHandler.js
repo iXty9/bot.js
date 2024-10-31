@@ -1,41 +1,32 @@
-const axios = require('axios');
+const chalk = require('chalk');
 
 class CommandHandler {
-  /**
-   * Initializes an instance of CommandHandler.
-   * @param {Object} client - The bot client instance.
-   * @param {Object} botManager - Manages bot functionalities (messages, status, and channels).
-   * @param {Object} consoleUI - Provides a way to interact with the UI (logs, etc.).
-   */
   constructor(client, botManager, consoleUI) {
     this.client = client;
     this.botManager = botManager;
     this.consoleUI = consoleUI;
-    this.currentChannel = 'general';
+    this.currentChannel = null;
     this.composingMessage = '';
   }
 
-  /**
-   * Initializes the CommandHandler by setting the default channel.
-   */
   async initialize() {
-    const channels = this.botManager.listChannels();
-    this.currentChannel = channels.includes('general') ? 'general' : channels[0];
+    const channels = await this.botManager.listChannels();
+    this.currentChannel = channels.find(ch => ch.name === 'general') || channels[0];
     this.updateStatusBar();
   }
 
-  /**
-   * Updates the status bar with current bot information.
-   */
   updateStatusBar() {
     const status = this.client.user.presence.status;
-    this.consoleUI.updateStatusBar(`${this.client.user.tag} | ${status} | Channel: ${this.currentChannel}`);
+    const channelName = this.currentChannel ? `${this.currentChannel.name} (${this.currentChannel.guildName})` : 'No channel selected';
+    this.consoleUI.updateStatusBar(`${this.client.user.tag} | ${status} | Channel: ${channelName}`);
   }
 
-  /**
-   * Handles user input, either as a command or as message composition.
-   * @param {string} input - User input from the console.
-   */
+  getStatusBarContent() {
+    const status = this.client.user.presence.status;
+    const channelName = this.currentChannel ? `${this.currentChannel.name} (${this.currentChannel.guildName})` : 'No channel selected';
+    return `${this.client.user.tag} | ${status} | Channel: ${channelName}`;
+  }
+
   async handleInput(input) {
     if (input.startsWith('/')) {
       const [command, ...args] = input.slice(1).split(' ');
@@ -46,11 +37,6 @@ class CommandHandler {
     }
   }
 
-  /**
-   * Handles various commands entered by the user.
-   * @param {string} command - The command entered.
-   * @param {Array<string>} args - Arguments for the command.
-   */
   async handleCommand(command, args) {
     switch(command) {
       case 'help':
@@ -60,7 +46,7 @@ class CommandHandler {
         await this.changeStatus(args[0]);
         break;
       case 'channel':
-        await this.changeChannel(args[0]);
+        await this.changeChannel(args.join(' '));
         break;
       case 'send':
         await this.sendComposedMessage();
@@ -69,7 +55,7 @@ class CommandHandler {
         this.clearComposer();
         break;
       case 'list':
-        this.listChannels();
+        await this.listChannels();
         break;
       case 'exit':
         this.consoleUI.addLog('Exiting...');
@@ -80,28 +66,21 @@ class CommandHandler {
     }
   }
 
-  /**
-   * Displays help information about available commands.
-   */
   showHelp() {
     const helpText = [
-      'Available commands:',
-      '  /help               - Show this help message',
-      '  /status <newStatus> - Change bot status (online, idle, dnd, invisible)',
-      '  /channel <name>     - Change the current channel',
-      '  /send               - Send the composed message',
-      '  /clear              - Clear the message composer',
-      '  /list               - List all available channels',
-      '  /exit               - Exit the program',
-      'Compose your message by typing or pasting. Use Ctrl+S to send.'
+      chalk.yellow('Available commands:'),
+      chalk.cyan('  /help               ') + '- Show this help message',
+      chalk.cyan('  /status <newStatus> ') + '- Change bot status (online, idle, dnd, invisible)',
+      chalk.cyan('  /channel <name>     ') + '- Change the current channel',
+      chalk.cyan('  /send               ') + '- Send the composed message',
+      chalk.cyan('  /clear              ') + '- Clear the message composer',
+      chalk.cyan('  /list               ') + '- List all available channels',
+      chalk.cyan('  /exit               ') + '- Exit the program',
+      chalk.green('Compose your message by typing or pasting. Use Ctrl+S to send.')
     ];
     helpText.forEach(line => this.consoleUI.addLog(line));
   }
 
-  /**
-   * Changes the bot's status.
-   * @param {string} newStatus - The new status to set.
-   */
   async changeStatus(newStatus) {
     try {
       const result = await this.botManager.changeStatus(newStatus);
@@ -112,31 +91,29 @@ class CommandHandler {
     }
   }
 
-  /**
-   * Changes the current active channel.
-   * @param {string} channelName - The name of the channel to switch to.
-   */
   async changeChannel(channelName) {
-    const channels = this.botManager.listChannels();
-    if (channels.includes(channelName)) {
-      this.currentChannel = channelName;
+    const channels = await this.botManager.listChannels();
+    const channel = channels.find(ch => ch.name === channelName);
+    if (channel) {
+      this.currentChannel = channel;
       this.updateStatusBar();
-      this.consoleUI.addLog(`Switched to channel: ${channelName}`);
+      this.consoleUI.addLog(`Switched to channel: ${channel.name} (${channel.guildName})`);
     } else {
       this.consoleUI.addLog(`Channel "${channelName}" not found.`);
     }
   }
 
-  /**
-   * Sends the composed message to the current channel.
-   */
   async sendComposedMessage() {
+    if (!this.currentChannel) {
+      this.consoleUI.addLog('No channel selected. Use /channel to select a channel.');
+      return;
+    }
     if (this.composingMessage.trim() === '') {
       this.consoleUI.addLog('No message to send. Compose a message first.');
       return;
     }
     try {
-      const result = await this.botManager.sendMessage(this.composingMessage.trim(), this.currentChannel);
+      const result = await this.botManager.sendMessage(this.composingMessage.trim(), this.currentChannel.id);
       this.consoleUI.addLog(result);
       this.clearComposer();
     } catch (error) {
@@ -144,26 +121,17 @@ class CommandHandler {
     }
   }
 
-  /**
-   * Clears the message composition area.
-   */
   clearComposer() {
     this.composingMessage = '';
     this.consoleUI.updateComposer('');
   }
 
-  /**
-   * Lists all available channels.
-   */
-  listChannels() {
-    const channels = this.botManager.listChannels();
-    const columnWidth = Math.max(...channels.map(ch => ch.length)) + 2;
-    const columnsPerRow = Math.floor(process.stdout.columns / columnWidth);
-    let output = 'Available channels:\n';
-    for (let i = 0; i < channels.length; i += columnsPerRow) {
-      const row = channels.slice(i, i + columnsPerRow);
-      output += row.map(ch => ch.padEnd(columnWidth)).join('') + '\n';
-    }
+  async listChannels() {
+    const channels = await this.botManager.listChannels();
+    let output = chalk.yellow('Available channels:\n');
+    channels.forEach(ch => {
+      output += chalk.cyan(`${ch.name} (${ch.guildName})\n`);
+    });
     this.consoleUI.addLog(output.trim());
   }
 }

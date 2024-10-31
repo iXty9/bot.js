@@ -1,4 +1,6 @@
 const readline = require('readline');
+const chalk = require('chalk');
+const boxen = require('boxen');
 
 class ConsoleUI {
   /**
@@ -47,13 +49,34 @@ class ConsoleUI {
    */
   render() {
     console.clear();
-    console.log(this.statusBar);
-    console.log('-'.repeat(process.stdout.columns));
-    this.logs.forEach(log => console.log(log));
-    console.log('-'.repeat(process.stdout.columns));
-    console.log('Composer:');
-    console.log(this.composer);
-    console.log('-'.repeat(process.stdout.columns));
+    
+    // Status Bar
+    console.log(chalk.bgBlue.white.bold(` ${this.statusBar} `));
+    
+    // Logs
+    const logBox = boxen(this.logs.join('\n'), {
+      padding: 1,
+      margin: 1,
+      borderStyle: 'round',
+      borderColor: 'cyan',
+      title: chalk.yellow('Logs'),
+      titleAlignment: 'center'
+    });
+    console.log(logBox);
+    
+    // Composer
+    const composerBox = boxen(this.composer || 'Type your message here...', {
+      padding: 1,
+      margin: 1,
+      borderStyle: 'bold',
+      borderColor: 'green',
+      title: chalk.yellow('Composer'),
+      titleAlignment: 'center'
+    });
+    console.log(composerBox);
+    
+    // Command prompt
+    console.log(chalk.cyan('Enter a command or message:'));
     this.rl.prompt();
   }
 
@@ -62,7 +85,7 @@ class ConsoleUI {
    * @param {Function} callback - The function to call with user input.
    */
   promptUser(callback) {
-    this.rl.question('> ', (input) => {
+    this.rl.question(chalk.green('> '), (input) => {
       callback(input);
       this.promptUser(callback);
     });
