@@ -3,8 +3,6 @@ const axios = require('axios');
 const { ChannelType } = require('discord.js');
 
 class BotManager extends EventEmitter {
-
-class BotManager {
   constructor(client, webhookUrl) {
     this.client = client;
     this.webhookUrl = webhookUrl;
