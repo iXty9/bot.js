@@ -1,15 +1,34 @@
+const EventEmitter = require('events');
 const axios = require('axios');
 const { ChannelType } = require('discord.js');
+
+class BotManager extends EventEmitter {
 
 class BotManager {
   constructor(client, webhookUrl) {
     this.client = client;
     this.webhookUrl = webhookUrl;
+    this.on('statusChanged', (status) => {
+      console.log(`Status changed to: ${status}`);
+    });
+
+    this.on('messageSent', (info) => {
+      console.log(`Message sent: ${info}`);
+    });
+  }
+
+  emitStatusChange(status) {
+    this.emit('statusChanged', status);
+  }
+
+  emitMessageSent(info) {
+    this.emit('messageSent', info);
   }
 
   async changeStatus(newStatus) {
     try {
       await this.client.user.setStatus(newStatus);
+      this.emitStatusChange(newStatus);
       return `Status changed to ${newStatus}`;
     } catch (error) {
       throw new Error(`Failed to change status: ${error.message}`);
@@ -33,7 +52,9 @@ class BotManager {
       }
       
       await targetChannel.send(message);
-      return `Message sent to ${channel.name}${threadId ? ` (thread: ${targetChannel.name})` : ''}`;
+      const info = `Message sent to ${channel.name}${threadId ? ` (thread: ${targetChannel.name})` : ''}`;
+      this.emitMessageSent(info);
+      return info;
     } catch (error) {
       throw new Error(`Failed to send message: ${error.message}`);
     }

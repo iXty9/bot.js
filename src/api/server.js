@@ -28,27 +28,67 @@ const botManager = new BotManager(/* pass necessary parameters */);
 
 // API routes
 app.get('/api/status', authenticateToken, async (req, res) => {
-  // Implement logic to get bot status
+  try {
+    const status = botManager.client.user.presence.status;
+    const currentChannel = botManager.client.channels.cache.get(botManager.currentChannelId);
+    const uptime = process.uptime();
+
+    res.json({
+      status,
+      currentChannel: currentChannel ? currentChannel.name : 'None',
+      uptime
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve status' });
+  }
 });
 
 app.get('/api/logs', authenticateToken, async (req, res) => {
-  // Implement logic to get recent bot activity
+  try {
+    // Assuming logs are stored in an array
+    const logs = botManager.getLogs();
+    res.json(logs);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve logs' });
+  }
 });
 
 app.post('/api/commands', authenticateToken, async (req, res) => {
-  // Implement logic to execute bot commands
+  try {
+    const { command, args } = req.body;
+    const result = await botManager.executeCommand(command, args);
+    res.json({ result });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to execute command' });
+  }
 });
 
 app.get('/api/channels', authenticateToken, async (req, res) => {
-  // Implement logic to list available channels
+  try {
+    const channels = await botManager.listChannels();
+    res.json(channels);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to list channels' });
+  }
 });
 
 app.post('/api/channel', authenticateToken, async (req, res) => {
-  // Implement logic to set active channel
+  try {
+    const { channelId } = req.body;
+    await botManager.setActiveChannel(channelId);
+    res.json({ message: 'Channel set successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to set active channel' });
+  }
 });
 
 app.get('/api/stats', authenticateToken, async (req, res) => {
-  // Implement logic to get usage statistics
+  try {
+    const stats = botManager.getUsageStats();
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve statistics' });
+  }
 });
 
 app.listen(port, () => {
