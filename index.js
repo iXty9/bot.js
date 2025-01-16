@@ -62,6 +62,8 @@ client.once('ready', async () => {
   await commandHandler.initialize(); // Initialize the current channel
   await registerSlashCommands(); // Register slash commands
   
+  const serverStatus = await botManager.checkServerStatus();
+  consoleUI.addLog(`Web server status: ${serverStatus}`);
   consoleUI.promptUser(commandHandler.handleInput.bind(commandHandler));
 });
 
