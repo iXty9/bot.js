@@ -39,9 +39,22 @@ module.exports = {
       '/api': {
         target: 'http://localhost:6987',
         secure: false,
-        changeOrigin: true
+        changeOrigin: true,
+        onError: (err, req, res) => {
+          console.error('Proxy error:', err);
+          res.writeHead(500, {
+            'Content-Type': 'text/plain',
+          });
+          res.end('Proxy error: ' + err.message);
+        }
       }
     },
-    historyApiFallback: true
+    historyApiFallback: true,
+    onListening: function(devServer) {
+      if (!devServer) {
+        throw new Error('webpack-dev-server is not defined');
+      }
+      console.log('Webpack dev server listening on port:', devServer.server.address().port);
+    }
   }
 };

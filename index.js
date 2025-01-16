@@ -104,28 +104,35 @@ console.log('Current working directory:', process.cwd());
 const PORT = process.env.API_PORT || 6987;
 const HOST = process.env.API_HOST || '127.0.0.1';
 
-const server = app.listen(PORT, HOST, (error) => {
-  if (error) {
-    console.error('Failed to start server:', error);
-    return;
-  }
-  console.log(`API server successfully running on http://${HOST}:${PORT}`);
-  console.log('Server is now listening for incoming connections...');
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
-  server.close(() => {
-    console.log('HTTP server closed');
-    process.exit(0);
+let server;
+try {
+  server = app.listen(PORT, HOST, (error) => {
+    if (error) {
+      console.error('Failed to start server:', error);
+      process.exit(1);
+    }
+    console.log(`API server successfully running on http://${HOST}:${PORT}`);
+    console.log('Server is now listening for incoming connections...');
   });
-});
 
-process.on('SIGINT', () => {
-  console.log('SIGINT signal received: closing HTTP server');
-  server.close(() => {
-    console.log('HTTP server closed');
-    process.exit(0);
-  });
-});
+  // Graceful shutdown
+  const shutdown = () => {
+    console.log('Shutdown signal received');
+    if (server) {
+      server.close(() => {
+        console.log('HTTP server closed');
+        process.exit(0);
+      });
+    } else {
+      process.exit(0);
+    }
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+  process.on('SIGHUP', shutdown);
+
+} catch (error) {
+  console.error('Critical server error:', error);
+  process.exit(1);
+}
