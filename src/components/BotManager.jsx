@@ -8,6 +8,9 @@ const BotManager = () => {
   const [status, setStatus] = useState('online');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [channels, setChannels] = useState([]);
+  const [selectedChannel, setSelectedChannel] = useState(null);
+  const [selectedThread, setSelectedThread] = useState(null);
 
   const styles = {
     container: {
@@ -74,9 +77,30 @@ const BotManager = () => {
     }
   };
 
+  const fetchChannels = async () => {
+    try {
+      const response = await fetch('/api/channels', {
+        headers: {
+          'Authorization': `Bearer ${process.env.DISCORD_TOKEN}`
+        }
+      });
+      const data = await response.json();
+      setChannels(data);
+    } catch (err) {
+      console.error('Error fetching channels:', err);
+      setError('Failed to load channels');
+    }
+  };
+
   useEffect(() => {
     fetchLogs();
+    fetchChannels();
   }, []);
+
+  // Reset thread when channel changes
+  useEffect(() => {
+    setSelectedThread(null);
+  }, [selectedChannel]);
 
   const handleStatusChange = async (newStatus) => {
     try {
@@ -97,7 +121,7 @@ const BotManager = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() || !selectedChannel) return;
     
     try {
       const response = await fetch('/api/send', {
@@ -106,7 +130,11 @@ const BotManager = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.DISCORD_TOKEN}`
         },
-        body: JSON.stringify({ message })
+        body: JSON.stringify({
+          message,
+          channelId: selectedChannel.id,
+          threadId: selectedThread?.id
+        })
       });
       const data = await response.json();
       setOutput('Message sent successfully');
@@ -136,11 +164,48 @@ const BotManager = () => {
         </div>
 
         <div>
+          <div style={{ marginBottom: '16px' }}>
+            <select
+              style={{ ...styles.select, marginRight: '8px' }}
+              value={selectedChannel?.id || ''}
+              onChange={(e) => {
+                const channel = channels.find(c => c.id === e.target.value);
+                setSelectedChannel(channel);
+              }}
+            >
+              <option value="">Select a channel...</option>
+              {channels.map(channel => (
+                <option key={channel.id} value={channel.id}>
+                  {channel.name} ({channel.guildName})
+                </option>
+              ))}
+            </select>
+
+            {selectedChannel?.type === 'forum' && (
+              <select
+                style={styles.select}
+                value={selectedThread?.id || ''}
+                onChange={(e) => {
+                  const thread = selectedChannel.threads.find(t => t.id === e.target.value);
+                  setSelectedThread(thread);
+                }}
+              >
+                <option value="">Select a thread...</option>
+                {selectedChannel.threads.map(thread => (
+                  <option key={thread.id} value={thread.id}>
+                    {thread.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
           <textarea
             style={styles.textarea}
-            placeholder="Type your message here..."
+            placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            disabled={!selectedChannel}
           />
           
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
