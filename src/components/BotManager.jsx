@@ -44,6 +44,8 @@ const BotManager = () => {
     container: {
       width: '100%',
       height: '100vh',
+      maxWidth: '1290px',
+      maxHeight: '760px',
       margin: '0 auto',
       padding: 'clamp(0.5rem, 2vw, 2rem)',
       display: 'flex',
