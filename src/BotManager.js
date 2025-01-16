@@ -1,26 +1,110 @@
 const EventEmitter = require('events');
 const axios = require('axios');
 const { ChannelType } = require('discord.js');
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const logFile = fs.createWriteStream('console.log', { flags: 'a' });
+let serverInstance = null;
 
 class BotManager extends EventEmitter {
   constructor(client, webhookUrl) {
+    super();
     this.client = client;
     this.webhookUrl = webhookUrl;
+    this.log('Starting server...');
+    this.startServer();
+    this.log('Server started.');
+
+    this.log('Setting up event listeners...');
     this.on('statusChanged', (status) => {
       console.log(`Status changed to: ${status}`);
     });
 
     this.on('messageSent', (info) => {
+      this.log(`Message sent event triggered: ${info}`);
       console.log(`Message sent: ${info}`);
     });
+    this.log('BotManager initialized');
+  }
+
+  getLogs() {
+    this.log('Attempting to read logs from console.log...');
+    try {
+      const logs = fs.readFileSync('console.log', 'utf-8');
+      return logs.split('\n').filter(line => line).map(line => {
+        return { log: line };
+      });
+    } catch (error) {
+      this.log(`Error occurred while reading logs: ${error.message}`);
+      this.log(`Error reading logs: ${error.message}`);
+      return [];
+    }
+  }
+
+  startServer() {
+    this.log('Checking if server instance already exists...');
+    if (serverInstance) {
+      this.log('Server instance already exists. Skipping server start.');
+      this.log('Server is already running.');
+      return 'Server is already running.';
+    }
+    this.log('Creating express app...');
+    this.log('Express app created successfully.');
+    const app = express();
+    this.log('Setting up static file serving...');
+    this.log('Static file serving setup complete.');
+    app.use(express.static(path.join(__dirname, '../public')));
+
+    this.log('Setting up root route...');
+    this.log('Root route setup complete.');
+    app.get('/', (req, res) => {
+      res.sendFile(path.join(__dirname, '../../public/index.html'));
+    });
+    this.log('Starting server instance...');
+    this.log('Server instance started successfully.');
+    serverInstance = app.listen(6987, '0.0.0.0', () => {
+      const actualAddress = serverInstance.address().address === '0.0.0.0' ? 'localhost' : serverInstance.address().address;
+      this.log(`Server started on http://${actualAddress}:6987`);
+    });
+    return 'Server started.';
+  }
+
+  stopServer() {
+    if (!serverInstance) {
+      this.log('Server is not running.');
+      return 'Server is not running.';
+    }
+    serverInstance.close(() => {
+      this.log('Server stopped.');
+      serverInstance = null;
+    });
+    return 'Server stopped.';
+  }
+
+  async checkServerStatus() {
+    try {
+      const response = await axios.get('http://127.0.0.1:6987');
+      return response.status === 200 ? 'Running' : 'Not Running';
+    } catch (error) {
+      return 'Not Running';
+    }
+  }
+
+  log(message) {
+    const logMessage = `[BotManager] ${message}`;
+    console.log(logMessage);
+    logFile.write(`${new Date().toISOString()} - ${logMessage}\n`);
   }
 
   emitStatusChange(status) {
     this.emit('statusChanged', status);
+    this.log(`Status changed to: ${status}`);
   }
 
   emitMessageSent(info) {
     this.emit('messageSent', info);
+    this.log(`Message sent: ${info}`);
   }
 
   async changeStatus(newStatus) {
@@ -29,6 +113,7 @@ class BotManager extends EventEmitter {
       this.emitStatusChange(newStatus);
       return `Status changed to ${newStatus}`;
     } catch (error) {
+      this.log(`Error changing status: ${error.message}`);
       throw new Error(`Failed to change status: ${error.message}`);
     }
   }
@@ -54,6 +139,7 @@ class BotManager extends EventEmitter {
       this.emitMessageSent(info);
       return info;
     } catch (error) {
+      this.log(`Error sending message: ${error.message}`);
       throw new Error(`Failed to send message: ${error.message}`);
     }
   }
