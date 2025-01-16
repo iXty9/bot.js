@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertCircle, Send, Trash2, RefreshCw, List } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const BotManager = () => {
   const [message, setMessage] = useState('');
@@ -14,6 +8,53 @@ const BotManager = () => {
   const [status, setStatus] = useState('online');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const styles = {
+    container: {
+      maxWidth: '800px',
+      margin: '0 auto',
+      padding: '20px',
+    },
+    card: {
+      border: '1px solid #ccc',
+      borderRadius: '8px',
+      padding: '20px',
+      marginBottom: '20px',
+    },
+    header: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '20px',
+    },
+    title: {
+      fontSize: '24px',
+      fontWeight: 'bold',
+    },
+    button: {
+      padding: '8px 16px',
+      borderRadius: '4px',
+      border: '1px solid #ccc',
+      cursor: 'pointer',
+    },
+    textarea: {
+      width: '100%',
+      minHeight: '100px',
+      padding: '8px',
+      marginBottom: '16px',
+      borderRadius: '4px',
+      border: '1px solid #ccc',
+    },
+    select: {
+      padding: '8px',
+      borderRadius: '4px',
+      border: '1px solid #ccc',
+    },
+    error: {
+      color: 'red',
+      marginTop: '16px',
+    }
+  };
 
   const fetchLogs = async () => {
     try {
@@ -73,117 +114,102 @@ const BotManager = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Discord Bot Manager</span>
-            <div className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${
-                status === 'online' ? 'bg-green-500' :
-                status === 'idle' ? 'bg-yellow-500' :
-                status === 'dnd' ? 'bg-red-500' : 'bg-gray-500'
-              }`} />
-              <Select value={status} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-32">
-                  <SelectValue>{status}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="online">Online</SelectItem>
-                  <SelectItem value="idle">Idle</SelectItem>
-                  <SelectItem value="dnd">Do Not Disturb</SelectItem>
-                  <SelectItem value="invisible">Invisible</SelectItem>
-                </SelectContent>
-              </Select>
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <div style={styles.header}>
+          <h1 style={styles.title}>Discord Bot Manager</h1>
+          <div>
+            <select 
+              style={styles.select}
+              value={status} 
+              onChange={(e) => handleStatusChange(e.target.value)}
+            >
+              <option value="online">Online</option>
+              <option value="idle">Idle</option>
+              <option value="dnd">Do Not Disturb</option>
+              <option value="invisible">Invisible</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <textarea
+            style={styles.textarea}
+            placeholder="Type your message here..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+          />
+          
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button
+              style={styles.button}
+              onClick={() => setMessage('')}
+            >
+              Clear
+            </button>
+            <button
+              style={styles.button}
+              onClick={handleSendMessage}
+              disabled={!message.trim()}
+            >
+              Send Message
+            </button>
+          </div>
+
+          <div style={{ marginTop: '20px' }}>
+            <h3>Bot Logs</h3>
+            <button
+              style={styles.button}
+              onClick={fetchLogs}
+              disabled={loading}
+            >
+              Refresh
+            </button>
+            <div style={{ 
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              padding: '10px',
+              marginTop: '10px',
+              maxHeight: '200px',
+              overflowY: 'auto'
+            }}>
+              {logs.length > 0 ? (
+                logs.map((log, index) => (
+                  <div key={index} style={{ padding: '4px 0' }}>
+                    {JSON.stringify(log)}
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  No logs available
+                </div>
+              )}
             </div>
-          </CardTitle>
-        </CardHeader>
+          </div>
 
-        <CardContent>
-          <Tabs defaultValue="compose" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="compose">Compose</TabsTrigger>
-              <TabsTrigger value="logs">Logs</TabsTrigger>
-              <TabsTrigger value="output">Output</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="compose" className="space-y-4">
-              <Textarea
-                placeholder="Type your message here..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="min-h-32"
-              />
-              <div className="flex justify-end space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setMessage('')}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Clear
-                </Button>
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!message.trim()}
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Message
-                </Button>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="logs">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-medium">Bot Logs</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={fetchLogs}
-                    disabled={loading}
-                  >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </Button>
+          <div style={{ marginTop: '20px' }}>
+            <h3>Command Output</h3>
+            <div style={{
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              padding: '10px',
+              minHeight: '100px'
+            }}>
+              {output || (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  No output to display
                 </div>
-                <div className="bg-secondary/50 rounded-lg p-4 max-h-64 overflow-y-auto">
-                  {logs.length > 0 ? (
-                    logs.map((log, index) => (
-                      <div key={index} className="text-sm py-1">
-                        {JSON.stringify(log)}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-muted-foreground text-center py-8">
-                      No logs available
-                    </div>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="output">
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">Command Output</h3>
-                <div className="bg-secondary/50 rounded-lg p-4 min-h-32">
-                  {output || (
-                    <div className="text-muted-foreground text-center py-8">
-                      No output to display
-                    </div>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+              )}
+            </div>
+          </div>
 
           {error && (
-            <Alert variant="destructive" className="mt-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            <div style={styles.error}>
+              {error}
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };
