@@ -54,12 +54,12 @@ class BotManager extends EventEmitter {
     const app = express();
     this.log('Setting up static file serving...');
     this.log('Static file serving setup complete.');
-    app.use(express.static(path.join(__dirname, '../public')));
+    app.use(express.static(path.join(__dirname, 'public')));
 
     this.log('Setting up root route...');
     this.log('Root route setup complete.');
     app.get('/', (req, res) => {
-      res.sendFile(path.join(__dirname, '../../public/index.html'));
+      res.sendFile(path.join(__dirname, 'public/index.html'));
     });
     this.log('Starting server instance...');
     this.log('Server instance started successfully.');
