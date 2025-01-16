@@ -115,8 +115,6 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
 
 const path = require('path');
 
-const path = require('path');
-
 app.use(express.static(path.join(__dirname, '../public')));
 
 app.get('/', (req, res) => {
@@ -179,27 +177,11 @@ app.post('/api/server', authenticateToken, async (req, res) => {
 
 console.log('Starting server...');
 console.log(`Attempting to listen on http://${HOST}:${PORT}`);
-console.log('Checking if the server is already running...');
-console.log('Initializing server...');
 app.listen(PORT, HOST, (error) => {
-  console.log('Server listen callback invoked');
   if (error) {
     console.error('Failed to start server:', error);
     return;
   }
   console.log(`API server successfully running on http://${HOST}:${PORT}`);
-  console.log('Server is now listening for incoming connections...');
-  if (error) {
-    console.error('Failed to start server:', error);
-    return;
-  }
-  console.log(`API server successfully running on http://${HOST}:${PORT}`);
-  console.log('Server is now listening for incoming connections...');
-  if (error) {
-    console.error('Failed to start server:', error);
-    return;
-  }
-  console.log(`API server successfully running on http://${HOST}:${PORT}`);
-  console.log('Server is now listening for incoming connections...');
   console.log('Server is now listening for incoming connections...');
 });
