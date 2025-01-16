@@ -328,14 +328,13 @@ const BotManager = () => {
 
         <div style={{ marginTop: '20px' }}>
           {activeTab === 'logs' && (
-              <div style={{ height: '500px' }}>
+              <div style={{ height: '460px' }}>
                 <div style={{ 
                   background: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '0.75rem',
                   padding: '1.5rem',
-                  height: '400px',
-                  overflowY: 'auto',
+                  height: '460px',
                   fontSize: '0.9rem',
                   color: 'var(--text-secondary)',
                   fontFamily: 'monospace'
@@ -373,7 +372,7 @@ const BotManager = () => {
 
           {activeTab === 'messages' && (
               <div>
-                <div style={{ marginBottom: '16px' }}>
+                <div style={{ marginBottom: '12px' }}>
                   <select
                     style={{ ...styles.select, marginRight: '8px' }}
                     value={selectedChannel?.id || ''}
@@ -447,15 +446,15 @@ const BotManager = () => {
                   </button>
                 </div>
 
-                <div style={{ height: '500px', overflowY: 'auto', marginTop: '20px' }}>
+                <div style={{ height: '460px', marginTop: '20px' }}>
                   {/* Message history would go here */}
                 </div>
               </div>
           )}
 
           {activeTab === 'commands' && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div style={{ height: '460px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <h3>Slash Commands</h3>
                   <button
                     style={{
