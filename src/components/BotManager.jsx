@@ -179,30 +179,18 @@ const BotManager = () => {
               onChange={(e) => handleStatusChange(e.target.value)}
             >
               <option value="online">
-                {status === 'online' && '⬤ '}Online
+                ⬤ Online
               </option>
               <option value="idle">
-                {status === 'idle' && '🌙 '}Idle
+                🌙 Idle
               </option>
               <option value="dnd">
-                {status === 'dnd' && '⛔ '}Do Not Disturb
+                ⛔ Do Not Disturb
               </option>
               <option value="invisible">
-                {status === 'invisible' && '⭕ '}Invisible
+                ⭕ Invisible
               </option>
             </select>
-            <div style={{ 
-              position: 'absolute', 
-              left: '8px', 
-              top: '50%', 
-              transform: 'translateY(-50%)',
-              pointerEvents: 'none'
-            }}>
-              {status === 'online' && <Circle size={12} fill="#23A559" stroke="none" />}
-              {status === 'idle' && <Moon size={12} fill="#F0B232" stroke="none" />}
-              {status === 'dnd' && <MinusCircle size={12} fill="#F23F43" stroke="none" />}
-              {status === 'invisible' && <CircleOff size={12} fill="#80848E" stroke="none" />}
-            </div>
           </div>
         </div>
 
