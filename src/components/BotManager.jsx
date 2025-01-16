@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Send, Trash2, RefreshCw, List, Circle, Moon, MinusCircle, CircleOff } from 'lucide-react';
+import { AlertCircle, Send, Trash2, RefreshCw, List, Circle, Moon, MinusCircle, CircleOff, Terminal, Command } from 'lucide-react';
 
 const BotManager = () => {
   const [message, setMessage] = useState('');
@@ -11,6 +11,8 @@ const BotManager = () => {
   const [channels, setChannels] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [selectedThread, setSelectedThread] = useState(null);
+  const [activeTab, setActiveTab] = useState('messages');
+  const [commands, setCommands] = useState([]);
 
   const styles = {
     container: {
@@ -270,63 +272,147 @@ const BotManager = () => {
           </div>
 
           <div style={{ marginTop: '20px' }}>
-            <h3>Bot Logs</h3>
-            <button
-              style={{
-                ...styles.button,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-              onClick={fetchLogs}
-              disabled={loading}
-            >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-              Refresh
-            </button>
             <div style={{ 
-              background: 'var(--bg-primary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '8px',
-              padding: '1rem',
-              marginTop: '1rem',
-              maxHeight: '300px',
-              overflowY: 'auto',
-              fontSize: '0.9rem',
-              color: 'var(--text-secondary)',
-              fontFamily: 'monospace'
+              borderBottom: '1px solid var(--border-color)',
+              marginBottom: '20px',
+              display: 'flex',
+              gap: '20px'
             }}>
-              {logs.length > 0 ? (
-                logs.map((log, index) => (
-                  <div key={index} style={{ padding: '4px 0' }}>
-                    {JSON.stringify(log)}
-                  </div>
-                ))
-              ) : (
-                <div style={{ textAlign: 'center', padding: '20px' }}>
-                  No logs available
-                </div>
-              )}
+              <button
+                style={{
+                  padding: '10px 20px',
+                  color: activeTab === 'messages' ? 'var(--primary)' : 'var(--text-secondary)',
+                  borderBottom: activeTab === 'messages' ? '2px solid var(--primary)' : 'none',
+                  marginBottom: '-1px'
+                }}
+                onClick={() => setActiveTab('messages')}
+              >
+                <Send size={16} style={{ marginRight: '8px', display: 'inline' }} />
+                Messages
+              </button>
+              <button
+                style={{
+                  padding: '10px 20px',
+                  color: activeTab === 'logs' ? 'var(--primary)' : 'var(--text-secondary)',
+                  borderBottom: activeTab === 'logs' ? '2px solid var(--primary)' : 'none',
+                  marginBottom: '-1px'
+                }}
+                onClick={() => setActiveTab('logs')}
+              >
+                <Terminal size={16} style={{ marginRight: '8px', display: 'inline' }} />
+                Bot Logs
+              </button>
+              <button
+                style={{
+                  padding: '10px 20px',
+                  color: activeTab === 'commands' ? 'var(--primary)' : 'var(--text-secondary)',
+                  borderBottom: activeTab === 'commands' ? '2px solid var(--primary)' : 'none',
+                  marginBottom: '-1px'
+                }}
+                onClick={() => setActiveTab('commands')}
+              >
+                <Command size={16} style={{ marginRight: '8px', display: 'inline' }} />
+                Slash Commands
+              </button>
             </div>
-          </div>
 
-          <div style={{ marginTop: '20px' }}>
-            <h3>Command Output</h3>
-            <div style={{
-              background: 'var(--bg-primary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '8px',
-              padding: '1rem',
-              minHeight: '100px',
-              color: 'var(--text-secondary)',
-              fontSize: '0.9rem'
-            }}>
-              {output || (
-                <div style={{ textAlign: 'center', padding: '20px' }}>
-                  No output to display
+            {activeTab === 'logs' && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <h3>Bot Logs</h3>
+                  <button
+                    style={{
+                      ...styles.button,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                    onClick={fetchLogs}
+                    disabled={loading}
+                  >
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                    Refresh
+                  </button>
                 </div>
-              )}
-            </div>
+                <div style={{ 
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  height: '400px',
+                  overflowY: 'auto',
+                  fontSize: '0.9rem',
+                  color: 'var(--text-secondary)',
+                  fontFamily: 'monospace'
+                }}>
+                  {logs.length > 0 ? (
+                    logs.map((log, index) => (
+                      <div key={index} style={{ padding: '4px 0' }}>
+                        {JSON.stringify(log)}
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                      No logs available
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'messages' && (
+              <div>
+                <h3>Command Output</h3>
+                <div style={{
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  minHeight: '100px',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.9rem'
+                }}>
+                  {output || (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                      No output to display
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'commands' && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <h3>Slash Commands</h3>
+                  <button
+                    style={{
+                      ...styles.button,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      backgroundColor: 'var(--primary)',
+                      color: 'white'
+                    }}
+                    onClick={() => {/* TODO: Add new command handler */}}
+                  >
+                    <Command size={16} />
+                    Add Command
+                  </button>
+                </div>
+                <div style={{
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  minHeight: '200px'
+                }}>
+                  <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
+                    Slash commands management coming soon...
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {error && (
