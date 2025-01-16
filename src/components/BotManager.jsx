@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Send, Trash2, RefreshCw, List, Circle, Moon, MinusCircle, CircleOff, Terminal, Command } from 'lucide-react';
+import { AlertCircle, Send, Trash2, RefreshCw, MessageSquare, Terminal, Command } from 'lucide-react';
+import { Button } from './ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Alert, AlertDescription } from './ui/alert';
+import { Textarea } from './ui/textarea';
 
 const BotManager = () => {
   const [message, setMessage] = useState('');
