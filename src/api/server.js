@@ -21,20 +21,20 @@ app.use(bodyParser.json());
 // Authentication middleware
 function authenticateToken(req, res, next) {
   console.log('Authenticating token...');
-  const token = req.headers['authorization'];
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
   if (!token) {
     console.log('No token provided');
-    return res.sendStatus(401);
+    return res.status(401).json({ error: 'No token provided' });
   }
 
-  jwt.verify(token, secretKey, (err, user) => {
-    if (err) {
-      console.log('Token verification failed:', err);
-      return res.sendStatus(403);
-    }
-    req.user = user;
+  if (token === process.env.DISCORD_TOKEN) {
     next();
-  });
+  } else {
+    console.log('Invalid token');
+    return res.status(403).json({ error: 'Invalid token' });
+  }
 }
 
 // Initialize BotManager with the Discord client

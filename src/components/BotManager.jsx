@@ -59,7 +59,11 @@ const BotManager = () => {
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/logs');
+      const response = await fetch('/api/logs', {
+        headers: {
+          'Authorization': `Bearer ${process.env.DISCORD_TOKEN}`
+        }
+      });
       const data = await response.json();
       setLogs(data.logs);
     } catch (err) {
@@ -80,7 +84,7 @@ const BotManager = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${process.env.DISCORD_TOKEN}`
         },
         body: JSON.stringify({ newStatus })
       });
@@ -100,7 +104,7 @@ const BotManager = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${process.env.DISCORD_TOKEN}`
         },
         body: JSON.stringify({ message })
       });
