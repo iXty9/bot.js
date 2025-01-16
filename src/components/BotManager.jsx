@@ -307,7 +307,81 @@ const BotManager = () => {
 
           {activeTab === 'messages' && (
               <div>
-                <div style={{ height: '500px', overflowY: 'auto', marginBottom: '20px' }}>
+                <div style={{ marginBottom: '16px' }}>
+                  <select
+                    style={{ ...styles.select, marginRight: '8px' }}
+                    value={selectedChannel?.id || ''}
+                    onChange={(e) => {
+                      const channel = channels.find(c => c.id === e.target.value);
+                      setSelectedChannel(channel);
+                    }}
+                  >
+                    <option value="">Select a channel...</option>
+                    {channels.map(channel => (
+                      <option key={channel.id} value={channel.id}>
+                        {channel.name} ({channel.guildName})
+                      </option>
+                    ))}
+                  </select>
+
+                  {selectedChannel?.type === 'forum' && (
+                    <select
+                      style={styles.select}
+                      value={selectedThread?.id || ''}
+                      onChange={(e) => {
+                        const thread = selectedChannel.threads.find(t => t.id === e.target.value);
+                        setSelectedThread(thread);
+                      }}
+                    >
+                      <option value="">Select a thread...</option>
+                      {selectedChannel.threads.map(thread => (
+                        <option key={thread.id} value={thread.id}>
+                          {thread.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <textarea
+                  style={styles.textarea}
+                  placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  disabled={!selectedChannel}
+                />
+                
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button
+                    style={{
+                      ...styles.button,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                    onClick={() => setMessage('')}
+                  >
+                    <Trash2 size={16} />
+                    Clear
+                  </button>
+                  <button
+                    style={{
+                      ...styles.button,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      backgroundColor: 'var(--primary)',
+                      color: 'white'
+                    }}
+                    onClick={handleSendMessage}
+                    disabled={!message.trim()}
+                  >
+                    <Send size={16} />
+                    Send Message
+                  </button>
+                </div>
+
+                <div style={{ height: '500px', overflowY: 'auto', marginTop: '20px' }}>
                   {/* Message history would go here */}
                 </div>
               </div>
