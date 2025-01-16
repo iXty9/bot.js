@@ -7,19 +7,23 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "axios": "^0.21.1",
+    "@headlessui/react": "^1.7.7",
+    "@types/react": "^18.0.26",
+    "axios": "^1.7.9",
+    "boxen": "^5.0.1",
+    "chalk": "^4.1.2",
+    "cors": "^2.8.5",
     "discord.js": "^14.14.1",
     "dotenv": "^10.0.0",
-    "chalk": "^4.1.2",
-    "boxen": "^5.0.1",
     "express": "^4.18.2",
-    "cors": "^2.8.5",
     "jsonwebtoken": "^9.0.0",
-    "socket.io": "^4.5.4",
-    "react-scripts": "^5.0.1",
-    "tailwindcss": "^3.2.4",
-    "@headlessui/react": "^1.7.7",
+    "lucide-react": "^0.471.1",
     "react-router-dom": "^6.4.3",
-    "@types/react": "^18.0.26"
+    "react-scripts": "^3.0.1",
+    "socket.io": "^4.5.4",
+    "tailwindcss": "^3.2.4"
+  },
+  "devDependencies": {
+    "@shadcn/ui": "^0.0.4"
   }
 }
