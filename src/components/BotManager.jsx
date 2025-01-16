@@ -59,13 +59,12 @@ const BotManager = () => {
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/logs', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
-      });
+      const response = await fetch('/api/logs');
       const data = await response.json();
       setLogs(data.logs);
     } catch (err) {
-      setError('Failed to load logs');
+      console.error('Error fetching logs:', err);
+      setError(`Failed to load logs: ${err.message}`);
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,7 @@
 require('dotenv').config();
 
 const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
+const { initializeBotManager } = require('./src/api/server');
 const readline = require('readline');
 const BotManager = require('./src/BotManager');
 const ConsoleUI = require('./src/ConsoleUI');
@@ -24,6 +25,7 @@ const rl = readline.createInterface({
 
 // Initialize bot components.
 const botManager = new BotManager(client, process.env.WEBHOOK_URL);
+initializeBotManager(client); // Initialize the API server's BotManager instance
 const consoleUI = new ConsoleUI(rl);
 const commandHandler = new CommandHandler(client, botManager, consoleUI);
 
