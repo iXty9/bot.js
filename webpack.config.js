@@ -30,12 +30,18 @@ module.exports = {
   ],
   devServer: {
     static: {
-      directory: path.join(__dirname, 'public'),
+      directory: path.join(__dirname, 'src/public'),
     },
     compress: true,
     port: 3000,
+    hot: true,
     proxy: {
-      '/api': 'http://localhost:6987'
-    }
+      '/api': {
+        target: 'http://localhost:6987',
+        secure: false,
+        changeOrigin: true
+      }
+    },
+    historyApiFallback: true
   }
 };

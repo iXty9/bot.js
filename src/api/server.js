@@ -10,8 +10,8 @@ const BotManager = require('../BotManager');
 
 console.log('Initializing API server...');
 const app = express();
-const PORT = 6987;
-const HOST = '0.0.0.0'; // Ensures the server is accessible externally
+const PORT = process.env.API_PORT || 6987;
+const HOST = process.env.API_HOST || '127.0.0.1';
 const secretKey = process.env.JWT_SECRET || 'your-secret-key';
 
 console.log('Setting up middleware...');
