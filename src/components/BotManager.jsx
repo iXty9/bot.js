@@ -42,24 +42,26 @@ const BotManager = () => {
 
   const styles = {
     container: {
-      maxWidth: '1200px',
+      width: '100%',
+      height: '100vh',
       margin: '0 auto',
-      padding: '2rem',
-      minHeight: '100vh',
+      padding: 'clamp(0.5rem, 2vw, 2rem)',
       display: 'flex',
       flexDirection: 'column',
       background: 'hsl(var(--background))',
+      overflow: 'hidden',
     },
     card: {
       background: 'hsl(var(--card))',
       border: '1px solid hsl(var(--border))',
-      borderRadius: '1.5rem',
-      padding: '2rem',
-      marginBottom: '2rem',
+      borderRadius: 'clamp(0.75rem, 1.5vw, 1.5rem)',
+      padding: 'clamp(1rem, 2vw, 2rem)',
+      marginBottom: 'clamp(1rem, 2vw, 2rem)',
       boxShadow: '0 8px 16px -4px rgb(0 0 0 / 0.2), 0 4px 8px -4px rgb(0 0 0 / 0.15)',
       flex: 1,
       backdropFilter: 'blur(8px)',
       WebkitBackdropFilter: 'blur(8px)',
+      overflow: 'auto',
     },
     header: {
       display: 'flex',
