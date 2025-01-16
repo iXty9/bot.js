@@ -115,11 +115,30 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
 
 const path = require('path');
 
+// Serve static files
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Handle root route - must come after static file middleware
 app.get('/', (req, res) => {
   console.log('Serving index.html...');
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  res.sendFile(path.join(__dirname, '../public/index.html'), {
+    headers: {
+      'Content-Type': 'text/html'
+    }
+  });
+});
+
+// Handle 404s by serving index.html
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    next();
+    return;
+  }
+  res.sendFile(path.join(__dirname, '../public/index.html'), {
+    headers: {
+      'Content-Type': 'text/html'
+    }
+  });
 });
 
 // Route to change bot status
