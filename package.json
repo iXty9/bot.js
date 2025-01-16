@@ -4,9 +4,9 @@
   "description": "A Discord bot manager with an improved CLI",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "build": "webpack --mode production",
-    "dev": "webpack serve --mode development"
+    "start": "sudo node index.js",
+    "build": "sudo webpack --mode production",
+    "dev": "sudo webpack serve --mode development"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.7",
