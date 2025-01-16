@@ -43,10 +43,20 @@ class BotManager extends EventEmitter {
 
   getLogs() {
     try {
+      if (!fs.existsSync('console.log')) {
+        return [];
+      }
       const logs = fs.readFileSync('console.log', 'utf-8');
+      if (!logs.trim()) {
+        return [];
+      }
       return logs.split('\n')
-        .filter(line => line)
-        .map(line => ({ log: line }))
+        .filter(line => line && line.trim())
+        .map(line => ({ 
+          log: line,
+          timestamp: new Date(line.split(' - ')[0]).getTime()
+        }))
+        .sort((a, b) => b.timestamp - a.timestamp)
         .slice(0, 50); // Only return last 50 logs
     } catch (error) {
       console.error(`Error reading logs: ${error.message}`);

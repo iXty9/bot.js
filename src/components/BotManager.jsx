@@ -37,6 +37,7 @@ const BotManager = () => {
   const [channels, setChannels] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [selectedThread, setSelectedThread] = useState(null);
+  const [channelsLoading, setChannelsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('messages');
   const [commands, setCommands] = useState([]);
 
@@ -161,23 +162,44 @@ const BotManager = () => {
 
   const fetchChannels = async () => {
     try {
+      setChannelsLoading(true);
+      setError('');
       const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
       const response = await fetch('/api/channels', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch channels: ${response.statusText}`);
+      }
       const data = await response.json();
       setChannels(data);
     } catch (err) {
       console.error('Error fetching channels:', err);
-      setError('Failed to load channels');
+      setError(err.message || 'Failed to load channels');
+      setChannels([]);
+    } finally {
+      setChannelsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchLogs();
-    fetchChannels();
+    let mounted = true;
+    
+    const fetchData = async () => {
+      if (mounted) {
+        await fetchLogs();
+        await fetchChannels();
+      }
+    };
+    
+    fetchData();
+    
+    // Cleanup function
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Reset thread when channel changes
@@ -187,19 +209,27 @@ const BotManager = () => {
 
   const handleStatusChange = async (newStatus) => {
     try {
+      setError('');
+      const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
       const response = await fetch('/api/status', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ newStatus })
       });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update status: ${response.statusText}`);
+      }
+      
       const data = await response.json();
       setStatus(newStatus);
-      setOutput(`Status changed to ${newStatus}`);
+      setOutput(data.message || `Status changed to ${newStatus}`);
     } catch (err) {
-      setError('Failed to update status');
+      setError(err.message || 'Failed to update status');
+      setStatus(prevStatus => prevStatus); // Revert to previous status
     }
   };
 

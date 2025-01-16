@@ -139,24 +139,6 @@ app.use((req, res, next) => {
 
 
 // Route to start/stop the server
-app.post('/api/server', authenticateToken, async (req, res) => {
-  try {
-    const { action } = req.body;
-    let result;
-    if (action === 'start') {
-      result = botManager.startServer();
-    } else if (action === 'stop') {
-      result = botManager.stopServer();
-    } else {
-      return res.status(400).json({ error: 'Invalid action. Use "start" or "stop".' });
-    }
-    res.json({ message: result });
-  } catch (error) {
-    console.error('Error changing server status:', error);
-    res.status(500).json({ error: 'Failed to change server status' });
-  }
-});
-
 // Export the app instance so we can start it from index.js
 module.exports = { 
   initializeBotManager,
