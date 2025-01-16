@@ -9,6 +9,9 @@
   "dependencies": {
     "@headlessui/react": "^1.7.7",
     "@types/react": "^18.0.26",
+    "@radix-ui/react-alert-dialog": "^1.0.5",
+    "@radix-ui/react-select": "^2.0.0",
+    "@radix-ui/react-tabs": "^1.0.4",
     "axios": "^1.7.9",
     "boxen": "^5.0.1",
     "chalk": "^4.1.2",
@@ -22,7 +25,8 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.4.3",
     "socket.io": "^4.5.4",
-    "tailwindcss": "^3.2.4"
+    "tailwindcss": "^3.2.4",
+    "@shadcn/ui": "^0.0.4"
   },
   "devDependencies": {
     "@babel/core": "^7.23.0",
