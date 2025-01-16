@@ -1,0 +1,191 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertCircle, Send, Trash2, RefreshCw, List } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
+const BotManager = () => {
+  const [message, setMessage] = useState('');
+  const [logs, setLogs] = useState([]);
+  const [output, setOutput] = useState('');
+  const [status, setStatus] = useState('online');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchLogs = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/logs', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+      });
+      const data = await response.json();
+      setLogs(data.logs);
+    } catch (err) {
+      setError('Failed to load logs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const handleStatusChange = async (newStatus) => {
+    try {
+      const response = await fetch('/api/status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({ newStatus })
+      });
+      const data = await response.json();
+      setStatus(newStatus);
+      setOutput(`Status changed to ${newStatus}`);
+    } catch (err) {
+      setError('Failed to update status');
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
+    
+    try {
+      const response = await fetch('/api/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({ message })
+      });
+      const data = await response.json();
+      setOutput('Message sent successfully');
+      setMessage('');
+    } catch (err) {
+      setError('Failed to send message');
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Discord Bot Manager</span>
+            <div className="flex items-center space-x-2">
+              <div className={`w-3 h-3 rounded-full ${
+                status === 'online' ? 'bg-green-500' :
+                status === 'idle' ? 'bg-yellow-500' :
+                status === 'dnd' ? 'bg-red-500' : 'bg-gray-500'
+              }`} />
+              <Select value={status} onValueChange={handleStatusChange}>
+                <SelectTrigger className="w-32">
+                  <SelectValue>{status}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="idle">Idle</SelectItem>
+                  <SelectItem value="dnd">Do Not Disturb</SelectItem>
+                  <SelectItem value="invisible">Invisible</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent>
+          <Tabs defaultValue="compose" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="compose">Compose</TabsTrigger>
+              <TabsTrigger value="logs">Logs</TabsTrigger>
+              <TabsTrigger value="output">Output</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="compose" className="space-y-4">
+              <Textarea
+                placeholder="Type your message here..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="min-h-32"
+              />
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setMessage('')}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear
+                </Button>
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={!message.trim()}
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Message
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="logs">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium">Bot Logs</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchLogs}
+                    disabled={loading}
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </div>
+                <div className="bg-secondary/50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                  {logs.length > 0 ? (
+                    logs.map((log, index) => (
+                      <div key={index} className="text-sm py-1">
+                        {JSON.stringify(log)}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-muted-foreground text-center py-8">
+                      No logs available
+                    </div>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="output">
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium">Command Output</h3>
+                <div className="bg-secondary/50 rounded-lg p-4 min-h-32">
+                  {output || (
+                    <div className="text-muted-foreground text-center py-8">
+                      No output to display
+                    </div>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          {error && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default BotManager;
