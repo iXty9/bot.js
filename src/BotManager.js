@@ -14,14 +14,31 @@ class BotManager extends EventEmitter {
     this.webhookUrl = webhookUrl;
     this.logs = [];
     this.maxLogs = 50; // Keep only last 50 logs
+    this.stats = {
+      messagesReceived: 0,
+      messagesSent: 0,
+      commandsExecuted: 0,
+      startTime: Date.now(),
+      lastActivity: Date.now()
+    };
 
     this.on('statusChanged', (status) => {
       this.log(`Status: ${status}`);
     });
 
     this.on('messageSent', (info) => {
+      this.stats.messagesSent++;
+      this.stats.lastActivity = Date.now();
       this.log(`Sent: ${info}`);
     });
+  }
+
+  getUsageStats() {
+    return {
+      ...this.stats,
+      uptime: Math.floor((Date.now() - this.stats.startTime) / 1000), // in seconds
+      lastActivityAgo: Math.floor((Date.now() - this.stats.lastActivity) / 1000) // in seconds
+    };
   }
 
   getLogs() {
@@ -98,6 +115,8 @@ class BotManager extends EventEmitter {
     try {
       await this.client.user.setStatus(newStatus);
       this.emitStatusChange(newStatus);
+      this.stats.commandsExecuted++;
+      this.stats.lastActivity = Date.now();
       return `Status changed to ${newStatus}`;
     } catch (error) {
       this.log(`Error changing status: ${error.message}`);
@@ -132,6 +151,9 @@ class BotManager extends EventEmitter {
   }
 
   async handleIncomingMessage(message) {
+    this.stats.messagesReceived++;
+    this.stats.lastActivity = Date.now();
+    
     if (this.webhookUrl) {
       try {
         const webhookData = {
