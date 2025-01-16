@@ -48,7 +48,7 @@ function initializeBotManager(client) {
 }
 
 // Export for use in index.js
-module.exports = { initializeBotManager };
+module.exports = { initializeBotManager, botManagerInstance, app };
 
 // API routes
 app.get('/api/status', authenticateToken, async (req, res) => {
