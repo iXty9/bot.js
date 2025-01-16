@@ -43,31 +43,8 @@ class BotManager extends EventEmitter {
   }
 
   startServer() {
-    this.log('Checking if server instance already exists...');
-    if (serverInstance) {
-      this.log('Server instance already exists. Skipping server start.');
-      this.log('Server is already running.');
-      return 'Server is already running.';
-    }
-    this.log('Creating express app...');
-    this.log('Express app created successfully.');
-    const app = express();
-    this.log('Setting up static file serving...');
-    this.log('Static file serving setup complete.');
-    app.use(express.static(path.join(__dirname, 'public')));
-
-    this.log('Setting up root route...');
-    this.log('Root route setup complete.');
-    app.get('/', (req, res) => {
-      res.sendFile(path.join(__dirname, 'public/index.html'));
-    });
-    this.log('Starting server instance...');
-    this.log('Server instance started successfully.');
-    serverInstance = app.listen(6987, '0.0.0.0', () => {
-      const actualAddress = serverInstance.address().address === '0.0.0.0' ? 'localhost' : serverInstance.address().address;
-      this.log(`Server started on http://${actualAddress}:6987`);
-    });
-    return 'Server started.';
+    // Server functionality moved to server.js
+    return 'Server management handled by server.js';
   }
 
   stopServer() {

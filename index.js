@@ -2,7 +2,7 @@
 require('dotenv').config();
 
 const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
-const { initializeBotManager } = require('./src/api/server');
+const { initializeBotManager, app } = require('./src/api/server');
 const readline = require('readline');
 const BotManager = require('./src/BotManager');
 const ConsoleUI = require('./src/ConsoleUI');
@@ -99,3 +99,16 @@ process.on('unhandledRejection', (error) => {
 
 // Log the current working directory
 console.log('Current working directory:', process.cwd());
+
+// Start the server
+const PORT = 6987;
+const HOST = '0.0.0.0';
+
+app.listen(PORT, HOST, (error) => {
+  if (error) {
+    console.error('Failed to start server:', error);
+    return;
+  }
+  console.log(`API server successfully running on http://${HOST}:${PORT}`);
+  console.log('Server is now listening for incoming connections...');
+});

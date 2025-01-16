@@ -204,13 +204,8 @@ app.post('/api/server', authenticateToken, async (req, res) => {
   }
 });
 
-console.log('Starting server...');
-console.log(`Attempting to listen on http://${HOST}:${PORT}`);
-app.listen(PORT, HOST, (error) => {
-  if (error) {
-    console.error('Failed to start server:', error);
-    return;
-  }
-  console.log(`API server successfully running on http://${HOST}:${PORT}`);
-  console.log('Server is now listening for incoming connections...');
-});
+// Export the app instance so we can start it from index.js
+module.exports = { 
+  initializeBotManager,
+  app
+};
