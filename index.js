@@ -105,34 +105,47 @@ const PORT = process.env.API_PORT || 6987;
 const HOST = process.env.API_HOST || '127.0.0.1';
 
 let server;
-try {
-  server = app.listen(PORT, HOST, (error) => {
-    if (error) {
-      console.error('Failed to start server:', error);
-      process.exit(1);
-    }
-    console.log(`API server successfully running on http://${HOST}:${PORT}`);
-    console.log('Server is now listening for incoming connections...');
-  });
-
-  // Graceful shutdown
-  const shutdown = () => {
-    console.log('Shutdown signal received');
-    if (server) {
-      server.close(() => {
-        console.log('HTTP server closed');
-        process.exit(0);
+const startServer = () => {
+  return new Promise((resolve, reject) => {
+    try {
+      server = app.listen(PORT, HOST, (error) => {
+        if (error) {
+          console.error('Failed to start server:', error);
+          reject(error);
+          return;
+        }
+        console.log(`API server successfully running on http://${HOST}:${PORT}`);
+        console.log('Server is now listening for incoming connections...');
+        resolve(server);
       });
-    } else {
-      process.exit(0);
+
+      // Graceful shutdown
+      const shutdown = async () => {
+        console.log('Shutdown signal received');
+        if (server) {
+          await new Promise(resolve => server.close(resolve));
+          console.log('HTTP server closed');
+        }
+        if (client) {
+          await client.destroy();
+          console.log('Discord client destroyed');
+        }
+        process.exit(0);
+      };
+
+      process.on('SIGTERM', shutdown);
+      process.on('SIGINT', shutdown);
+      process.on('SIGHUP', shutdown);
+
+    } catch (error) {
+      console.error('Critical server error:', error);
+      reject(error);
     }
-  };
+  });
+};
 
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
-  process.on('SIGHUP', shutdown);
-
-} catch (error) {
-  console.error('Critical server error:', error);
+// Start the server and handle any errors
+startServer().catch(error => {
+  console.error('Failed to start server:', error);
   process.exit(1);
-}
+});
