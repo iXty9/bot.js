@@ -250,54 +250,43 @@ const BotManager = () => {
           marginBottom: '1rem'
         }}>
           <div style={{ 
-            display: 'flex', 
-            gap: '2px',
+            display: 'flex',
+            gap: '1px',
             background: 'hsl(var(--muted))',
-            padding: '4px',
-            borderRadius: '1rem',
+            padding: '3px',
+            borderRadius: '0.75rem',
             boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.2)',
           }}>
-            <button
-              style={{
-                background: activeTab === 'messages' ? 'hsl(var(--background))' : 'transparent',
-                color: activeTab === 'messages' ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
-                padding: '0.5rem 1rem',
-                borderRadius: '0.5rem',
-                border: 'none',
-                fontWeight: 500,
-                transition: 'all 0.15s ease'
-              }}
-              onClick={() => setActiveTab('messages')}
-            >
-              Messages
-            </button>
-            <button
-              style={{
-                color: activeTab === 'logs' ? 'var(--primary)' : 'var(--text-secondary)',
-                borderBottom: activeTab === 'logs' ? '2px solid var(--primary)' : 'none',
-                padding: '0.5rem 1rem'
-              }}
-              onClick={() => setActiveTab('logs')}
-            >
-              Logs
-            </button>
-            <button
-              style={{
-                color: activeTab === 'commands' ? 'var(--primary)' : 'var(--text-secondary)',
-                borderBottom: activeTab === 'commands' ? '2px solid var(--primary)' : 'none',
-                padding: '0.5rem 1rem'
-              }}
-              onClick={() => setActiveTab('commands')}
-            >
-              Slash Commands
-            </button>
+            {['Messages', 'Logs', 'Slash Commands'].map((tab) => (
+              <button
+                key={tab}
+                style={{
+                  background: activeTab === tab.toLowerCase().replace(' ', '') ? 'hsl(var(--background))' : 'transparent',
+                  color: activeTab === tab.toLowerCase().replace(' ', '') 
+                    ? 'hsl(var(--foreground))' 
+                    : 'hsl(var(--muted-foreground))',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '0.5rem',
+                  border: 'none',
+                  fontWeight: 500,
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    background: activeTab === tab.toLowerCase().replace(' ', '') 
+                      ? 'hsl(var(--background))' 
+                      : 'hsl(var(--muted)/0.5)'
+                  }
+                }}
+                onClick={() => setActiveTab(tab.toLowerCase().replace(' ', ''))}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
           <div>
             <select 
               style={{
                 ...styles.select,
-                padding: '0.5rem 1rem',
-                paddingRight: '2.5rem',
+                padding: '0.5rem 2.5rem 0.5rem 1rem',
                 borderRadius: '0.75rem',
                 background: 'hsl(var(--secondary))',
                 border: '1px solid hsl(var(--border))',
@@ -305,7 +294,21 @@ const BotManager = () => {
                 fontSize: '0.875rem',
                 fontWeight: 500,
                 cursor: 'pointer',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.2s ease',
+                appearance: 'none',
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 0.5rem center',
+                backgroundSize: '1rem',
+                '&:hover': {
+                  borderColor: 'hsl(var(--primary))',
+                  background: 'hsl(var(--secondary)/0.8)'
+                },
+                '&:focus': {
+                  outline: 'none',
+                  borderColor: 'hsl(var(--primary))',
+                  boxShadow: '0 0 0 2px hsl(var(--primary)/0.2)'
+                }
               }}
               value={status} 
               onChange={(e) => handleStatusChange(e.target.value)}
@@ -340,7 +343,17 @@ const BotManager = () => {
                   fontFamily: 'monospace',
                   overflow: 'hidden'
                 }}>
-                  {Array.isArray(logs) && logs.length > 0 ? (
+                  {loading ? (
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      alignItems: 'center',
+                      height: '100%',
+                      color: 'hsl(var(--muted-foreground))'
+                    }}>
+                      Loading logs...
+                    </div>
+                  ) : Array.isArray(logs) && logs.length > 0 ? (
                     logs.map((log, index) => (
                       <div key={index} style={{ padding: '4px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                         {typeof log === 'object' && log.log ? log.log : String(log)}
