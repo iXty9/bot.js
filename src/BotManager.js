@@ -12,20 +12,16 @@ class BotManager extends EventEmitter {
     super();
     this.client = client;
     this.webhookUrl = webhookUrl;
-    this.log('Starting server...');
-    this.startServer();
-    this.log('Server started.');
+    this.logs = [];
+    this.maxLogs = 50; // Keep only last 50 logs
 
-    this.log('Setting up event listeners...');
     this.on('statusChanged', (status) => {
-      console.log(`Status changed to: ${status}`);
+      this.log(`Status: ${status}`);
     });
 
     this.on('messageSent', (info) => {
-      this.log(`Message sent event triggered: ${info}`);
-      console.log(`Message sent: ${info}`);
+      this.log(`Sent: ${info}`);
     });
-    this.log('BotManager initialized');
   }
 
   getLogs() {
@@ -69,9 +65,24 @@ class BotManager extends EventEmitter {
   }
 
   log(message) {
-    const logMessage = `[BotManager] ${message}`;
-    console.log(logMessage);
-    logFile.write(`${new Date().toISOString()} - ${logMessage}\n`);
+    const timestamp = new Date().toISOString();
+    const logMessage = `${timestamp} - [BotManager] ${message}`;
+    
+    // Add to in-memory logs array
+    this.logs.unshift({ log: logMessage });
+    
+    // Keep only last maxLogs entries
+    if (this.logs.length > this.maxLogs) {
+      this.logs.pop();
+    }
+    
+    // Only write important logs to console
+    if (!message.includes('initialized') && !message.includes('Starting')) {
+      console.log(logMessage);
+    }
+    
+    // Write all logs to file
+    logFile.write(`${logMessage}\n`);
   }
 
   emitStatusChange(status) {
