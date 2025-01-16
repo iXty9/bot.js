@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Send, Trash2, RefreshCw, List } from 'lucide-react';
+import { AlertCircle, Send, Trash2, RefreshCw, List, Circle, Moon, MinusCircle, CircleOff } from 'lucide-react';
 
 const BotManager = () => {
   const [message, setMessage] = useState('');
@@ -170,15 +170,39 @@ const BotManager = () => {
           <h1 style={styles.title}>Discord Bot Manager</h1>
           <div>
             <select 
-              style={styles.select}
+              style={{
+                ...styles.select,
+                paddingLeft: '30px',
+                position: 'relative'
+              }}
               value={status} 
               onChange={(e) => handleStatusChange(e.target.value)}
             >
-              <option value="online">Online</option>
-              <option value="idle">Idle</option>
-              <option value="dnd">Do Not Disturb</option>
-              <option value="invisible">Invisible</option>
+              <option value="online">
+                {status === 'online' && '⬤ '}Online
+              </option>
+              <option value="idle">
+                {status === 'idle' && '🌙 '}Idle
+              </option>
+              <option value="dnd">
+                {status === 'dnd' && '⛔ '}Do Not Disturb
+              </option>
+              <option value="invisible">
+                {status === 'invisible' && '⭕ '}Invisible
+              </option>
             </select>
+            <div style={{ 
+              position: 'absolute', 
+              left: '8px', 
+              top: '50%', 
+              transform: 'translateY(-50%)',
+              pointerEvents: 'none'
+            }}>
+              {status === 'online' && <Circle size={12} fill="#23A559" stroke="none" />}
+              {status === 'idle' && <Moon size={12} fill="#F0B232" stroke="none" />}
+              {status === 'dnd' && <MinusCircle size={12} fill="#F23F43" stroke="none" />}
+              {status === 'invisible' && <CircleOff size={12} fill="#80848E" stroke="none" />}
+            </div>
           </div>
         </div>
 
@@ -229,16 +253,30 @@ const BotManager = () => {
           
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             <button
-              style={styles.button}
+              style={{
+                ...styles.button,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
               onClick={() => setMessage('')}
             >
+              <Trash2 size={16} />
               Clear
             </button>
             <button
-              style={styles.button}
+              style={{
+                ...styles.button,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: 'var(--primary)',
+                color: 'white'
+              }}
               onClick={handleSendMessage}
               disabled={!message.trim()}
             >
+              <Send size={16} />
               Send Message
             </button>
           </div>
@@ -246,10 +284,16 @@ const BotManager = () => {
           <div style={{ marginTop: '20px' }}>
             <h3>Bot Logs</h3>
             <button
-              style={styles.button}
+              style={{
+                ...styles.button,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
               onClick={fetchLogs}
               disabled={loading}
             >
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
               Refresh
             </button>
             <div style={{ 
