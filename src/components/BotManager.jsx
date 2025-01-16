@@ -14,25 +14,31 @@ const BotManager = () => {
 
   const styles = {
     container: {
-      maxWidth: '800px',
-      margin: '0 auto',
-      padding: '20px',
+      maxWidth: '1000px',
+      margin: '2rem auto',
+      padding: '0 20px',
     },
     card: {
-      border: '1px solid #ccc',
-      borderRadius: '8px',
-      padding: '20px',
-      marginBottom: '20px',
+      background: 'var(--bg-secondary)',
+      border: '1px solid var(--border-color)',
+      borderRadius: '12px',
+      padding: '2rem',
+      marginBottom: '2rem',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
     },
     header: {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: '20px',
+      marginBottom: '2rem',
+      padding: '0.5rem 0',
+      borderBottom: '2px solid var(--border-color)',
     },
     title: {
-      fontSize: '24px',
+      fontSize: '28px',
       fontWeight: 'bold',
+      color: 'var(--text-primary)',
+      margin: 0,
     },
     button: {
       padding: '8px 16px',
@@ -247,12 +253,16 @@ const BotManager = () => {
               Refresh
             </button>
             <div style={{ 
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              padding: '10px',
-              marginTop: '10px',
-              maxHeight: '200px',
-              overflowY: 'auto'
+              background: 'var(--bg-primary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '8px',
+              padding: '1rem',
+              marginTop: '1rem',
+              maxHeight: '300px',
+              overflowY: 'auto',
+              fontSize: '0.9rem',
+              color: 'var(--text-secondary)',
+              fontFamily: 'monospace'
             }}>
               {logs.length > 0 ? (
                 logs.map((log, index) => (
@@ -271,10 +281,13 @@ const BotManager = () => {
           <div style={{ marginTop: '20px' }}>
             <h3>Command Output</h3>
             <div style={{
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              padding: '10px',
-              minHeight: '100px'
+              background: 'var(--bg-primary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '8px',
+              padding: '1rem',
+              minHeight: '100px',
+              color: 'var(--text-secondary)',
+              fontSize: '0.9rem'
             }}>
               {output || (
                 <div style={{ textAlign: 'center', padding: '20px' }}>
