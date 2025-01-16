@@ -63,7 +63,7 @@ const BotManager = () => {
       flex: 1,
       backdropFilter: 'blur(8px)',
       WebkitBackdropFilter: 'blur(8px)',
-      overflow: 'auto',
+      overflow: 'hidden',
     },
     header: {
       display: 'flex',
@@ -338,7 +338,7 @@ const BotManager = () => {
                   fontSize: '0.9rem',
                   color: 'var(--text-secondary)',
                   fontFamily: 'monospace',
-                  overflowY: 'auto'
+                  overflow: 'hidden'
                 }}>
                   {Array.isArray(logs) && logs.length > 0 ? (
                     logs.map((log, index) => (
@@ -447,7 +447,7 @@ const BotManager = () => {
                   </button>
                 </div>
 
-                <div style={{ height: '460px', marginTop: '20px' }}>
+                <div style={{ height: '460px', marginTop: '20px', overflow: 'hidden' }}>
                   {/* Message history would go here */}
                 </div>
               </div>
