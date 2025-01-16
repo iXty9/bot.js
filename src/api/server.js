@@ -38,17 +38,17 @@ function authenticateToken(req, res, next) {
 }
 
 // Initialize BotManager with the Discord client
-let botManagerInstance = null;
+let botManager = null;
 
 function initializeBotManager(client) {
-  if (!botManagerInstance) {
-    botManagerInstance = new BotManager(client);
+  if (!botManager) {
+    botManager = new BotManager(client);
   }
-  return botManagerInstance;
+  return botManager;
 }
 
 // Export for use in index.js
-module.exports = { initializeBotManager, botManagerInstance, app };
+module.exports = { initializeBotManager, app };
 
 // API routes
 app.get('/api/status', authenticateToken, async (req, res) => {

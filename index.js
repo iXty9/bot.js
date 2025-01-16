@@ -101,14 +101,31 @@ process.on('unhandledRejection', (error) => {
 console.log('Current working directory:', process.cwd());
 
 // Start the server
-const PORT = 6987;
-const HOST = '0.0.0.0';
+const PORT = process.env.API_PORT || 6987;
+const HOST = process.env.API_HOST || '127.0.0.1';
 
-app.listen(PORT, HOST, (error) => {
+const server = app.listen(PORT, HOST, (error) => {
   if (error) {
     console.error('Failed to start server:', error);
     return;
   }
   console.log(`API server successfully running on http://${HOST}:${PORT}`);
   console.log('Server is now listening for incoming connections...');
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
 });
