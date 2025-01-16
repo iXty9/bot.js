@@ -116,12 +116,12 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
 const path = require('path');
 
 // Serve static files
-app.use(express.static(path.join(__dirname, '../../src/public')));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Handle root route - must come after static file middleware
 app.get('/', (req, res) => {
   console.log('Serving index.html...');
-  res.sendFile(path.join(__dirname, '../../src/public/index.html'), {
+  res.sendFile(path.join(__dirname, '../public/index.html'), {
     headers: {
       'Content-Type': 'text/html'
     }
@@ -134,7 +134,7 @@ app.use((req, res, next) => {
     next();
     return;
   }
-  res.sendFile(path.join(__dirname, '../../src/public/index.html'), {
+  res.sendFile(path.join(__dirname, '../public/index.html'), {
     headers: {
       'Content-Type': 'text/html'
     }
