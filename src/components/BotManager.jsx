@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { Send, Trash2, Command } from 'lucide-react';
+import { Send, Trash2, Command, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 
 // Lazy load components
@@ -274,10 +274,10 @@ const BotManager = () => {
                   color: 'var(--text-secondary)',
                   fontFamily: 'monospace'
                 }}>
-                  {logs.length > 0 ? (
+                  {Array.isArray(logs) && logs.length > 0 ? (
                     logs.map((log, index) => (
-                      <div key={index} style={{ padding: '4px 0' }}>
-                        {log.log}
+                      <div key={index} style={{ padding: '4px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        {typeof log === 'object' && log.log ? log.log : String(log)}
                       </div>
                     ))
                   ) : (
