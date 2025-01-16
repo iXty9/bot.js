@@ -337,7 +337,8 @@ const BotManager = () => {
                   height: '460px',
                   fontSize: '0.9rem',
                   color: 'var(--text-secondary)',
-                  fontFamily: 'monospace'
+                  fontFamily: 'monospace',
+                  overflowY: 'auto'
                 }}>
                   {Array.isArray(logs) && logs.length > 0 ? (
                     logs.map((log, index) => (
