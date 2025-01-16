@@ -194,7 +194,7 @@ const BotManager = () => {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <div style={{ 
+        <div style={{
           display: 'flex', 
           justifyContent: 'space-between',
           alignItems: 'center',
