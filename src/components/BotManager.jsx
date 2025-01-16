@@ -42,17 +42,22 @@ const BotManager = () => {
 
   const styles = {
     container: {
-      maxWidth: '1000px',
-      margin: '2rem auto',
-      padding: '0 20px',
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '2rem',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'hsl(var(--background))',
     },
     card: {
-      background: 'var(--bg-secondary)',
-      border: '1px solid var(--border-color)',
-      borderRadius: '12px',
+      background: 'hsl(var(--card))',
+      border: '1px solid hsl(var(--border))',
+      borderRadius: '1rem',
       padding: '2rem',
       marginBottom: '2rem',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+      flex: 1,
     },
     header: {
       display: 'flex',
@@ -202,12 +207,22 @@ const BotManager = () => {
           paddingBottom: '1rem',
           marginBottom: '1rem'
         }}>
-          <div style={{ display: 'flex', gap: '20px' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: '1px',
+            background: 'hsl(var(--muted))',
+            padding: '4px',
+            borderRadius: '0.75rem',
+          }}>
             <button
               style={{
-                color: activeTab === 'messages' ? 'var(--primary)' : 'var(--text-secondary)',
-                borderBottom: activeTab === 'messages' ? '2px solid var(--primary)' : 'none',
-                padding: '0.5rem 1rem'
+                background: activeTab === 'messages' ? 'hsl(var(--background))' : 'transparent',
+                color: activeTab === 'messages' ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+                padding: '0.5rem 1rem',
+                borderRadius: '0.5rem',
+                border: 'none',
+                fontWeight: 500,
+                transition: 'all 0.15s ease'
               }}
               onClick={() => setActiveTab('messages')}
             >
@@ -238,8 +253,16 @@ const BotManager = () => {
             <select 
               style={{
                 ...styles.select,
-                paddingLeft: '30px',
-                position: 'relative'
+                padding: '0.5rem 1rem',
+                paddingRight: '2.5rem',
+                borderRadius: '0.75rem',
+                background: 'hsl(var(--secondary))',
+                border: '1px solid hsl(var(--border))',
+                color: 'hsl(var(--foreground))',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
               }}
               value={status} 
               onChange={(e) => handleStatusChange(e.target.value)}
@@ -264,10 +287,10 @@ const BotManager = () => {
           {activeTab === 'logs' && (
               <div style={{ height: '500px' }}>
                 <div style={{ 
-                  background: 'var(--bg-primary)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '8px',
-                  padding: '1rem',
+                  background: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '0.75rem',
+                  padding: '1.5rem',
                   height: '400px',
                   overflowY: 'auto',
                   fontSize: '0.9rem',
