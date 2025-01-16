@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "sudo node index.js",
-    "build": "sudo webpack --mode production",
-    "dev": "sudo webpack serve --mode development"
+    "build": "sudo webpack --mode production"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.7",

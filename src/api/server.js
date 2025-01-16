@@ -113,17 +113,13 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
 
 const path = require('path');
 
-// Serve static files
+// Serve webpack bundle and static files
 app.use(express.static(path.join(__dirname, '../../src/public')));
 
-// Handle root route - must come after static file middleware
-app.get('/', (req, res) => {
+// Handle root route and all non-API routes
+app.get(/^(?!\/api\/).+/, (req, res) => {
   console.log('Serving index.html...');
-  res.sendFile(path.join(__dirname, '../../src/public/index.html'), {
-    headers: {
-      'Content-Type': 'text/html'
-    }
-  });
+  res.sendFile(path.join(__dirname, '../../src/public/index.html'));
 });
 
 // Handle 404s by serving index.html
