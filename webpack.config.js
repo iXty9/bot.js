@@ -26,7 +26,9 @@ module.exports = {
     extensions: ['.js', '.jsx']
   },
   plugins: [
-    new Dotenv()
+    new Dotenv({
+      systemvars: true
+    })
   ],
   devServer: {
     static: {

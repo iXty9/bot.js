@@ -62,9 +62,10 @@ const BotManager = () => {
   const fetchLogs = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
       const response = await fetch('/api/logs', {
         headers: {
-          'Authorization': `Bearer ${process.env.DISCORD_TOKEN}`
+          'Authorization': `Bearer ${token}`
         }
       });
       const data = await response.json();
@@ -79,9 +80,10 @@ const BotManager = () => {
 
   const fetchChannels = async () => {
     try {
+      const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
       const response = await fetch('/api/channels', {
         headers: {
-          'Authorization': `Bearer ${process.env.DISCORD_TOKEN}`
+          'Authorization': `Bearer ${token}`
         }
       });
       const data = await response.json();
@@ -108,7 +110,7 @@ const BotManager = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.DISCORD_TOKEN}`
+          'Authorization': `Bearer ${localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN}`
         },
         body: JSON.stringify({ newStatus })
       });
@@ -143,6 +145,17 @@ const BotManager = () => {
       setError('Failed to send message');
     }
   };
+
+  useEffect(() => {
+    // Get token from URL if present
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      localStorage.setItem('discord_token', token);
+      // Remove token from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   return (
     <div style={styles.container}>
