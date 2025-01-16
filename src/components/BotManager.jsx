@@ -353,7 +353,7 @@ const BotManager = () => {
                   {logs.length > 0 ? (
                     logs.map((log, index) => (
                       <div key={index} style={{ padding: '4px 0' }}>
-                        {JSON.stringify(log)}
+                        {log.log}
                       </div>
                     ))
                   ) : (
@@ -361,6 +361,22 @@ const BotManager = () => {
                       No logs available
                     </div>
                   )}
+                </div>
+                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    style={{
+                      ...styles.button,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      backgroundColor: 'var(--primary)',
+                      color: 'white'
+                    }}
+                    onClick={fetchLogs}
+                  >
+                    <RefreshCw size={16} />
+                    Refresh Logs
+                  </button>
                 </div>
               </div>
             )}
@@ -399,7 +415,7 @@ const BotManager = () => {
                       backgroundColor: 'var(--primary)',
                       color: 'white'
                     }}
-                    onClick={() => {/* TODO: Add new command handler */}}
+                    onClick={() => setCommands([...commands, { name: '', description: '' }])}
                   >
                     <Command size={16} />
                     Add Command
@@ -410,12 +426,95 @@ const BotManager = () => {
                   border: '1px solid var(--border-color)',
                   borderRadius: '8px',
                   padding: '1rem',
-                  minHeight: '200px'
                 }}>
-                  <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
-                    Slash commands management coming soon...
-                  </div>
+                  {commands.length > 0 ? (
+                    commands.map((cmd, index) => (
+                      <div key={index} style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
+                        <input
+                          type="text"
+                          placeholder="Command name"
+                          value={cmd.name}
+                          onChange={(e) => {
+                            const newCommands = [...commands];
+                            newCommands[index].name = e.target.value;
+                            setCommands(newCommands);
+                          }}
+                          style={{
+                            ...styles.select,
+                            flex: '1'
+                          }}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Command description"
+                          value={cmd.description}
+                          onChange={(e) => {
+                            const newCommands = [...commands];
+                            newCommands[index].description = e.target.value;
+                            setCommands(newCommands);
+                          }}
+                          style={{
+                            ...styles.select,
+                            flex: '2'
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            const newCommands = commands.filter((_, i) => i !== index);
+                            setCommands(newCommands);
+                          }}
+                          style={{
+                            ...styles.button,
+                            backgroundColor: 'var(--destructive)',
+                            color: 'white'
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
+                      No slash commands configured. Click "Add Command" to create one.
+                    </div>
+                  )}
                 </div>
+                {commands.length > 0 && (
+                  <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      style={{
+                        ...styles.button,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        backgroundColor: 'var(--primary)',
+                        color: 'white'
+                      }}
+                      onClick={async () => {
+                        try {
+                          const response = await fetch('/api/commands', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN}`
+                            },
+                            body: JSON.stringify({ commands })
+                          });
+                          if (response.ok) {
+                            setError('');
+                            setOutput('Slash commands updated successfully');
+                          } else {
+                            throw new Error('Failed to update slash commands');
+                          }
+                        } catch (err) {
+                          setError('Failed to update slash commands');
+                        }
+                      }}
+                    >
+                      Save Commands
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
