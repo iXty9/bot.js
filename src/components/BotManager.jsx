@@ -1,10 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { AlertCircle, Send, Trash2, RefreshCw, MessageSquare, Terminal, Command } from 'lucide-react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { Send, Trash2, Command } from 'lucide-react';
 import { Button } from './ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Alert, AlertDescription } from './ui/alert';
-import { Textarea } from './ui/textarea';
+
+// Lazy load components
+const Tabs = lazy(() => import('./ui/tabs').then(module => ({ 
+  default: module.Tabs,
+  TabsContent: module.TabsContent,
+  TabsList: module.TabsList,
+  TabsTrigger: module.TabsTrigger 
+})));
+
+const Select = lazy(() => import('./ui/select').then(module => ({
+  default: module.Select,
+  SelectContent: module.SelectContent,
+  SelectItem: module.SelectItem,
+  SelectTrigger: module.SelectTrigger,
+  SelectValue: module.SelectValue
+})));
+
+const Alert = lazy(() => import('./ui/alert').then(module => ({
+  default: module.Alert,
+  AlertDescription: module.AlertDescription
+})));
+
+const Textarea = lazy(() => import('./ui/textarea').then(module => ({
+  default: module.Textarea
+})));
 
 const BotManager = () => {
   const [message, setMessage] = useState('');

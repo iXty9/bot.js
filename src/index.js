@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
-import BotManager from './components/BotManager';
+const BotManager = React.lazy(() => import('./components/BotManager'));
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <BotManager />
+    <Suspense fallback={<div>Loading...</div>}>
+      <BotManager />
+    </Suspense>
   </React.StrictMode>
 );
