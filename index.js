@@ -102,7 +102,7 @@ console.log('Current working directory:', process.cwd());
 
 // Start the server
 const PORT = process.env.API_PORT || 6987;
-const HOST = process.env.API_HOST || '127.0.0.1';
+const HOST = process.env.API_HOST || '0.0.0.0';
 
 let server;
 const startServer = () => {
