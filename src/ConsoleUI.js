@@ -65,9 +65,12 @@ class ConsoleUI {
   render() {
     this.clearScreen();
     
-    console.log(chalk.bgBlue.white.bold(` ${this.statusBar} `));
+    // Only show status bar if it exists
+    if (this.statusBar) {
+      console.log(chalk.bgBlue.white.bold(` ${this.statusBar} `));
+    }
     
-    let formattedOutput = this.output;
+    let formattedOutput = this.output || '';
 
     if (this.output.includes('Available commands:')) {
       const [preHelp, helpContent] = this.output.split('Available commands:');

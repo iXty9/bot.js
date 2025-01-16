@@ -25,15 +25,14 @@ class BotManager extends EventEmitter {
   }
 
   getLogs() {
-    this.log('Attempting to read logs from console.log...');
     try {
       const logs = fs.readFileSync('console.log', 'utf-8');
-      return logs.split('\n').filter(line => line).map(line => {
-        return { log: line };
-      });
+      return logs.split('\n')
+        .filter(line => line)
+        .map(line => ({ log: line }))
+        .slice(0, 50); // Only return last 50 logs
     } catch (error) {
-      this.log(`Error occurred while reading logs: ${error.message}`);
-      this.log(`Error reading logs: ${error.message}`);
+      console.error(`Error reading logs: ${error.message}`);
       return [];
     }
   }

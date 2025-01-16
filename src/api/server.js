@@ -14,19 +14,16 @@ app.use(bodyParser.json());
 
 // Authentication middleware
 function authenticateToken(req, res, next) {
-  console.log('Authenticating token...');
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   
   if (!token) {
-    console.log('No token provided');
     return res.status(401).json({ error: 'No token provided' });
   }
 
   if (token === process.env.DISCORD_TOKEN) {
     next();
   } else {
-    console.log('Invalid token');
     return res.status(403).json({ error: 'Invalid token' });
   }
 }
@@ -63,13 +60,10 @@ app.get('/api/status', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/logs', authenticateToken, (req, res) => {
-  console.log('Received request for logs');
   try {
     const logs = botManager.getLogs();
-    console.log('Sending logs:', logs);
     res.json({ logs });
   } catch (error) {
-    console.error('Error retrieving logs:', error);
     console.error('Error retrieving logs:', error);
     res.status(500).json({ error: 'Failed to retrieve logs' });
   }
