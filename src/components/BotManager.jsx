@@ -168,8 +168,46 @@ const BotManager = () => {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <div style={styles.header}>
-          <h1 style={styles.title}>Discord Bot Manager</h1>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: '1px solid var(--border-color)',
+          paddingBottom: '1rem',
+          marginBottom: '1rem'
+        }}>
+          <div style={{ display: 'flex', gap: '20px' }}>
+            <button
+              style={{
+                color: activeTab === 'messages' ? 'var(--primary)' : 'var(--text-secondary)',
+                borderBottom: activeTab === 'messages' ? '2px solid var(--primary)' : 'none',
+                padding: '0.5rem 1rem'
+              }}
+              onClick={() => setActiveTab('messages')}
+            >
+              Messages
+            </button>
+            <button
+              style={{
+                color: activeTab === 'logs' ? 'var(--primary)' : 'var(--text-secondary)',
+                borderBottom: activeTab === 'logs' ? '2px solid var(--primary)' : 'none',
+                padding: '0.5rem 1rem'
+              }}
+              onClick={() => setActiveTab('logs')}
+            >
+              Logs
+            </button>
+            <button
+              style={{
+                color: activeTab === 'commands' ? 'var(--primary)' : 'var(--text-secondary)',
+                borderBottom: activeTab === 'commands' ? '2px solid var(--primary)' : 'none',
+                padding: '0.5rem 1rem'
+              }}
+              onClick={() => setActiveTab('commands')}
+            >
+              Slash Commands
+            </button>
+          </div>
           <div>
             <select 
               style={{
@@ -272,68 +310,9 @@ const BotManager = () => {
           </div>
 
           <div style={{ marginTop: '20px' }}>
-            <div style={{ 
-              borderBottom: '1px solid var(--border-color)',
-              marginBottom: '20px',
-              display: 'flex',
-              gap: '20px'
-            }}>
-              <button
-                style={{
-                  padding: '10px 20px',
-                  color: activeTab === 'messages' ? 'var(--primary)' : 'var(--text-secondary)',
-                  borderBottom: activeTab === 'messages' ? '2px solid var(--primary)' : 'none',
-                  marginBottom: '-1px'
-                }}
-                onClick={() => setActiveTab('messages')}
-              >
-                <Send size={16} style={{ marginRight: '8px', display: 'inline' }} />
-                Messages
-              </button>
-              <button
-                style={{
-                  padding: '10px 20px',
-                  color: activeTab === 'logs' ? 'var(--primary)' : 'var(--text-secondary)',
-                  borderBottom: activeTab === 'logs' ? '2px solid var(--primary)' : 'none',
-                  marginBottom: '-1px'
-                }}
-                onClick={() => setActiveTab('logs')}
-              >
-                <Terminal size={16} style={{ marginRight: '8px', display: 'inline' }} />
-                Bot Logs
-              </button>
-              <button
-                style={{
-                  padding: '10px 20px',
-                  color: activeTab === 'commands' ? 'var(--primary)' : 'var(--text-secondary)',
-                  borderBottom: activeTab === 'commands' ? '2px solid var(--primary)' : 'none',
-                  marginBottom: '-1px'
-                }}
-                onClick={() => setActiveTab('commands')}
-              >
-                <Command size={16} style={{ marginRight: '8px', display: 'inline' }} />
-                Slash Commands
-              </button>
-            </div>
 
             {activeTab === 'logs' && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <h3>Bot Logs</h3>
-                  <button
-                    style={{
-                      ...styles.button,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                    onClick={fetchLogs}
-                    disabled={loading}
-                  >
-                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                    Refresh
-                  </button>
-                </div>
+              <div style={{ height: '500px' }}>
                 <div style={{ 
                   background: 'var(--bg-primary)',
                   border: '1px solid var(--border-color)',
