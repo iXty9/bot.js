@@ -47,11 +47,13 @@ app.get('/api/status', authenticateToken, async (req, res) => {
     const status = botManager.client.user.presence.status;
     const currentChannel = botManager.client.channels.cache.get(botManager.currentChannelId);
     const uptime = process.uptime();
+    const stats = botManager.getUsageStats();
 
     res.json({
       status,
       currentChannel: currentChannel ? currentChannel.name : 'None',
-      uptime
+      uptime,
+      ...stats
     });
   } catch (error) {
     console.error('Error retrieving status:', error);
@@ -135,39 +137,6 @@ app.use((req, res, next) => {
   });
 });
 
-// Route to change bot status
-app.post('/api/status', authenticateToken, async (req, res) => {
-  try {
-    const { newStatus } = req.body;
-    const result = await botManager.changeStatus(newStatus);
-    res.json({ message: result });
-  } catch (error) {
-    console.error('Error changing status:', error);
-    res.status(500).json({ error: 'Failed to change status' });
-  }
-});
-
-// Route to send a message
-app.post('/api/send', authenticateToken, async (req, res) => {
-  try {
-    const { message, channelId, threadId } = req.body;
-    const result = await botManager.sendMessage(message, channelId, threadId);
-    res.json({ message: result });
-  } catch (error) {
-    console.error('Error sending message:', error);
-    res.status(500).json({ error: 'Failed to send message' });
-  }
-});
-
-// Route to list channels
-app.get('/api/channels', authenticateToken, async (req, res) => {
-  try {
-    const channels = await botManager.listChannels();
-    res.json(channels);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to list channels' });
-  }
-});
 
 // Route to start/stop the server
 app.post('/api/server', authenticateToken, async (req, res) => {
