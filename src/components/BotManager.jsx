@@ -261,8 +261,7 @@ const BotManager = () => {
         </div>
 
         <div style={{ marginTop: '20px' }}>
-
-            {activeTab === 'logs' && (
+          {activeTab === 'logs' && (
               <div style={{ height: '500px' }}>
                 <div style={{ 
                   background: 'var(--bg-primary)',
@@ -304,17 +303,17 @@ const BotManager = () => {
                   </button>
                 </div>
               </div>
-            )}
+          )}
 
-            {activeTab === 'messages' && (
+          {activeTab === 'messages' && (
               <div>
                 <div style={{ height: '500px', overflowY: 'auto', marginBottom: '20px' }}>
                   {/* Message history would go here */}
                 </div>
               </div>
-            )}
+          )}
 
-            {activeTab === 'commands' && (
+          {activeTab === 'commands' && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <h3>Slash Commands</h3>
@@ -429,16 +428,15 @@ const BotManager = () => {
                 )}
               </div>
             )}
-          </div>
 
-          {error && (
-            <div style={styles.error}>
-              {error}
-            </div>
-          )}
+            {error && (
+              <div style={styles.error}>
+                {error}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
   );
 };
 
