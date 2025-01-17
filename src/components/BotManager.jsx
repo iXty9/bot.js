@@ -430,7 +430,7 @@ const BotManager = () => {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
-                <div className="grid grid-cols-2 gap-10 mb-4">
+                <div className="grid grid-cols-2 gap-10 mb-8">
                   <Select
                     value={selectedChannel?.id || ""}
                     onValueChange={(value) => {
@@ -483,29 +483,32 @@ const BotManager = () => {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     disabled={!selectedChannel}
-                    className="min-h-[200px] mb-4"
+                    className="min-h-[300px] mb-4"
                   />
                 
-                  <div className="flex flex-col gap-4">
-                    <div className="flex justify-end gap-4">
-                      <button
-                        style={{
-                          ...styles.button,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                        onClick={() => setMessage('')}
-                      >
-                        <Trash2 size={16} />
-                        Clear
-                      </button>
-                      <Button
-                        onClick={handleSendMessage}
-                        disabled={!message.trim() || isSending}
-                        className="gap-2 bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80"
-                        variant="secondary"
-                      >
+                  <div className="flex justify-end gap-4">
+                    <button
+                      style={{
+                        ...styles.button,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                      onClick={() => setMessage('')}
+                    >
+                      <Trash2 size={16} />
+                      Clear
+                    </button>
+                    <button
+                      style={{
+                        ...styles.button,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                      onClick={handleSendMessage}
+                      disabled={!message.trim() || isSending}
+                    >
                         {isSending ? (
                           <>
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
