@@ -119,16 +119,6 @@ class ConsoleUI {
       this.promptUser(callback);
     });
   }
-    const PROMPT_SYMBOL = '> ';
-    this.rl.question(chalk.green(PROMPT_SYMBOL), (input) => {
-      if (input.trim() === '') {
-        console.log(chalk.red('Empty input is not allowed.'));
-      } else {
-        callback(input);
-      }
-      this.promptUser(callback);
-    });
-  }
 }
 
 module.exports = ConsoleUI;
