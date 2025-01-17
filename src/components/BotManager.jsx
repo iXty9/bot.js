@@ -164,6 +164,9 @@ const BotManager = () => {
           const envResponse = await fetch('/api/env');
           const envData = await envResponse.json();
           setEnvVars((prevEnvVars) => ({ ...prevEnvVars, ...envData }));
+          if (envData.BOT_NAME) {
+            setEnvVars((prevEnvVars) => ({ ...prevEnvVars, BOT_NAME: envData.BOT_NAME }));
+          }
           await fetchLogs();
           setInitialized(true);
         } catch (error) {
@@ -285,7 +288,7 @@ const BotManager = () => {
       const socket = initializeSocket(storedToken);
       
       socket.on('message', (data) => {
-        setLogs(prev => [data, ...prev].slice(0, 50));
+        setLogs((prev) => [data, ...prev].slice(0, 50));
       });
       
       socket.on('status', (data) => {
@@ -634,9 +637,11 @@ const BotManager = () => {
                         placeholder="Command name"
                         value={cmd.name}
                         onChange={(e) => {
-                          const newCommands = [...commands];
-                          newCommands[index].name = e.target.value;
-                          setCommands(newCommands);
+                          setCommands((prevCommands) => {
+                            const newCommands = [...prevCommands];
+                            newCommands[index].name = e.target.value;
+                            return newCommands;
+                          });
                         }}
                         style={{
                           ...styles.select,
@@ -720,7 +725,7 @@ const BotManager = () => {
                           throw new Error('Failed to update slash commands');
                         }
                       } catch (err) {
-                        setError('Failed to update slash commands');
+                        setLocalError('Failed to update slash commands');
                       }
                     }}
                   >
@@ -791,7 +796,8 @@ const BotManager = () => {
                         if (!response.ok) {
                           throw new Error('Failed to update configuration');
                         }
-                        setOutput('Configuration updated and service restarted');
+                        setOutput('Configuration updated successfully and service restarted');
+                        setLocalError('');
                       } catch (err) {
                         setLocalError('Failed to update configuration');
                       }
