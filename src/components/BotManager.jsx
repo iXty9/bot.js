@@ -227,7 +227,15 @@ const BotManager = () => {
     WEBHOOK_URL: ''
   });
 
-  const handleSendMessage = async () => {
+  const fetchEnvVars = async () => {
+    try {
+      const response = await fetch('/api/env');
+      const data = await response.json();
+      setEnvVars(data);
+    } catch (error) {
+      console.error('Error fetching environment variables:', error);
+    }
+  };
     if (!message.trim() || !selectedChannel) return;
     
     try {
@@ -330,7 +338,12 @@ const BotManager = () => {
               <Button
                 key={tab}
                 variant={activeTab === tab ? "default" : "ghost"}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => {
+                  setActiveTab(tab);
+                  if (tab === 'Configuration') {
+                    fetchEnvVars();
+                  }
+                }}
                 className="px-4 py-2 rounded-md"
               >
                 {tab}
@@ -704,6 +717,7 @@ const BotManager = () => {
                         onClick={(e) => {
                           const input = e.target.previousSibling;
                           input.type = input.type === 'password' ? 'text' : 'password';
+                          e.target.textContent = input.type === 'password' ? 'Show' : 'Hide';
                         }}
                         style={{
                           ...styles.button,
