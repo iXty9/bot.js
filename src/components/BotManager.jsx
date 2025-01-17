@@ -14,7 +14,7 @@ const BotManager = () => {
   const [output, setOutput] = useState('');
   const [status, setStatus] = useState('online');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [localError, setLocalError] = useState('');
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [selectedThread, setSelectedThread] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -175,7 +175,7 @@ const BotManager = () => {
 
   const handleStatusChange = async (newStatus) => {
     try {
-      setError('');
+      setLocalError('');
       const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
       const response = await fetch('/api/status', {
         method: 'POST',
@@ -195,7 +195,7 @@ const BotManager = () => {
       setOutput(data.message || `Status changed to ${newStatus}`);
     } catch (err) {
       console.error('Status change error:', err);
-      setError(err.message || 'Failed to update status');
+      setLocalError(err.message || 'Failed to update status');
       throw err; // Re-throw to handle in the UI
     }
   };
