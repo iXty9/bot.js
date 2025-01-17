@@ -383,8 +383,8 @@ const BotManager = () => {
           borderRadius: 'var(--radius)',
           boxShadow: '0 8px 16px -4px rgb(0 0 0 / 0.2)'
         }}>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p>Loading, please wait...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary/70"></div>
+          <p className="text-muted-foreground">Loading, please wait...</p>
         </div>
       </div>
     );
