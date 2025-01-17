@@ -7,7 +7,7 @@ const Select = SelectPrimitive.Root
 const SelectGroup = SelectPrimitive.Group
 const SelectValue = SelectPrimitive.Value
 
-const SelectTrigger = React.forwardRef(({ className, children, 'aria-label': ariaLabel = 'Select an option', ...props }, ref) => (
+const SelectTrigger = React.forwardRef(({ className, children, ariaLabel = 'Select an option', ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
