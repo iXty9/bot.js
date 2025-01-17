@@ -373,6 +373,7 @@ const BotManager = () => {
 
         <div style={{ marginTop: '20px' }}>
           {activeTab === 'Logs' && (
+            <>
               <div style={{ height: '460px' }}>
                 <div style={{ 
                   background: 'hsl(var(--card))',
@@ -421,10 +422,12 @@ const BotManager = () => {
                   </button>
                 </div>
               </div>
+            </>
           )}
 
           {activeTab === 'Messages' && (
-            <div className="space-y-4">
+            <>
+              <div className="space-y-4">
                 {error && (
                   <Alert variant="destructive" className="mb-4">
                     <AlertDescription>{error}</AlertDescription>
@@ -524,8 +527,9 @@ const BotManager = () => {
                     </div>
                   </div>
                 </div>
-            </div>
-          </>)}
+              </div>
+            </>
+          )}
 
           {activeTab === 'Slash Commands' && (
               <div style={{ height: '460px' }}>
