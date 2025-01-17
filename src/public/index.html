@@ -56,52 +56,9 @@
             align-items: center;
             justify-content: center;
         }
-        .select-container {
-            position: relative;
-            display: inline-block;
-            width: 100%;
-            margin-bottom: 1rem;
-        }
-        select {
-            appearance: none;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
-            padding: 0.75rem 1rem;
-            width: 100%;
-            cursor: pointer;
-            font-size: 0.95rem;
-            transition: all 0.2s;
-        }
         *:focus-visible {
             outline: none;
             box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--primary));
-        }
-        select:focus {
-            outline: none;
-            border-color: hsl(var(--primary));
-            box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--primary));
-        }
-        select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 0.5rem center;
-            background-size: 1rem;
-            padding-right: 2.5rem;
-        }
-        select option {
-            background-color: hsl(var(--popover));
-            color: hsl(var(--popover-foreground));
-            padding: 0.75rem 1rem;
-        }
-        .select-arrow {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            pointer-events: none;
         }
         textarea {
             resize: vertical;
