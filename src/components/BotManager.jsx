@@ -425,10 +425,10 @@ const BotManager = () => {
                 <div style={{ marginBottom: '12px' }}>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                     <Select
-                      value={selectedChannel?.id || ''}
+                      value={selectedChannel?.id ?? ''}
                       onValueChange={(value) => {
-                        const channel = channels.find(c => c.id === value);
-                        setSelectedChannel(channel);
+                        const channel = channels?.find(c => c.id === value);
+                        setSelectedChannel(channel || null);
                       }}
                     >
                       <SelectTrigger className="w-full">
@@ -445,9 +445,9 @@ const BotManager = () => {
 
                     <select
                       style={{ ...styles.select, flex: 1 }}
-                        value={selectedThread?.id || ''}
+                        value={selectedThread?.id ?? ''}
                         onChange={(e) => {
-                          const thread = selectedChannel.threads?.find(t => t.id === e.target.value);
+                          const thread = selectedChannel?.threads?.find(t => t.id === e.target.value);
                           setSelectedThread(thread || null);
                         }}
                         disabled={!selectedChannel?.threads?.length}
