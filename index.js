@@ -76,31 +76,32 @@ const commands = [
   }
 ];
 
-// Function to register slash commands
-async function registerSlashCommands() {
-  try {
-    console.log('Started refreshing application (/) commands.');
-
-    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-
-    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-
-    console.log('Successfully reloaded application (/) commands.');
-    commands.forEach(command => {
-      console.log(`Registered command: ${command.name} - ${command.description}`);
-    });
-  } catch (error) {
-    console.error('Error registering slash commands:', error);
-  }
-}
 
 // Event listener for when the client is ready.
 client.once('ready', async () => {
   consoleUI.addLog(`Logged in as ${client.user.tag}!`);
   consoleUI.addLog('Type "/help" for a list of commands.');
   
+  // Register slash commands first
+  try {
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    
+    consoleUI.addLog('Started refreshing application (/) commands.');
+    
+    await rest.put(
+      Routes.applicationCommands(client.user.id),
+      { body: commands }
+    );
+    
+    consoleUI.addLog('Successfully reloaded application (/) commands:');
+    commands.forEach(cmd => {
+      consoleUI.addLog(`- /${cmd.name}`);
+    });
+  } catch (error) {
+    consoleUI.addLog(`Failed to register commands: ${error.message}`);
+  }
+  
   await commandHandler.initialize(); // Initialize the current channel
-  await registerSlashCommands(); // Register slash commands
   
   const serverStatus = await botManager.checkServerStatus();
   consoleUI.addLog(`Web server status: ${serverStatus}`);
