@@ -84,6 +84,9 @@ const commands = [
   }
 ];
 
+// Make commands available globally
+global.botCommands = commands;
+
 
 // Event listener for when the client is ready.
 client.once('ready', async () => {

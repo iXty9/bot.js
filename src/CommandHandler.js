@@ -60,14 +60,12 @@ class CommandHandler {
 
   async handleCommand(command, args) {
     if (!command) {
-      this.consoleUI.addLog('No command provided. Type "/help" for a list of commands.');
-      return;
-    }
-
-    if (!command) {
       this.consoleUI.addLog(chalk.red('No command provided. Type "/help" for a list of commands.'));
       return;
     }
+
+    // Log command execution attempt
+    console.log('Executing command:', { command, args });
 
     switch(command) {
       case 'help':
@@ -254,9 +252,7 @@ class CommandHandler {
 
   async handleFactCommand(interaction) {
     try {
-      if (!interaction.deferred) {
-        await interaction.deferReply({ ephemeral: true });
-      }
+      await interaction.deferReply({ ephemeral: true }).catch(console.error);
       const response = await axios.get('https://uselessfacts.jsph.pl/random.json?language=en');
       const fact = response.data.text;
       await interaction.editReply({

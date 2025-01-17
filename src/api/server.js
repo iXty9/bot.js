@@ -230,8 +230,11 @@ app.post('/api/commands', authenticateToken, async (req, res) => {
       throw new Error('Bot manager not initialized');
     }
 
+    // Log incoming command request
+    console.log('Command request received:', { command, args });
+
     let result;
-    switch (command) {
+    switch (command.toLowerCase()) {
       case 'fact':
         const response = await axios.get('https://uselessfacts.jsph.pl/random.json?language=en');
         result = response.data.text;
@@ -480,12 +483,44 @@ io.on('connection', (socket) => {
   // Handle command events from client
   socket.on('command', async (data) => {
     try {
-      const { command, args } = data;
-      const result = await botManager.executeCommand(command, args);
-      socket.emit('commandResponse', { success: true, result });
+      const { command, args = [] } = data;
+      let result;
+      
+      switch (command) {
+        case 'fact':
+          const response = await axios.get('https://uselessfacts.jsph.pl/random.json?language=en');
+          result = response.data.text;
+          break;
+          
+        case 'status':
+          if (!args[0] || !['online', 'idle', 'dnd', 'invisible'].includes(args[0])) {
+            throw new Error('Invalid status. Must be one of: online, idle, dnd, invisible');
+          }
+          result = await botManager.changeStatus(args[0]);
+          break;
+          
+        case 'help':
+          result = [
+            '**Available Commands:**',
+            '`/fact` - Get a random fact',
+            '`/status <newstatus>` - Change bot status (online, idle, dnd, invisible)',
+            '`/help` - Show this help message'
+          ].join('\n');
+          break;
+          
+        default:
+          throw new Error(`Unknown command: ${command}`);
+      }
+      
+      socket.emit('commandResponse', { 
+        success: true, 
+        command,
+        result 
+      });
     } catch (error) {
       socket.emit('commandResponse', { 
-        success: false, 
+        success: false,
+        command: data.command, 
         error: error.message || 'Command execution failed' 
       });
     }
