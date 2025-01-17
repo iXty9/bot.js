@@ -70,6 +70,9 @@ class CommandHandler {
       case 'list':
         await this.listChannels();
         break;
+      case 'server':
+        await this.toggleServer(args[0]);
+        break;
       case 'exit':
         this.consoleUI.addLog('Exiting...');
         process.exit(0);
@@ -89,12 +92,25 @@ class CommandHandler {
       chalk.cyan('  /send               ') + '- Send the composed message',
       chalk.cyan('  /clear              ') + '- Clear the message composer',
       chalk.cyan('  /list               ') + '- List all available channels and threads',
+      chalk.cyan('  /server <action>    ') + '- Start or stop the web server (action: start, stop)',
       chalk.cyan('  /exit               ') + '- Exit the program',
       '',
       chalk.green('Compose your message by typing or pasting. Use /send to send the message.')
     ].join('\n');
     
     this.consoleUI.addLog(helpText);
+  }
+
+  async toggleServer(action) {
+    if (action === 'start') {
+      const result = this.botManager.startServer();
+      this.consoleUI.addLog(result);
+    } else if (action === 'stop') {
+      const result = this.botManager.stopServer();
+      this.consoleUI.addLog(result);
+    } else {
+      this.consoleUI.addLog('Invalid action. Use "start" or "stop".');
+    }
   }
 
   async changeStatus(newStatus) {
