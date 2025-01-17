@@ -253,26 +253,63 @@ class CommandHandler {
   }
 
   async handleFactCommand(interaction) {
-    await interaction.deferReply();
-
     try {
+      await interaction.deferReply();
       const response = await axios.get('https://uselessfacts.jsph.pl/random.json?language=en');
       const fact = response.data.text;
-      await interaction.editReply(`Here's a random fact: ${fact}`);
+      await interaction.editReply({
+        content: `Here's a random fact: ${fact}`,
+        ephemeral: true
+      });
     } catch (error) {
       console.error('Error fetching random fact:', error);
-      await interaction.editReply('Sorry, I couldn\'t fetch a random fact at the moment.');
+      if (interaction.deferred) {
+        await interaction.editReply({
+          content: 'Sorry, I couldn\'t fetch a random fact at the moment.',
+          ephemeral: true
+        });
+      } else {
+        await interaction.reply({
+          content: 'Sorry, I couldn\'t fetch a random fact at the moment.',
+          ephemeral: true
+        });
+      }
     }
   }
 
   async handleStatusCommand(interaction) {
-    const newStatus = interaction.options.getString('newstatus');
     try {
+      await interaction.deferReply({ ephemeral: true });
+      const newStatus = interaction.options.getString('newstatus');
+      
+      if (!['online', 'idle', 'dnd', 'invisible'].includes(newStatus)) {
+        await interaction.editReply({
+          content: 'Invalid status. Please use one of: online, idle, dnd, invisible',
+          ephemeral: true
+        });
+        return;
+      }
+
       const result = await this.botManager.changeStatus(newStatus);
-      await interaction.reply({ content: result, ephemeral: true });
+      const statusEmoji = {
+        online: '🟢',
+        idle: '🌙',
+        dnd: '⛔',
+        invisible: '⚪'
+      };
+
+      await interaction.editReply({ 
+        content: `${statusEmoji[newStatus]} ${result}`,
+        ephemeral: true 
+      });
     } catch (error) {
-      await interaction.reply({ 
-        content: `Error changing status: ${error.message}`, 
+      console.error('Error changing status:', error);
+      const response = interaction.deferred ? 
+        interaction.editReply : 
+        interaction.reply;
+      
+      await response.call(interaction, { 
+        content: `Error changing status: ${error.message}`,
         ephemeral: true 
       });
     }
@@ -373,17 +410,34 @@ class CommandHandler {
   }
 
   async handleHelpCommand(interaction) {
-    const helpText = [
-      '**Available Commands:**',
-      '`/fact` - Get a random fact',
-      '`/status <newstatus>` - Change bot status (online, idle, dnd, invisible)',
-      '`/help` - Show this help message'
-    ].join('\n');
+    try {
+      const helpText = [
+        '**Available Slash Commands:**',
+        '',
+        '`/fact` - Get an interesting random fact',
+        '`/status <newstatus>` - Change the bot\'s status',
+        '  Options for status:',
+        '  • online - Show as online',
+        '  • idle - Show as idle/away',
+        '  • dnd - Show as Do Not Disturb',
+        '  • invisible - Appear offline',
+        '',
+        '`/help` - Show this help message',
+        '',
+        '*All command responses are only visible to you.*'
+      ].join('\n');
 
-    await interaction.reply({
-      content: helpText,
-      ephemeral: true
-    });
+      await interaction.reply({
+        content: helpText,
+        ephemeral: true
+      });
+    } catch (error) {
+      console.error('Error showing help:', error);
+      await interaction.reply({
+        content: 'Sorry, there was an error displaying the help message.',
+        ephemeral: true
+      });
+    }
   }
 }
 
