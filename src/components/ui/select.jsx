@@ -4,7 +4,7 @@ import { Check, ChevronDown } from "lucide-react"
 import { cn } from "../../lib/utils"
 
 const Select = React.forwardRef(({ defaultValue = '', ...props }, ref) => (
-  <SelectPrimitive.Root defaultValue={defaultValue} ref={ref} {...props} />
+  <SelectPrimitive.Root defaultValue={defaultValue || undefined} ref={ref} {...props} />
 ))
 const SelectGroup = SelectPrimitive.Group
 const SelectValue = SelectPrimitive.Value
