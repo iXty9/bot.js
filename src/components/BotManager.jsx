@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Trash2, Command, RefreshCw } from 'lucide-react';
+import { Button } from './ui/button';
+import { Textarea } from './ui/textarea';
+import { Alert, AlertDescription } from './ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 const BotManager = () => {
   const [message, setMessage] = useState('');
@@ -12,7 +16,7 @@ const BotManager = () => {
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [selectedThread, setSelectedThread] = useState(null);
   const [channelsLoading, setChannelsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('messages');
+  const [activeTab, setActiveTab] = useState('Messages');
   const [commands, setCommands] = useState([]);
 
   const styles = {
@@ -271,25 +275,11 @@ const BotManager = () => {
             boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.2)',
           }}>
             {['Messages', 'Logs', 'Slash Commands'].map((tab) => (
-              <button
+              <Button
                 key={tab}
-                style={{
-                  background: activeTab === tab.toLowerCase().replace(' ', '') ? 'hsl(var(--background))' : 'transparent',
-                  color: activeTab === tab.toLowerCase().replace(' ', '') 
-                    ? 'hsl(var(--foreground))' 
-                    : 'hsl(var(--muted-foreground))',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '0.5rem',
-                  border: 'none',
-                  fontWeight: 500,
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    background: activeTab === tab.toLowerCase().replace(' ', '') 
-                      ? 'hsl(var(--background))' 
-                      : 'hsl(var(--muted)/0.5)'
-                  }
-                }}
-                onClick={() => setActiveTab(tab.toLowerCase().replace(' ', ''))}
+                variant={activeTab === tab ? "default" : "ghost"}
+                onClick={() => setActiveTab(tab)}
+                className="px-4 py-2 rounded-md"
               >
                 {tab}
               </button>
@@ -395,25 +385,28 @@ const BotManager = () => {
               </div>
           )}
 
-          {activeTab === 'messages' && (
+          {activeTab === 'Messages' && (
               <div>
                 <div style={{ marginBottom: '12px' }}>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                    <select
-                      style={{ ...styles.select, flex: 1 }}
+                    <Select
                       value={selectedChannel?.id || ''}
-                      onChange={(e) => {
-                        const channel = channels.find(c => c.id === e.target.value);
+                      onValueChange={(value) => {
+                        const channel = channels.find(c => c.id === value);
                         setSelectedChannel(channel);
                       }}
                     >
-                      <option value="">Select a channel...</option>
-                      {channels.map(channel => (
-                        <option key={channel.id} value={channel.id}>
-                          {channel.name} ({channel.guildName})
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a channel..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {channels.map(channel => (
+                          <SelectItem key={channel.id} value={channel.id}>
+                            {channel.name} ({channel.guildName})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
                     <select
                       style={{ ...styles.select, flex: 1 }}
@@ -435,12 +428,12 @@ const BotManager = () => {
                   )}
                 </div>
 
-                <textarea
-                  style={styles.textarea}
+                <Textarea
                   placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   disabled={!selectedChannel}
+                  className="min-h-[120px] mb-4"
                 />
                 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
@@ -596,9 +589,9 @@ const BotManager = () => {
             )}
 
             {error && (
-              <div style={styles.error}>
-                {error}
-              </div>
+              <Alert variant="destructive" className="mt-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
           </div>
         </div>
