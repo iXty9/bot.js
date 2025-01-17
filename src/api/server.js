@@ -100,7 +100,7 @@ app.post('/api/commands', authenticateToken, async (req, res) => {
     const result = await botManager.executeCommand(command, args);
     res.json({ result });
   } catch (error) {
-    console.error('Error executing command:', error);
+    console.error('Server Error:', error);
     res.status(500).json({ error: 'Failed to execute command' });
   }
 });

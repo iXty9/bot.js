@@ -157,7 +157,6 @@ const startServer = () => {
           console.error('Error during shutdown:', error);
         } finally {
           console.log('Exiting process...');
-          console.log('Exiting process...');
           process.exit(0);
         }
       };
