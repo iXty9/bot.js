@@ -157,7 +157,8 @@ const startServer = () => {
           console.error('Error during shutdown:', error);
         } finally {
           console.log('Exiting process...');
-          shutdown();
+          console.log('Exiting process...');
+          process.exit(0);
         }
       };
 
@@ -168,7 +169,6 @@ const startServer = () => {
 
     } catch (error) {
       console.error('Critical server error:', error);
-      reject(error);
       reject(error);
     }
   });
