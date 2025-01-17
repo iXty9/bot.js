@@ -499,7 +499,7 @@ const BotManager = () => {
                       <Trash2 size={16} />
                       Clear
                     </button>
-                    <button
+                    <Button
                       style={{
                         ...styles.button,
                         display: 'flex',
