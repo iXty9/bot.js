@@ -231,20 +231,29 @@ const BotManager = () => {
   const { data: messages = [], isLoading: isLoadingMessages } = useMessageHistory(selectedChannel?.id);
   const { error, handleError } = useError();
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim() || !selectedChannel) return;
     
-    sendMessage({
-      message: message.trim(),
-      channelId: selectedChannel.id,
-      threadId: selectedThread?.id
-    }, {
-      onSuccess: () => {
-        setMessage('');
-        setOutput('Message sent successfully');
-      },
-      onError: handleError
-    });
+    try {
+      await sendMessage({
+        message: message.trim(),
+        channelId: selectedChannel.id,
+        threadId: selectedThread?.id
+      }, {
+        onSuccess: () => {
+          setMessage('');
+          setOutput('Message sent successfully');
+          // Refetch messages after sending
+          queryClient.invalidateQueries(['messages', selectedChannel.id]);
+        },
+        onError: (error) => {
+          handleError(error);
+          setOutput('Failed to send message');
+        }
+      });
+    } catch (error) {
+      handleError(error);
+    }
   };
 
   useEffect(() => {
@@ -509,25 +518,77 @@ const BotManager = () => {
                     <Trash2 size={16} />
                     Clear
                   </button>
-                  <button
-                    style={{
-                      ...styles.button,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      backgroundColor: 'var(--primary)',
-                      color: 'white'
-                    }}
+                  <Button
                     onClick={handleSendMessage}
-                    disabled={!message.trim()}
+                    disabled={!message.trim() || isSending}
+                    className="gap-2"
                   >
-                    <Send size={16} />
-                    Send Message
-                  </button>
+                    {isSending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send size={16} />
+                        Send Message
+                      </>
+                    )}
+                  </Button>
                 </div>
 
-                <div style={{ height: '460px', marginTop: '20px', overflow: 'hidden' }}>
-                  {/* Message history would go here */}
+                <div style={{ 
+                  height: '460px', 
+                  marginTop: '20px',
+                  overflowY: 'auto',
+                  padding: '1rem',
+                  background: 'hsl(var(--secondary))',
+                  borderRadius: 'var(--radius)',
+                  border: '1px solid hsl(var(--border))'
+                }}>
+                  {isLoadingMessages ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : messages.length > 0 ? (
+                    <div className="space-y-4">
+                      {messages.map((msg) => (
+                        <div 
+                          key={msg.id} 
+                          className="p-3 rounded-lg bg-card"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-sm text-primary">
+                              {msg.author}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(msg.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                          {msg.attachments.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {msg.attachments.map(attachment => (
+                                <a
+                                  key={attachment.id}
+                                  href={attachment.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-primary hover:underline"
+                                >
+                                  {attachment.name}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      No messages to display
+                    </div>
+                  )}
                 </div>
               </div>
           )}
