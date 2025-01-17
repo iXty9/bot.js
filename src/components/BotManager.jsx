@@ -310,7 +310,7 @@ const BotManager = () => {
         }}>
           <div style={{ 
             display: 'flex',
-            gap: '1px',
+            gap: '8px',
             background: 'hsl(var(--muted))',
             padding: '3px',
             borderRadius: '0.75rem',
@@ -432,7 +432,7 @@ const BotManager = () => {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              <div className="grid grid-cols-2 gap-10 mb-8">
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <Select
                   value={selectedChannel?.id || ""}
                   onValueChange={(value) => {
@@ -515,16 +515,20 @@ const BotManager = () => {
                   </Select>
               </div>
 
-              <div>
+              <div style={{ marginTop: '1rem' }}>
                 <Textarea
                   placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   disabled={!selectedChannel}
-                  className="min-h-[300px] mb-8"
+                  style={{
+                    minHeight: '150px',
+                    marginBottom: '1rem',
+                    resize: 'none',
+                  }}
                 />
               
-                <div className="flex justify-end gap-4">
+                <div className="flex justify-end gap-2 mt-4">
                   <button
                     style={{
                       ...styles.button,
