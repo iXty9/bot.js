@@ -422,14 +422,11 @@ const BotManager = () => {
                 <div className="flex gap-4 mb-4">
                   <div className="flex-1">
                     <Select
-                      value={selectedChannel?.id ?? ''}
+                      value={selectedChannel?.id || ""}
                       onValueChange={(value) => {
-                        if (!value) {
-                          setSelectedChannel(null);
-                          return;
-                        }
                         const channel = channels?.find(c => c.id === value);
                         setSelectedChannel(channel || null);
+                        setSelectedThread(null); // Reset thread when channel changes
                       }}
                       disabled={isLoadingChannels}
                     >
@@ -437,7 +434,7 @@ const BotManager = () => {
                         <SelectValue placeholder="Select a channel..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {channels.map(channel => (
+                        {Array.isArray(channels) && channels.map(channel => (
                           <SelectItem key={channel.id} value={channel.id}>
                             {channel.name} ({channel.guildName})
                           </SelectItem>
@@ -448,33 +445,27 @@ const BotManager = () => {
 
                   <div className="flex-1">
                     <Select
-                      value={selectedThread?.id ?? ''}
+                      value={selectedThread?.id || "no_thread"}
                       onValueChange={(value) => {
-                        if (value === "no_thread" || value === "no_threads_available") {
+                        if (value === "no_thread") {
                           setSelectedThread(null);
                           return;
                         }
                         const thread = selectedChannel?.threads?.find(t => t.id === value);
                         setSelectedThread(thread || null);
                       }}
-                      disabled={!selectedChannel?.threads?.length}
+                      disabled={!selectedChannel}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a thread..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {selectedChannel?.threads?.length > 0 ? (
-                          <>
-                            <SelectItem value="no_thread">No thread</SelectItem>
-                            {selectedChannel.threads.map(thread => (
-                              <SelectItem key={thread.id} value={thread.id}>
-                                {thread.name}
-                              </SelectItem>
-                            ))}
-                          </>
-                        ) : (
-                          <SelectItem value="no_threads_available">No threads available</SelectItem>
-                        )}
+                        <SelectItem value="no_thread">No thread</SelectItem>
+                        {selectedChannel?.threads?.map(thread => (
+                          <SelectItem key={thread.id} value={thread.id}>
+                            {thread.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

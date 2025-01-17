@@ -41,7 +41,12 @@ export const useChannels = () => {
   return useQuery({
     queryKey: ['channels'],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_BASE}/channels`);
+      const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
+      const { data } = await axios.get(`${API_BASE}/channels`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       return data;
     },
     staleTime: 60000,
