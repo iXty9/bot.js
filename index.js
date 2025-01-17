@@ -98,6 +98,12 @@ client.on('interactionCreate', async (interaction) => {
   // Add more command handlers here as needed
 });
 
+
+if (!process.env.DISCORD_TOKEN) {
+  console.error('DISCORD_TOKEN is not set in the environment variables.');
+  process.exit(1);
+}
+
 // Log in to Discord.
 client.login(process.env.DISCORD_TOKEN).catch((error) => {
   console.error('Failed to log in:', error);
