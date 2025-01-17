@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 
 // Load environment variables
 const envPath = path.join(__dirname, '../../.env');
@@ -225,33 +226,45 @@ app.post('/api/commands', authenticateToken, async (req, res) => {
   try {
     const { command, args = [] } = req.body;
     
+    if (!botManager) {
+      throw new Error('Bot manager not initialized');
+    }
+
+    let result;
     switch (command) {
       case 'fact':
         const response = await axios.get('https://uselessfacts.jsph.pl/random.json?language=en');
-        res.json({ result: response.data.text });
+        result = response.data.text;
         break;
 
       case 'status':
         if (!args[0] || !['online', 'idle', 'dnd', 'invisible'].includes(args[0])) {
           throw new Error('Invalid status. Must be one of: online, idle, dnd, invisible');
         }
-        const statusResult = await botManager.changeStatus(args[0]);
-        res.json({ result: statusResult });
+        result = await botManager.changeStatus(args[0]);
         break;
 
       case 'help':
-        const helpText = [
+        result = [
           '**Available Commands:**',
           '`/fact` - Get a random fact',
           '`/status <newstatus>` - Change bot status (online, idle, dnd, invisible)',
           '`/help` - Show this help message'
         ].join('\n');
-        res.json({ result: helpText });
         break;
 
       default:
         throw new Error(`Unknown command: ${command}`);
     }
+
+    // Log the command execution
+    console.log(`Command executed: ${command}`, { args, result });
+    
+    // Send the response
+    res.json({ 
+      success: true,
+      result: result
+    });
   } catch (error) {
     console.error('Server Error:', error);
     res.status(500).json({ error: error.message || 'Failed to execute command' });
