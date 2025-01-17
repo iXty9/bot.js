@@ -13,16 +13,22 @@ class CommandHandler {
   }
 
   async initialize() {
-    const channels = await this.botManager.listChannels();
-    this.currentChannel = channels.find(ch => ch.name === 'general') || channels[0];
-    this.updateStatusBar();
+    try {
+      const channels = await this.botManager.listChannels();
+      this.currentChannel = channels.find(ch => ch.name === 'general') || channels[0];
+      this.updateStatusBar();
+    } catch (error) {
+      this.consoleUI.addLog('Error initializing channels: ' + error.message);
+    }
+    this.awaitingChannelSelection = false;
   }
 
   updateStatusBar() {
     const status = this.client.user.presence.status;
     const channelName = this.currentChannel ? `${this.currentChannel.name} (${this.currentChannel.guildName})` : 'No channel selected';
     const threadName = this.currentThread ? ` > ${this.currentThread.name}` : '';
-    this.consoleUI.updateStatusBar(`${this.client.user.tag} | ${status} | Channel: ${channelName}${threadName}`);
+    const statusBarContent = `${this.client.user.tag} | ${status} | Channel: ${channelName}${threadName}`;
+    this.consoleUI.updateStatusBar(statusBarContent);
   }
 
   getStatusBarContent() {
@@ -48,6 +54,11 @@ class CommandHandler {
   }
 
   async handleCommand(command, args) {
+    if (!command) {
+      this.consoleUI.addLog('No command provided. Type "/help" for a list of commands.');
+      return;
+    }
+
     switch(command) {
       case 'help':
         this.showHelp();
@@ -119,7 +130,7 @@ class CommandHandler {
       this.consoleUI.addLog(result);
       this.updateStatusBar();
     } catch (error) {
-      this.consoleUI.addLog('Error changing status: ' + error);
+      this.consoleUI.addLog('Error changing status: ' + error.message);
     }
   }
 
