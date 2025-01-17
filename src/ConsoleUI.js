@@ -69,43 +69,46 @@ class ConsoleUI {
       
       let formattedOutput = this.output || '';
 
-    if (this.output.includes('Available commands:')) {
-      const [preHelp, helpContent] = this.output.split('Available commands:');
-      const helpLines = helpContent.trim().split('\n');
-      const formattedHelp = this.formatHelpText(helpLines);
-      formattedOutput = preHelp + 'Available commands:\n' + formattedHelp;
-    } else if (this.output.includes('Available channels and threads:')) {
-      const [preChannels, channelsContent] = this.output.split('Available channels and threads:');
-      const formattedChannels = this.formatChannelsAndThreads(channelsContent);
-      formattedOutput = preChannels + 'Available channels and threads:\n' + formattedChannels;
-    }
+      if (this.output.includes('Available commands:')) {
+        const [preHelp, helpContent] = this.output.split('Available commands:');
+        const helpLines = helpContent.trim().split('\n');
+        const formattedHelp = this.formatHelpText(helpLines);
+        formattedOutput = preHelp + 'Available commands:\n' + formattedHelp;
+      } else if (this.output.includes('Available channels and threads:')) {
+        const [preChannels, channelsContent] = this.output.split('Available channels and threads:');
+        const formattedChannels = this.formatChannelsAndThreads(channelsContent);
+        formattedOutput = preChannels + 'Available channels and threads:\n' + formattedChannels;
+      }
 
-    const BOXEN_OPTIONS = {
-      padding: 1,
-      margin: 1,
-      borderStyle: 'round',
-      borderColor: 'cyan',
-      title: chalk.yellow('Output'),
-      titleAlignment: 'center',
-      width: this.terminalWidth - 4,
-      height: this.terminalHeight - 10
-    };
-    const outputBox = boxen(formattedOutput, BOXEN_OPTIONS);
-    console.log(outputBox);
-    
-    const composerBox = boxen(this.composer || 'Type your message here...', {
-      padding: 1,
-      margin: 1,
-      borderStyle: 'bold',
-      borderColor: 'green',
-      title: chalk.yellow('Composer'),
-      titleAlignment: 'center'
-    });
-    console.log(composerBox);
-    
-    const PROMPT_MESSAGE = 'Enter a command or message:';
-    console.log(chalk.cyan(PROMPT_MESSAGE));
-    this.rl.prompt();
+      const BOXEN_OPTIONS = {
+        padding: 1,
+        margin: 1,
+        borderStyle: 'round',
+        borderColor: 'cyan',
+        title: chalk.yellow('Output'),
+        titleAlignment: 'center',
+        width: this.terminalWidth - 4,
+        height: this.terminalHeight - 10
+      };
+      const outputBox = boxen(formattedOutput, BOXEN_OPTIONS);
+      console.log(outputBox);
+      
+      const composerBox = boxen(this.composer || 'Type your message here...', {
+        padding: 1,
+        margin: 1,
+        borderStyle: 'bold',
+        borderColor: 'green',
+        title: chalk.yellow('Composer'),
+        titleAlignment: 'center'
+      });
+      console.log(composerBox);
+      
+      const PROMPT_MESSAGE = 'Enter a command or message:';
+      console.log(chalk.cyan(PROMPT_MESSAGE));
+      this.rl.prompt();
+    } catch (error) {
+      console.error('Error during rendering:', error);
+    }
   }
 
   promptUser(callback) {
