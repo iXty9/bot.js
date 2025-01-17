@@ -4,10 +4,13 @@ import BotManager from './components/BotManager';
 import './public/styles.css';
 
 const container = document.getElementById('root');
-const root = createRoot(container);
-
-root.render(
-  <React.StrictMode>
-    <BotManager />
-  </React.StrictMode>
-);
+if (container) {
+  const root = createRoot(container);
+  root.render(
+    <React.StrictMode>
+      <BotManager />
+    </React.StrictMode>
+  );
+} else {
+  console.error('Root element not found');
+}

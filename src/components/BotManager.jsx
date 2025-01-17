@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Trash2, Command, RefreshCw } from 'lucide-react';
-import { Button } from './ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Alert, AlertDescription } from './ui/alert';
-import { Textarea } from './ui/textarea';
 
 const BotManager = () => {
   const [message, setMessage] = useState('');
