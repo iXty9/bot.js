@@ -377,10 +377,6 @@ class CommandHandler {
       '**Available Commands:**',
       '`/fact` - Get a random fact',
       '`/status <newstatus>` - Change bot status (online, idle, dnd, invisible)',
-      '`/channel [name]` - List channels or switch to a specific channel',
-      '`/send <message>` - Send a message to the current channel',
-      '`/stats` - Show bot statistics and uptime',
-      '`/clear` - Clear message composition',
       '`/help` - Show this help message'
     ].join('\n');
 
