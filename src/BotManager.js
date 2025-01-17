@@ -12,17 +12,13 @@ class BotManager extends EventEmitter {
     super();
     this.client = client;
     this.webhookUrl = webhookUrl;
-    this.logs = new Map(); // Use Map for O(1) access and automatic cleanup
+    this.logs = []; // Use array for ordered logs
     this.maxLogs = 50;
     
     // Cleanup old logs every hour
     setInterval(() => {
       const oneHourAgo = Date.now() - 3600000;
-      for (const [timestamp] of this.logs) {
-        if (timestamp < oneHourAgo) {
-          this.logs.delete(timestamp);
-        }
-      }
+      this.logs = this.logs.filter(log => log.timestamp > oneHourAgo);
     }, 3600000);
     this.stats = {
       messagesReceived: 0,
@@ -101,11 +97,15 @@ class BotManager extends EventEmitter {
   }
 
   log(message) {
-    const timestamp = new Date().toISOString();
-    const logMessage = `${timestamp} - [BotManager] ${message}`;
+    const timestamp = Date.now();
+    const isoTime = new Date(timestamp).toISOString();
+    const logMessage = `${isoTime} - [BotManager] ${message}`;
     
     // Add to in-memory logs array
-    this.logs.unshift({ log: logMessage });
+    this.logs.unshift({ 
+      log: logMessage,
+      timestamp: timestamp
+    });
     
     // Keep only last maxLogs entries
     if (this.logs.length > this.maxLogs) {
