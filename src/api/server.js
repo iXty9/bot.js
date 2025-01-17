@@ -8,6 +8,13 @@ const path = require('path');
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
+
+// Validate required environment variables
+if (!process.env.DISCORD_TOKEN || process.env.DISCORD_TOKEN === 'your-token-here') {
+  console.error('Error: Valid DISCORD_TOKEN is required in .env file');
+  process.exit(1);
+}
+
 const { Server } = require('socket.io');
 const http = require('http');
 const BotManager = require('../BotManager');
