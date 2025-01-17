@@ -780,7 +780,6 @@ const BotManager = () => {
                 <AlertDescription>{localError}</AlertDescription>
               </Alert>
             )}
-          )}
         </div>
       </div>
     </div>
