@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
+const { Server } = require('socket.io');
+const http = require('http');
 const BotManager = require('../BotManager');
 const app = express();
 const PORT = process.env.API_PORT || 6987;
@@ -170,8 +172,43 @@ app.use((req, res, next) => {
 
 
 // Route to start/stop the server
-// Export the app instance so we can start it from index.js
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Socket.IO authentication middleware
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    return next(new Error('Authentication error'));
+  }
+  if (token === process.env.DISCORD_TOKEN) {
+    next();
+  } else {
+    next(new Error('Invalid token'));
+  }
+});
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected');
+  
+  socket.on('disconnect', () => {
+    console.log('Client disconnected');
+  });
+});
+
+// Export the server instance so we can start it from index.js
 module.exports = { 
   initializeBotManager,
-  app
+  app,
+  server,
+  io
 };

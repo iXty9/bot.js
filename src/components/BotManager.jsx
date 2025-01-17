@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSocket, initializeSocket } from '../lib/socket';
 import { Send, Trash2, Command, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -263,6 +264,24 @@ const BotManager = () => {
       localStorage.setItem('discord_token', token);
       // Remove token from URL
       window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    // Initialize WebSocket connection
+    const storedToken = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
+    if (storedToken) {
+      const socket = initializeSocket(storedToken);
+      
+      socket.on('message', (data) => {
+        setLogs(prev => [data, ...prev].slice(0, 50));
+      });
+      
+      socket.on('status', (data) => {
+        setStatus(data.status);
+      });
+      
+      return () => {
+        socket.disconnect();
+      };
     }
   }, []);
 
