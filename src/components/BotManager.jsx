@@ -753,7 +753,7 @@ const BotManager = () => {
                           padding: '0.5rem',
                         }}
                       />
-                      {envVar.includes('TOKEN') || envVar.includes('SECRET') && (
+                      {(envVar === 'JWT_SECRET' || envVar === 'DISCORD_TOKEN') && (
                         <button
                           onClick={(e) => {
                             const input = e.target.previousSibling;
