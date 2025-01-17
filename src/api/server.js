@@ -64,7 +64,7 @@ app.get('/api/status', authenticateToken, async (req, res) => {
       ...stats
     });
   } catch (error) {
-    console.error('Error retrieving status:', error);
+    console.error('Server Error:', error);
     res.status(500).json({ error: 'Failed to retrieve status' });
   }
 });
