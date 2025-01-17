@@ -35,6 +35,7 @@ const Button = React.forwardRef(({ className, variant = "default", size = "defau
     <Comp
       className={cn(buttonVariants({ variant, size, className }))}
       ref={ref}
+      onClick={onClick}
       {...props}
     />
   )
