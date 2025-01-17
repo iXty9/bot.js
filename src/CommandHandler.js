@@ -320,12 +320,67 @@ class CommandHandler {
     }
   }
 
+  async handleSendCommand(interaction) {
+    const message = interaction.options.getString('message');
+    if (!this.currentChannel) {
+      await interaction.reply({
+        content: 'No channel selected. Use /channel to select a channel first.',
+        ephemeral: true
+      });
+      return;
+    }
+    
+    try {
+      const result = await this.botManager.sendMessage(
+        message,
+        this.currentChannel.id,
+        this.currentThread ? this.currentThread.id : null
+      );
+      await interaction.reply({
+        content: `Message sent successfully to ${this.currentChannel.name}`,
+        ephemeral: true
+      });
+    } catch (error) {
+      await interaction.reply({
+        content: `Error sending message: ${error.message}`,
+        ephemeral: true
+      });
+    }
+  }
+
+  async handleStatsCommand(interaction) {
+    const stats = this.botManager.getUsageStats();
+    const statsText = [
+      '**Bot Statistics:**',
+      `Uptime: ${stats.uptime} seconds`,
+      `Last Activity: ${stats.lastActivityAgo} seconds ago`,
+      `Messages Received: ${stats.messagesReceived || 0}`,
+      `Commands Executed: ${stats.commandsExecuted || 0}`
+    ].join('\n');
+
+    await interaction.reply({
+      content: statsText,
+      ephemeral: true
+    });
+  }
+
+  async handleClearCommand(interaction) {
+    this.clearComposer();
+    await interaction.reply({
+      content: 'Message composition cleared.',
+      ephemeral: true
+    });
+  }
+
   async handleHelpCommand(interaction) {
     const helpText = [
       '**Available Commands:**',
       '`/fact` - Get a random fact',
       '`/status <newstatus>` - Change bot status (online, idle, dnd, invisible)',
       '`/channel [name]` - List channels or switch to a specific channel',
+      '`/send <message>` - Send a message to the current channel',
+      '`/stats` - Show bot statistics and uptime',
+      '`/clear` - Clear message composition',
       '`/help` - Show this help message'
     ].join('\n');
 

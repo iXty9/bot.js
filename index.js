@@ -71,6 +71,24 @@ const commands = [
     }]
   },
   {
+    name: 'send',
+    description: 'Send a message to the current channel',
+    options: [{
+      name: 'message',
+      description: 'Message to send',
+      type: 3,
+      required: true
+    }]
+  },
+  {
+    name: 'stats',
+    description: 'Show bot statistics and uptime'
+  },
+  {
+    name: 'clear',
+    description: 'Clear message composition'
+  },
+  {
     name: 'help',
     description: 'Show available commands and their usage'
   }
@@ -129,6 +147,15 @@ client.on('interactionCreate', async (interaction) => {
         break;
       case 'channel':
         await commandHandler.handleChannelCommand(interaction);
+        break;
+      case 'send':
+        await commandHandler.handleSendCommand(interaction);
+        break;
+      case 'stats':
+        await commandHandler.handleStatsCommand(interaction);
+        break;
+      case 'clear':
+        await commandHandler.handleClearCommand(interaction);
         break;
       case 'help':
         await commandHandler.handleHelpCommand(interaction);
