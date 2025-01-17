@@ -426,107 +426,109 @@ const BotManager = () => {
           )}
 
           {activeTab === 'Messages' && (
-            <div className="space-y-4">
-              {error && (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <div className="grid grid-cols-2 gap-10 mb-8">
-                <Select
-                  value={selectedChannel?.id || ""}
-                  onValueChange={(value) => {
-                      const channel = channels?.find(c => c.id === value);
-                      setSelectedChannel(channel || null);
-                      setSelectedThread(null); // Reset thread when channel changes
-                    }}
-                    disabled={isLoadingChannels}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a channel..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.isArray(channels) && channels.map(channel => (
-                        <SelectItem key={channel.id} value={channel.id}>
-                          {channel.name} ({channel.guildName})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                <Select
-                    value={selectedThread?.id || "no_thread"}
+            <>
+              <div className="space-y-4">
+                {error && (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                <div className="grid grid-cols-2 gap-10 mb-8">
+                  <Select
+                    value={selectedChannel?.id || ""}
                     onValueChange={(value) => {
-                      if (value === "no_thread") {
-                        setSelectedThread(null);
-                        return;
-                      }
-                      const thread = selectedChannel?.threads?.find(t => t.id === value);
-                      setSelectedThread(thread || null);
-                    }}
-                    disabled={!selectedChannel}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a thread..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="no_thread">No thread</SelectItem>
-                      {selectedChannel?.threads?.map(thread => (
-                        <SelectItem key={thread.id} value={thread.id}>
-                          {thread.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-              </div>
+                        const channel = channels?.find(c => c.id === value);
+                        setSelectedChannel(channel || null);
+                        setSelectedThread(null); // Reset thread when channel changes
+                      }}
+                      disabled={isLoadingChannels}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a channel..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.isArray(channels) && channels.map(channel => (
+                          <SelectItem key={channel.id} value={channel.id}>
+                            {channel.name} ({channel.guildName})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  <Select
+                      value={selectedThread?.id || "no_thread"}
+                      onValueChange={(value) => {
+                        if (value === "no_thread") {
+                          setSelectedThread(null);
+                          return;
+                        }
+                        const thread = selectedChannel?.threads?.find(t => t.id === value);
+                        setSelectedThread(thread || null);
+                      }}
+                      disabled={!selectedChannel}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a thread..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="no_thread">No thread</SelectItem>
+                        {selectedChannel?.threads?.map(thread => (
+                          <SelectItem key={thread.id} value={thread.id}>
+                            {thread.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                </div>
 
-              <div>
-                <Textarea
-                  placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  disabled={!selectedChannel}
-                  className="min-h-[300px] mb-8"
-                />
-              
-                <div className="flex justify-end gap-4">
-                  <button
-                    style={{
-                      ...styles.button,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                    onClick={() => setMessage('')}
-                  >
-                    <Trash2 size={16} />
-                    Clear
-                  </button>
-                  <Button
-                    style={{
-                      ...styles.button,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                    onClick={handleSendMessage}
-                    disabled={!message.trim() || isSending}
-                  >
-                      {isSending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <Send size={16} />
-                          Send Message
-                        </>
-                      )}
-                    </Button>
+                <div>
+                  <Textarea
+                    placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    disabled={!selectedChannel}
+                    className="min-h-[300px] mb-8"
+                  />
+                
+                  <div className="flex justify-end gap-4">
+                    <button
+                      style={{
+                        ...styles.button,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                      onClick={() => setMessage('')}
+                    >
+                      <Trash2 size={16} />
+                      Clear
+                    </button>
+                    <Button
+                      style={{
+                        ...styles.button,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                      onClick={handleSendMessage}
+                      disabled={!message.trim() || isSending}
+                    >
+                        {isSending ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Send size={16} />
+                            Send Message
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
 
           {activeTab === 'Slash Commands' && (
