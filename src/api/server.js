@@ -79,7 +79,7 @@ app.post('/api/status', authenticateToken, async (req, res) => {
     const result = await botManager.changeStatus(status);
     res.json({ message: result });
   } catch (error) {
-    console.error('Error changing status:', error);
+    console.error('Server Error:', error);
     res.status(500).json({ error: error.message || 'Failed to change status' });
   }
 });
