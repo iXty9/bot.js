@@ -226,26 +226,31 @@ app.post('/api/commands', authenticateToken, async (req, res) => {
     const { command, args = [] } = req.body;
     
     switch (command) {
-      case 'status':
-        const statusResult = await botManager.changeStatus(args[0]);
-        res.json({ result: statusResult });
-        break;
-        
-      case 'send':
-        if (!args[0] || !args[1]) {
-          throw new Error('Channel ID and message are required');
-        }
-        const sendResult = await botManager.sendMessage(args[1], args[0]);
-        res.json({ result: sendResult });
-        break;
-        
       case 'fact':
         const response = await axios.get('https://uselessfacts.jsph.pl/random.json?language=en');
         res.json({ result: response.data.text });
         break;
-        
+
+      case 'status':
+        if (!args[0] || !['online', 'idle', 'dnd', 'invisible'].includes(args[0])) {
+          throw new Error('Invalid status. Must be one of: online, idle, dnd, invisible');
+        }
+        const statusResult = await botManager.changeStatus(args[0]);
+        res.json({ result: statusResult });
+        break;
+
+      case 'help':
+        const helpText = [
+          '**Available Commands:**',
+          '`/fact` - Get a random fact',
+          '`/status <newstatus>` - Change bot status (online, idle, dnd, invisible)',
+          '`/help` - Show this help message'
+        ].join('\n');
+        res.json({ result: helpText });
+        break;
+
       default:
-        res.status(400).json({ error: `Unknown command: ${command}` });
+        throw new Error(`Unknown command: ${command}`);
     }
   } catch (error) {
     console.error('Server Error:', error);

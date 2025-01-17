@@ -412,19 +412,10 @@ class CommandHandler {
   async handleHelpCommand(interaction) {
     try {
       const helpText = [
-        '**Available Slash Commands:**',
-        '',
-        '`/fact` - Get an interesting random fact',
-        '`/status <newstatus>` - Change the bot\'s status',
-        '  Options for status:',
-        '  • online - Show as online',
-        '  • idle - Show as idle/away',
-        '  • dnd - Show as Do Not Disturb',
-        '  • invisible - Appear offline',
-        '',
-        '`/help` - Show this help message',
-        '',
-        '*All command responses are only visible to you.*'
+        '**Available Commands:**',
+        '`/fact` - Get a random fact',
+        '`/status <newstatus>` - Change bot status (online, idle, dnd, invisible)',
+        '`/help` - Show this help message'
       ].join('\n');
 
       await interaction.reply({
