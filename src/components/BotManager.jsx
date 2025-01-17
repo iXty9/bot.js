@@ -230,10 +230,14 @@ const BotManager = () => {
   const fetchEnvVars = async () => {
     try {
       const response = await fetch('/api/env');
+      if (!response.ok) {
+        throw new Error('Failed to fetch environment variables');
+      }
       const data = await response.json();
       setEnvVars(data);
     } catch (error) {
       console.error('Error fetching environment variables:', error);
+      setError('Failed to load environment variables');
     }
   };
   const handleSendMessage = async () => {
