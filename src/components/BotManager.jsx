@@ -166,7 +166,7 @@ const BotManager = () => {
           setInitialized(true);
         } catch (error) {
           console.error('Error fetching initial data:', error);
-          setLocalError('Failed to load initial data');
+          setLocalError('Failed to load initial data. Please check your server connection.');
         } finally {
           setIsLoading(false);
         }
@@ -231,10 +231,11 @@ const BotManager = () => {
     try {
       const response = await fetch('/api/env');
       if (!response.ok) {
-        throw new Error('Failed to fetch environment variables');
+        throw new Error(`Failed to fetch environment variables: ${response.statusText}`);
       }
       const data = await response.json();
       setEnvVars((prevEnvVars) => ({ ...prevEnvVars, ...data }));
+      setLocalError(''); // Clear any previous errors
     } catch (error) {
       console.error('Error fetching environment variables:', error);
       setLocalError('Failed to load environment variables');
