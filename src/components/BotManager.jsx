@@ -12,6 +12,16 @@ const BotManager = () => {
   const [message, setMessage] = useState('');
   const [logs, setLogs] = useState([]);
   const [output, setOutput] = useState('');
+  
+  // Clear output after delay
+  useEffect(() => {
+    if (output) {
+      const timer = setTimeout(() => {
+        setOutput('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [output]);
   const [status, setStatus] = useState('online');
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState('');
@@ -192,7 +202,7 @@ const BotManager = () => {
       
       const data = await response.json();
       setStatus(newStatus);
-      setOutput(data.message || `Status changed to ${newStatus}`);
+      setOutput(`Status changed to ${newStatus}`);
     } catch (err) {
       console.error('Status change error:', err);
       setLocalError(err.message || 'Failed to update status');
@@ -218,7 +228,7 @@ const BotManager = () => {
       }, {
         onSuccess: () => {
           setMessage('');
-          setOutput('Message sent successfully');
+          setOutput('Message sent successfully!');
           // Refetch messages after sending
           queryClient.invalidateQueries(['messages', selectedChannel.id]);
         },

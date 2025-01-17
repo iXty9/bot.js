@@ -236,7 +236,6 @@ app.use(express.static(path.join(__dirname, '../../src/public')));
 
 // Handle root route and all non-API routes
 app.get(/^(?!\/api\/).+/, (req, res) => {
-  console.log('Serving index.html...');
   res.sendFile(path.join(__dirname, '../../src/public/index.html'));
 });
 
