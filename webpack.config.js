@@ -6,7 +6,7 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, 'src/public'),
     filename: 'bundle.js',
-    publicPath: '/'
+    publicPath: ''
   },
   module: {
     rules: [
@@ -22,7 +22,29 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        use: ['style-loader', 'css-loader', 'postcss-loader']
+        use: [
+          'style-loader',
+          {
+            loader: 'css-loader',
+            options: {
+              importLoaders: 1
+            }
+          },
+          {
+            loader: 'postcss-loader',
+            options: {
+              postcssOptions: {
+                plugins: [
+                  require('tailwindcss'),
+                  require('autoprefixer'),
+                  require('postcss-preset-env')({
+                    stage: 1
+                  })
+                ]
+              }
+            }
+          }
+        ]
       }
     ]
   },
@@ -31,7 +53,13 @@ module.exports = {
   },
   plugins: [
     new Dotenv({
-      systemvars: true
+      systemvars: true,
+      safe: true,
+      allowEmptyValues: true,
+      defaults: true
     })
   ],
+  performance: {
+    hints: false
+  },
 };
