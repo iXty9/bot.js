@@ -192,7 +192,18 @@ app.patch('/api/messages/:channelId/:messageId', authenticateToken, async (req, 
   }
 });
 
-app.post('/api/send', authenticateToken, async (req, res) => {
+app.post('/api/send', async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  if (token !== process.env.DISCORD_TOKEN) {
+    return res.status(403).json({ error: 'Invalid token' });
+  }
+
   try {
     const { message, channelId, threadId } = req.body;
     
@@ -204,7 +215,7 @@ app.post('/api/send', authenticateToken, async (req, res) => {
     res.json({ message: result });
   } catch (error) {
     console.error('Error sending message:', error);
-    res.status(500).json({ error: 'Failed to send message' });
+    res.status(500).json({ error: error.message || 'Failed to send message' });
   }
 });
 
