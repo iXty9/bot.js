@@ -761,9 +761,52 @@ const BotManager = () => {
           )}
 
           {activeTab === 'Configuration' && (
-            <div style={{ height: '460px' }}>
+            <div style={{ height: '460px', overflowY: 'auto' }}>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Configuration Settings</h3>
+                <div className="space-x-2">
+                  <Button
+                    onClick={async () => {
+                      const config = JSON.stringify(envVars, null, 2);
+                      const blob = new Blob([config], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'bot-config.json';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    Export Config
+                  </Button>
+                  <Button
+                    onClick={() => document.getElementById('configImport').click()}
+                  >
+                    Import Config
+                  </Button>
+                  <input
+                    id="configImport"
+                    type="file"
+                    accept=".json"
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      try {
+                        const file = e.target.files[0];
+                        const text = await file.text();
+                        const config = JSON.parse(text);
+                        setEnvVars(config);
+                        setOutput('Configuration imported successfully');
+                      } catch (err) {
+                        setLocalError('Failed to import configuration: ' + err.message);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
               <div className="flex flex-col space-y-4">
-                {['API_PORT', 'API_HOST', 'DISCORD_TOKEN', 'JWT_SECRET', 'WEBHOOK_URL'].map((envVar) => (
+                {['API_PORT', 'API_HOST', 'DISCORD_TOKEN', 'JWT_SECRET', 'WEBHOOK_URL', 'BOT_NAME'].map((envVar) => (
                   <div key={envVar} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <label style={{ flex: '1', fontWeight: 'bold' }}>{envVar}</label>
                     <div style={{ display: 'flex', alignItems: 'center', flex: '2' }}>
@@ -778,57 +821,140 @@ const BotManager = () => {
                         }}
                       />
                       {(envVar === 'JWT_SECRET' || envVar === 'DISCORD_TOKEN') && (
-                        <button
-                          onClick={(e) => {
-                            const input = e.target.previousSibling;
-                            input.type = input.type === 'password' ? 'text' : 'password';
-                            e.target.textContent = input.type === 'password' ? 'Show' : 'Hide';
-                          }}
-                          style={{
-                            ...styles.button,
-                            padding: '0.5rem',
-                            backgroundColor: 'var(--primary)',
-                            color: 'white',
-                            marginLeft: '0.5rem'
-                          }}
-                        >
-                          Show
-                        </button>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={(e) => {
+                              const input = e.target.parentElement.previousSibling;
+                              input.type = input.type === 'password' ? 'text' : 'password';
+                              e.target.textContent = input.type === 'password' ? 'Show' : 'Hide';
+                            }}
+                            style={{
+                              ...styles.button,
+                              padding: '0.5rem',
+                              backgroundColor: 'var(--primary)',
+                              color: 'white',
+                            }}
+                          >
+                            Show
+                          </button>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(envVars[envVar]);
+                              setOutput(`${envVar} copied to clipboard`);
+                            }}
+                            style={{
+                              ...styles.button,
+                              padding: '0.5rem',
+                              backgroundColor: 'var(--secondary)',
+                              color: 'var(--secondary-foreground)',
+                            }}
+                          >
+                            Copy
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
                 ))}
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button
-                    style={{
-                      ...styles.button,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      backgroundColor: 'var(--primary)',
-                      color: 'white'
-                    }}
-                    onClick={async () => {
-                      try {
-                        const response = await fetch('/api/env', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                          },
-                          body: JSON.stringify(envVars),
-                        });
-                        if (!response.ok) {
-                          throw new Error('Failed to update configuration');
+                <div className="flex justify-between mt-6">
+                  <div className="space-x-2">
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await fetchEnvVars();
+                          setOutput('Configuration reloaded');
+                        } catch (err) {
+                          setLocalError('Failed to reload configuration');
                         }
-                        setOutput('Configuration updated successfully and service restarted');
-                        setLocalError('');
-                      } catch (err) {
-                        setLocalError('Failed to update configuration');
-                      }
-                    }}
-                  >
-                    Save Configuration
-                  </button>
+                      }}
+                    >
+                      Reload
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={async () => {
+                        if (window.confirm('Are you sure you want to restart the bot? This will disconnect all current sessions.')) {
+                          try {
+                            const response = await fetch('/api/restart', {
+                              method: 'POST',
+                              headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('discord_token')}`,
+                              },
+                            });
+                            if (!response.ok) throw new Error('Failed to restart bot');
+                            setOutput('Bot is restarting...');
+                          } catch (err) {
+                            setLocalError('Failed to restart bot: ' + err.message);
+                          }
+                        }
+                      }}
+                    >
+                      Restart Bot
+                    </Button>
+                  </div>
+                  <div className="space-x-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to reset all settings to default?')) {
+                          fetchEnvVars();
+                        }
+                      }}
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        try {
+                          // Validate required fields
+                          const required = ['API_PORT', 'API_HOST', 'DISCORD_TOKEN'];
+                          const missing = required.filter(key => !envVars[key]);
+                          if (missing.length > 0) {
+                            throw new Error(`Required fields missing: ${missing.join(', ')}`);
+                          }
+
+                          // Validate port number
+                          if (!/^\d+$/.test(envVars.API_PORT)) {
+                            throw new Error('API_PORT must be a number');
+                          }
+
+                          const response = await fetch('/api/env', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${localStorage.getItem('discord_token')}`,
+                            },
+                            body: JSON.stringify(envVars),
+                          });
+                          
+                          if (!response.ok) {
+                            const error = await response.text();
+                            throw new Error(error || 'Failed to update configuration');
+                          }
+                          
+                          setOutput('Configuration updated successfully');
+                          setLocalError('');
+                          
+                          // Prompt for restart
+                          if (window.confirm('Configuration saved. Would you like to restart the bot to apply changes?')) {
+                            const restartResponse = await fetch('/api/restart', {
+                              method: 'POST',
+                              headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('discord_token')}`,
+                              },
+                            });
+                            if (!restartResponse.ok) throw new Error('Failed to restart bot');
+                            setOutput('Bot is restarting with new configuration...');
+                          }
+                        } catch (err) {
+                          setLocalError(err.message || 'Failed to update configuration');
+                        }
+                      }}
+                    >
+                      Save Configuration
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
