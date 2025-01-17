@@ -151,9 +151,7 @@ const startServer = () => {
           if (server) {
             await new Promise(resolve => server.close(resolve));
             console.log('HTTP server closed');
-            console.log('Discord client destroyed');
-          } else {
-            console.log('No Discord client to destroy');
+          }
           if (client) {
             await client.destroy();
             console.log('Discord client destroyed');
