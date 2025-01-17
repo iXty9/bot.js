@@ -624,7 +624,6 @@ const BotManager = () => {
               </Alert>
             )}
           </div>
-          </div>
         </div>
       </div>
   );
