@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import BotManager from './components/BotManager.jsx';
+import ErrorBoundary from './components/ErrorBoundary';
 import './public/styles.css';
 
 const container = document.getElementById('root');
