@@ -159,6 +159,7 @@ const BotManager = () => {
     let mounted = true;
     let retryCount = 0;
     const maxRetries = 3;
+    const retryDelay = 1000; // 1 second between retries
     
     const fetchData = async () => {
       if (mounted && !initialized) {
@@ -167,8 +168,17 @@ const BotManager = () => {
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 5000);
           
+          const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
+          if (!token) {
+            throw new Error('No authentication token found');
+          }
+
           const envResponse = await fetch('/api/env', {
-            signal: controller.signal
+            signal: controller.signal,
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json'
+            }
           });
           
           clearTimeout(timeout);
@@ -253,16 +263,44 @@ const BotManager = () => {
 
   const fetchEnvVars = async () => {
     try {
-      const response = await fetch('/api/env');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch environment variables: ${response.statusText}`);
+      const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
+      if (!token) {
+        throw new Error('No authentication token found');
       }
+
+      const response = await fetch('/api/env', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
-      setEnvVars((prevEnvVars) => ({ ...prevEnvVars, ...data }));
+      
+      // Validate the response data
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid environment data received');
+      }
+
+      // Update state with new values, keeping existing ones if not in response
+      setEnvVars(prevVars => ({
+        ...prevVars,
+        ...Object.fromEntries(
+          Object.entries(data).map(([key, value]) => [key, value ?? ''])
+        )
+      }));
+
       setLocalError(''); // Clear any previous errors
+      setOutput('Configuration loaded successfully');
     } catch (error) {
       console.error('Error fetching environment variables:', error);
-      setLocalError('Failed to load environment variables');
+      setLocalError(`Failed to load environment variables: ${error.message}`);
+      setEnvVars({}); // Reset to empty state on error
     }
   };
   const handleSendMessage = async () => {
