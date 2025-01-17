@@ -7,11 +7,22 @@ const fs = require('fs');
 const path = require('path');
 
 // Load environment variables
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+const envPath = path.join(__dirname, '../../.env');
+if (!fs.existsSync(envPath)) {
+  console.error('Error: .env file not found');
+  process.exit(1);
+}
+
+dotenv.config({ path: envPath });
 
 // Validate required environment variables
-if (!process.env.DISCORD_TOKEN || process.env.DISCORD_TOKEN === 'your-token-here') {
-  console.error('Error: Valid DISCORD_TOKEN is required in .env file');
+if (!process.env.DISCORD_TOKEN) {
+  console.error('Error: DISCORD_TOKEN is required in .env file');
+  process.exit(1);
+}
+
+if (process.env.DISCORD_TOKEN === 'your-token-here' || process.env.DISCORD_TOKEN.trim() === '') {
+  console.error('Error: Please configure a valid DISCORD_TOKEN in .env file');
   process.exit(1);
 }
 
@@ -33,23 +44,37 @@ app.use(bodyParser.json());
 
 // Authentication middleware
 function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  
-  if (!token) {
-    // Check for token in query params
-    const queryToken = req.query.token;
-    if (queryToken && queryToken === process.env.DISCORD_TOKEN) {
-      next();
-      return;
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    // First check if Discord token is configured
+    if (!process.env.DISCORD_TOKEN) {
+      console.error('DISCORD_TOKEN not configured in environment');
+      return res.status(500).json({ error: 'Server configuration error' });
     }
-    return res.status(401).json({ error: 'No token provided' });
-  }
 
-  if (token === process.env.DISCORD_TOKEN) {
-    next();
-  } else {
-    return res.status(403).json({ error: 'Invalid token' });
+    if (!token) {
+      // Check for token in query params
+      const queryToken = req.query.token;
+      if (queryToken && queryToken === process.env.DISCORD_TOKEN) {
+        next();
+        return;
+      }
+      console.error('No authentication token provided');
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Compare with stored token
+    if (token === process.env.DISCORD_TOKEN) {
+      next();
+    } else {
+      console.error('Invalid token provided');
+      return res.status(403).json({ error: 'Invalid authentication token' });
+    }
+  } catch (error) {
+    console.error('Authentication error:', error);
+    return res.status(500).json({ error: 'Authentication failed' });
   }
 }
 
