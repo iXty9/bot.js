@@ -264,17 +264,7 @@ const BotManager = () => {
     }
   }, []);
 
-  if (isLoading) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
-            Loading...
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Loading state handled by parent Suspense
 
   return (
     <div style={styles.container}>
