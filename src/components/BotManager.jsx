@@ -426,223 +426,220 @@ const BotManager = () => {
           )}
 
           {activeTab === 'Messages' && (
-            <>
-              <div className="space-y-4">
-                {error && (
-                  <Alert variant="destructive" className="mb-4">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-                <div className="grid grid-cols-2 gap-10 mb-8">
-                  <Select
-                    value={selectedChannel?.id || ""}
+            <div className="space-y-4">
+              {error && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <div className="grid grid-cols-2 gap-10 mb-8">
+                <Select
+                  value={selectedChannel?.id || ""}
+                  onValueChange={(value) => {
+                      const channel = channels?.find(c => c.id === value);
+                      setSelectedChannel(channel || null);
+                      setSelectedThread(null); // Reset thread when channel changes
+                    }}
+                    disabled={isLoadingChannels}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a channel..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.isArray(channels) && channels.map(channel => (
+                        <SelectItem key={channel.id} value={channel.id}>
+                          {channel.name} ({channel.guildName})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                <Select
+                    value={selectedThread?.id || "no_thread"}
                     onValueChange={(value) => {
-                        const channel = channels?.find(c => c.id === value);
-                        setSelectedChannel(channel || null);
-                        setSelectedThread(null); // Reset thread when channel changes
-                      }}
-                      disabled={isLoadingChannels}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a channel..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.isArray(channels) && channels.map(channel => (
-                          <SelectItem key={channel.id} value={channel.id}>
-                            {channel.name} ({channel.guildName})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  <Select
-                      value={selectedThread?.id || "no_thread"}
-                      onValueChange={(value) => {
-                        if (value === "no_thread") {
-                          setSelectedThread(null);
-                          return;
-                        }
-                        const thread = selectedChannel?.threads?.find(t => t.id === value);
-                        setSelectedThread(thread || null);
-                      }}
-                      disabled={!selectedChannel}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a thread..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="no_thread">No thread</SelectItem>
-                        {selectedChannel?.threads?.map(thread => (
-                          <SelectItem key={thread.id} value={thread.id}>
-                            {thread.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                </div>
-
-                <div>
-                  <Textarea
-                    placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
+                      if (value === "no_thread") {
+                        setSelectedThread(null);
+                        return;
+                      }
+                      const thread = selectedChannel?.threads?.find(t => t.id === value);
+                      setSelectedThread(thread || null);
+                    }}
                     disabled={!selectedChannel}
-                    className="min-h-[300px] mb-8"
-                  />
-                
-                  <div className="flex justify-end gap-4">
-                    <button
-                      style={{
-                        ...styles.button,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                      onClick={() => setMessage('')}
-                    >
-                      <Trash2 size={16} />
-                      Clear
-                    </button>
-                    <Button
-                      style={{
-                        ...styles.button,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                      onClick={handleSendMessage}
-                      disabled={!message.trim() || isSending}
-                    >
-                        {isSending ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <Send size={16} />
-                            Send Message
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a thread..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no_thread">No thread</SelectItem>
+                      {selectedChannel?.threads?.map(thread => (
+                        <SelectItem key={thread.id} value={thread.id}>
+                          {thread.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+              </div>
+
+              <div>
+                <Textarea
+                  placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  disabled={!selectedChannel}
+                  className="min-h-[300px] mb-8"
+                />
+              
+                <div className="flex justify-end gap-4">
+                  <button
+                    style={{
+                      ...styles.button,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                    onClick={() => setMessage('')}
+                  >
+                    <Trash2 size={16} />
+                    Clear
+                  </button>
+                  <Button
+                    style={{
+                      ...styles.button,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                    onClick={handleSendMessage}
+                    disabled={!message.trim() || isSending}
+                  >
+                      {isSending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send size={16} />
+                          Send Message
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
               </div>
-            </>
           )}
 
           {activeTab === 'Slash Commands' && (
-              <div style={{ height: '460px' }}>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">Slash Commands</h3>
-                  <Button
-                    onClick={() => setCommands([...commands, { name: '', description: '', options: [] }])}
-                    className="gap-2"
-                  >
-                    <Command size={16} />
-                    Add Command
-                  </Button>
-                </div>
-                <div className="bg-card border border-border rounded-lg p-4 space-y-4 h-[calc(460px-4rem)] overflow-y-auto">
-                  {commands.length > 0 ? (
-                    commands.map((cmd, index) => (
-                      <div key={index} style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
-                        <input
-                          type="text"
-                          placeholder="Command name"
-                          value={cmd.name}
-                          onChange={(e) => {
-                            const newCommands = [...commands];
-                            newCommands[index].name = e.target.value;
-                            setCommands(newCommands);
-                          }}
-                          style={{
-                            ...styles.select,
-                            flex: '1'
-                          }}
-                        />
-                        <input
-                          type="text"
-                          placeholder="Command description"
-                          value={cmd.description}
-                          onChange={(e) => {
-                            const newCommands = [...commands];
-                            newCommands[index].description = e.target.value;
-                            setCommands(newCommands);
-                          }}
-                          style={{
-                            ...styles.select,
-                            flex: '2'
-                          }}
-                        />
-                        <button
-                          onClick={() => {
-                            const newCommands = commands.filter((_, i) => i !== index);
-                            setCommands(newCommands);
-                          }}
-                          style={{
-                            ...styles.button,
-                            backgroundColor: 'var(--destructive)',
-                            color: 'white'
-                          }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
-                      No slash commands configured. Click "Add Command" to create one.
+            <div style={{ height: '460px' }}>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Slash Commands</h3>
+                <Button
+                  onClick={() => setCommands([...commands, { name: '', description: '', options: [] }])}
+                  className="gap-2"
+                >
+                  <Command size={16} />
+                  Add Command
+                </Button>
+              </div>
+              <div className="bg-card border border-border rounded-lg p-4 space-y-4 h-[calc(460px-4rem)] overflow-y-auto">
+                {commands.length > 0 ? (
+                  commands.map((cmd, index) => (
+                    <div key={index} style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
+                      <input
+                        type="text"
+                        placeholder="Command name"
+                        value={cmd.name}
+                        onChange={(e) => {
+                          const newCommands = [...commands];
+                          newCommands[index].name = e.target.value;
+                          setCommands(newCommands);
+                        }}
+                        style={{
+                          ...styles.select,
+                          flex: '1'
+                        }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Command description"
+                        value={cmd.description}
+                        onChange={(e) => {
+                          const newCommands = [...commands];
+                          newCommands[index].description = e.target.value;
+                          setCommands(newCommands);
+                        }}
+                        style={{
+                          ...styles.select,
+                          flex: '2'
+                        }}
+                      />
+                      <button
+                        onClick={() => {
+                          const newCommands = commands.filter((_, i) => i !== index);
+                          setCommands(newCommands);
+                        }}
+                        style={{
+                          ...styles.button,
+                          backgroundColor: 'var(--destructive)',
+                          color: 'white'
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
-                  )}
-                </div>
-                {commands.length > 0 && (
-                  <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
-                    <button
-                      style={{
-                        ...styles.button,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        backgroundColor: 'var(--primary)',
-                        color: 'white'
-                      }}
-                      onClick={async () => {
-                        try {
-                          const response = await fetch('/api/commands', {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              'Authorization': `Bearer ${localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN}`
-                            },
-                            body: JSON.stringify({ commands })
-                          });
-                          if (response.ok) {
-                            setError('');
-                            setOutput('Slash commands updated successfully');
-                          } else {
-                            throw new Error('Failed to update slash commands');
-                          }
-                        } catch (err) {
-                          setError('Failed to update slash commands');
-                        }
-                      }}
-                    >
-                      Save Commands
-                    </button>
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
+                    No slash commands configured. Click "Add Command" to create one.
                   </div>
                 )}
               </div>
-            )}
+              {commands.length > 0 && (
+                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    style={{
+                      ...styles.button,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      backgroundColor: 'var(--primary)',
+                      color: 'white'
+                    }}
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/commands', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN}`
+                          },
+                          body: JSON.stringify({ commands })
+                        });
+                        if (response.ok) {
+                          setError('');
+                          setOutput('Slash commands updated successfully');
+                        } else {
+                          throw new Error('Failed to update slash commands');
+                        }
+                      } catch (err) {
+                        setError('Failed to update slash commands');
+                      }
+                    }}
+                  >
+                    Save Commands
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
-            {error && (
-              <Alert variant="destructive" className="mt-4">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-          </div>
+          {error && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
         </div>
       </div>
+    </div>
   );
 };
 
