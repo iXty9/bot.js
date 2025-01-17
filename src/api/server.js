@@ -2,6 +2,12 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
+const fs = require('fs');
+const path = require('path');
+
+// Load environment variables
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 const { Server } = require('socket.io');
 const http = require('http');
 const BotManager = require('../BotManager');
@@ -65,6 +71,71 @@ function initializeBotManager(client) {
 module.exports = { initializeBotManager, app };
 
 // API routes
+// Environment variables endpoint
+app.get('/api/env', authenticateToken, (req, res) => {
+  try {
+    // Only send non-sensitive environment variables
+    const envVars = {
+      API_PORT: process.env.API_PORT || '6987',
+      API_HOST: process.env.API_HOST || '0.0.0.0',
+      DISCORD_TOKEN: process.env.DISCORD_TOKEN || '',
+      JWT_SECRET: process.env.JWT_SECRET || '',
+      WEBHOOK_URL: process.env.WEBHOOK_URL || '',
+      BOT_NAME: process.env.BOT_NAME || ''
+    };
+    res.json(envVars);
+  } catch (error) {
+    console.error('Error retrieving environment variables:', error);
+    res.status(500).json({ error: 'Failed to retrieve environment variables' });
+  }
+});
+
+app.post('/api/env', authenticateToken, async (req, res) => {
+  try {
+    const updates = req.body;
+    const envPath = path.join(__dirname, '../../.env');
+    
+    // Read existing .env file or create from defaults if it doesn't exist
+    let envContent = '';
+    if (fs.existsSync(envPath)) {
+      envContent = fs.readFileSync(envPath, 'utf8');
+    } else {
+      const defaultsPath = path.join(__dirname, '../../.env.defaults');
+      if (fs.existsSync(defaultsPath)) {
+        envContent = fs.readFileSync(defaultsPath, 'utf8');
+      }
+    }
+
+    // Update environment variables
+    const envLines = envContent.split('\n');
+    const updatedLines = envLines.map(line => {
+      const [key] = line.split('=');
+      if (key && updates[key.trim()]) {
+        return `${key.trim()}=${updates[key.trim()]}`;
+      }
+      return line;
+    });
+
+    // Add any new variables that weren't in the file
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!envLines.some(line => line.startsWith(key))) {
+        updatedLines.push(`${key}=${value}`);
+      }
+    });
+
+    // Write back to .env file
+    fs.writeFileSync(envPath, updatedLines.join('\n'));
+
+    // Reload environment variables
+    dotenv.config({ path: envPath });
+
+    res.json({ message: 'Environment variables updated successfully' });
+  } catch (error) {
+    console.error('Error updating environment variables:', error);
+    res.status(500).json({ error: 'Failed to update environment variables' });
+  }
+});
+
 app.get('/api/status', authenticateToken, async (req, res) => {
   try {
     const status = botManager.client.user.presence.status;
