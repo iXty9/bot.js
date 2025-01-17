@@ -217,7 +217,7 @@ const BotManager = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ newStatus })
+        body: JSON.stringify({ status: newStatus })
       });
       
       if (!response.ok) {
@@ -228,8 +228,9 @@ const BotManager = () => {
       setStatus(newStatus);
       setOutput(data.message || `Status changed to ${newStatus}`);
     } catch (err) {
+      console.error('Status change error:', err);
       setError(err.message || 'Failed to update status');
-      setStatus(prevStatus => prevStatus); // Revert to previous status
+      throw err; // Re-throw to handle in the UI
     }
   };
 
@@ -338,18 +339,15 @@ const BotManager = () => {
                 backgroundRepeat: 'no-repeat',
                 backgroundPosition: 'right 0.5rem center',
                 backgroundSize: '1rem',
-                '&:hover': {
-                  borderColor: 'hsl(var(--primary))',
-                  background: 'hsl(var(--secondary)/0.8)'
-                },
-                '&:focus': {
-                  outline: 'none',
-                  borderColor: 'hsl(var(--primary))',
-                  boxShadow: '0 0 0 2px hsl(var(--primary)/0.2)'
+              }}
+              value={status}
+              onChange={async (e) => {
+                try {
+                  await handleStatusChange(e.target.value);
+                } catch (err) {
+                  console.error('Failed to change status:', err);
                 }
               }}
-              value={status} 
-              onChange={(e) => handleStatusChange(e.target.value)}
             >
               <option value="online">
                 ⬤ Online

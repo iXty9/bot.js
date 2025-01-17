@@ -61,6 +61,21 @@ app.get('/api/status', authenticateToken, async (req, res) => {
   }
 });
 
+app.post('/api/status', authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+    
+    const result = await botManager.changeStatus(status);
+    res.json({ message: result });
+  } catch (error) {
+    console.error('Error changing status:', error);
+    res.status(500).json({ error: error.message || 'Failed to change status' });
+  }
+});
+
 app.get('/api/logs', authenticateToken, (req, res) => {
   try {
     const logs = botManager.getLogs();
