@@ -104,6 +104,11 @@ if (!process.env.DISCORD_TOKEN) {
   process.exit(1);
 }
 
+if (!process.env.API_PORT || !process.env.API_HOST) {
+  console.error('API_PORT or API_HOST is not set in the environment variables.');
+  process.exit(1);
+}
+
 // Log in to Discord.
 client.login(process.env.DISCORD_TOKEN).catch((error) => {
   console.error('Failed to log in:', error);
@@ -137,6 +142,7 @@ const startServer = () => {
         }
         console.log(`API server successfully running on http://${HOST}:${PORT}`);
         console.log('Server is now listening for incoming connections...');
+        console.log('Server is now listening for incoming connections...');
         resolve(server);
       });
 
@@ -160,7 +166,8 @@ const startServer = () => {
         }
       };
 
-      ['SIGTERM', 'SIGINT', 'SIGHUP'].forEach(signal => {
+      const signals = ['SIGTERM', 'SIGINT', 'SIGHUP'];
+      signals.forEach(signal => {
         process.on(signal, shutdown);
       });
 
@@ -174,6 +181,7 @@ const startServer = () => {
 // Start the server and handle any errors
 startServer().catch(error => {
   console.error('Failed to start server:', error);
+  console.log('Ensure that the API_PORT and API_HOST are correctly configured.');
   console.log('Ensure that the API_PORT and API_HOST are correctly configured.');
   process.exit(1);
 });
