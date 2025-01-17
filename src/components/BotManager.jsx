@@ -237,23 +237,31 @@ const BotManager = () => {
     if (!message.trim() || !selectedChannel) return;
     
     try {
+      setError('');
+      const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
       const response = await fetch('/api/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.DISCORD_TOKEN}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          message,
+          message: message.trim(),
           channelId: selectedChannel.id,
           threadId: selectedThread?.id
         })
       });
+
+      if (!response.ok) {
+        throw new Error(`Failed to send message: ${response.statusText}`);
+      }
+
       const data = await response.json();
-      setOutput('Message sent successfully');
+      setOutput(data.message || 'Message sent successfully');
       setMessage('');
     } catch (err) {
-      setError('Failed to send message');
+      console.error('Error sending message:', err);
+      setError(err.message || 'Failed to send message');
     }
   };
 
@@ -434,21 +442,24 @@ const BotManager = () => {
                   </select>
 
                   {selectedChannel?.type === 'forum' && (
-                    <select
-                      style={styles.select}
-                      value={selectedThread?.id || ''}
-                      onChange={(e) => {
-                        const thread = selectedChannel.threads.find(t => t.id === e.target.value);
-                        setSelectedThread(thread);
-                      }}
-                    >
-                      <option value="">Select a thread...</option>
-                      {selectedChannel.threads.map(thread => (
-                        <option key={thread.id} value={thread.id}>
-                          {thread.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div style={{ marginTop: '8px' }}>
+                      <select
+                        style={styles.select}
+                        value={selectedThread?.id || ''}
+                        onChange={(e) => {
+                          const thread = selectedChannel.threads?.find(t => t.id === e.target.value);
+                          setSelectedThread(thread || null);
+                        }}
+                        disabled={!selectedChannel?.threads?.length}
+                      >
+                        <option value="">Select a thread...</option>
+                        {selectedChannel.threads?.map(thread => (
+                          <option key={thread.id} value={thread.id}>
+                            {thread.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   )}
                 </div>
 
