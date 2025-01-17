@@ -386,7 +386,7 @@ const BotManager = () => {
         </div>
 
         <div style={{ marginTop: '20px' }}>
-          {activeTab === 'logs' && (
+          {activeTab === 'Logs' && (
               <div style={{ height: '460px' }}>
                 <div style={{ 
                   background: 'hsl(var(--card))',
@@ -395,29 +395,25 @@ const BotManager = () => {
                   padding: '1.5rem',
                   height: '460px',
                   fontSize: '0.9rem',
-                  color: 'var(--text-secondary)',
+                  color: 'hsl(var(--foreground))',
                   fontFamily: 'monospace',
                   overflowY: 'auto',
                   overflowX: 'hidden'
                 }}>
                   {loading ? (
-                    <div style={{ 
-                      display: 'flex', 
-                      justifyContent: 'center', 
-                      alignItems: 'center',
-                      height: '100%',
-                      color: 'hsl(var(--muted-foreground))'
-                    }}>
-                      Loading logs...
+                    <div className="flex items-center justify-center h-full">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
                   ) : Array.isArray(logs) && logs.length > 0 ? (
                     logs.map((log, index) => (
-                      <div key={index} style={{ padding: '4px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                        {typeof log === 'object' && log.log ? log.log : String(log)}
+                      <div key={index} className="py-1 border-b border-border/20 last:border-0">
+                        <span className="text-muted-foreground">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                        <span className="mx-2">-</span>
+                        <span>{typeof log === 'object' && log.log ? log.log : String(log)}</span>
                       </div>
                     ))
                   ) : (
-                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
                       No logs available
                     </div>
                   )}
@@ -593,31 +589,19 @@ const BotManager = () => {
               </div>
           )}
 
-          {activeTab === 'commands' && (
+          {activeTab === 'Slash Commands' && (
               <div style={{ height: '460px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <h3>Slash Commands</h3>
-                  <button
-                    style={{
-                      ...styles.button,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      backgroundColor: 'var(--primary)',
-                      color: 'white'
-                    }}
-                    onClick={() => setCommands([...commands, { name: '', description: '' }])}
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">Slash Commands</h3>
+                  <Button
+                    onClick={() => setCommands([...commands, { name: '', description: '', options: [] }])}
+                    className="gap-2"
                   >
                     <Command size={16} />
                     Add Command
-                  </button>
+                  </Button>
                 </div>
-                <div style={{
-                  background: 'var(--bg-primary)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                }}>
+                <div className="bg-card border border-border rounded-lg p-4 space-y-4 h-[calc(460px-4rem)] overflow-y-auto">
                   {commands.length > 0 ? (
                     commands.map((cmd, index) => (
                       <div key={index} style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
