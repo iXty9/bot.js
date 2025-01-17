@@ -16,7 +16,7 @@ const TabsList = React.forwardRef(({ className, ...props }, ref) => (
 ))
 TabsList.displayName = TabsPrimitive.List.displayName
 
-const TabsTrigger = React.forwardRef(({ className, ...props }, ref) => (
+const TabsTrigger = React.forwardRef(({ className, onFocus, ...props }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
