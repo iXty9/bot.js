@@ -141,8 +141,6 @@ const startServer = () => {
           return;
         }
         console.log(`API server successfully running on http://${HOST}:${PORT}`);
-        console.log('Server is now listening for incoming connections...');
-        console.log('Server is now listening for incoming connections...');
         resolve(server);
       });
 
@@ -153,7 +151,9 @@ const startServer = () => {
           if (server) {
             await new Promise(resolve => server.close(resolve));
             console.log('HTTP server closed');
-          }
+            console.log('Discord client destroyed');
+          } else {
+            console.log('No Discord client to destroy');
           if (client) {
             await client.destroy();
             console.log('Discord client destroyed');
@@ -173,6 +173,7 @@ const startServer = () => {
 
     } catch (error) {
       console.error('Critical server error:', error);
+      reject(error);
       reject(error);
     }
   });
