@@ -3,11 +3,9 @@ import * as SelectPrimitive from "@radix-ui/react-select"
 import { Check, ChevronDown } from "lucide-react"
 import { cn } from "../../lib/utils"
 
-const Select = ({ defaultValue = '', ...props }) => {
-  return (
-    <SelectPrimitive.Root defaultValue={defaultValue} {...props} />
-  )
-}
+const Select = React.forwardRef(({ defaultValue = '', ...props }, ref) => (
+  <SelectPrimitive.Root defaultValue={defaultValue} ref={ref} {...props} />
+))
 const SelectGroup = SelectPrimitive.Group
 const SelectValue = SelectPrimitive.Value
 
