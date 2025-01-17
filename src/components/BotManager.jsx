@@ -159,6 +159,9 @@ const BotManager = () => {
       if (mounted && !initialized) {
         setIsLoading(true);
         try {
+          const envResponse = await fetch('/api/env');
+          const envData = await envResponse.json();
+          setEnvVars(envData);
           await fetchLogs();
           setInitialized(true);
         } catch (error) {
@@ -216,6 +219,13 @@ const BotManager = () => {
   const { data: messages = [], isLoading: isLoadingMessages } = useMessageHistory(selectedChannel?.id);
   const { error, handleError } = useError();
   const [editingMessage, setEditingMessage] = useState(null);
+  const [envVars, setEnvVars] = useState({
+    API_PORT: '',
+    API_HOST: '',
+    DISCORD_TOKEN: '',
+    JWT_SECRET: '',
+    WEBHOOK_URL: ''
+  });
 
   const handleSendMessage = async () => {
     if (!message.trim() || !selectedChannel) return;
@@ -681,8 +691,8 @@ const BotManager = () => {
                     <label style={{ flex: '1', fontWeight: 'bold' }}>{envVar}</label>
                     <input
                       type={envVar.includes('TOKEN') || envVar.includes('SECRET') ? 'password' : 'text'}
-                      value={process.env[envVar] || ''}
-                      onChange={(e) => process.env[envVar] = e.target.value}
+                      value={envVars[envVar] || ''}
+                      onChange={(e) => setEnvVars({ ...envVars, [envVar]: e.target.value })}
                       style={{
                         ...styles.select,
                         flex: '2',
