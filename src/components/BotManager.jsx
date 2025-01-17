@@ -419,8 +419,8 @@ const BotManager = () => {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                <div className="flex gap-4 mb-4">
+                  <div className="flex-1">
                     <Select
                       value={selectedChannel?.id ?? ''}
                       onValueChange={(value) => {
@@ -444,29 +444,34 @@ const BotManager = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
 
-                    <select
-                      style={{ ...styles.select, flex: 1 }}
-                        value={selectedThread?.id ?? ''}
-                        onChange={(e) => {
-                          if (!e.target.value) {
-                            setSelectedThread(null);
-                            return;
-                          }
-                          const thread = selectedChannel?.threads?.find(t => t.id === e.target.value);
-                          setSelectedThread(thread || null);
-                        }}
-                        disabled={!selectedChannel?.threads?.length}
-                      >
-                        <option value="">Select a thread...</option>
+                  <div className="flex-1">
+                    <Select
+                      value={selectedThread?.id ?? ''}
+                      onValueChange={(value) => {
+                        if (!value) {
+                          setSelectedThread(null);
+                          return;
+                        }
+                        const thread = selectedChannel?.threads?.find(t => t.id === value);
+                        setSelectedThread(thread || null);
+                      }}
+                      disabled={!selectedChannel?.threads?.length}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a thread..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No thread</SelectItem>
                         {selectedChannel?.threads?.map(thread => (
-                          <option key={thread.id} value={thread.id}>
+                          <SelectItem key={thread.id} value={thread.id}>
                             {thread.name}
-                          </option>
+                          </SelectItem>
                         ))}
-                      </select>
-                    </div>
-                  )}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <Textarea
@@ -509,15 +514,7 @@ const BotManager = () => {
                   </Button>
                 </div>
 
-                <div style={{ 
-                  height: '460px', 
-                  marginTop: '20px',
-                  overflowY: 'auto',
-                  padding: '1rem',
-                  background: 'hsl(var(--secondary))',
-                  borderRadius: 'var(--radius)',
-                  border: '1px solid hsl(var(--border))'
-                }}>
+                <div className="h-[460px] mt-4 overflow-y-auto p-4 bg-card rounded-lg border border-border">
                   {isLoadingMessages ? (
                     <div className="flex items-center justify-center h-full">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
