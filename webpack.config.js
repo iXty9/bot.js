@@ -54,9 +54,11 @@ module.exports = {
   plugins: [
     new Dotenv({
       systemvars: true,
-      safe: true,
+      safe: false,
       allowEmptyValues: true,
-      defaults: true
+      defaults: true,
+      path: '.env',
+      silent: true
     })
   ],
   performance: {
