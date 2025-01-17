@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, ErrorBoundary } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, Trash2, Command, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -12,7 +12,8 @@ const BotManager = () => {
   const [status, setStatus] = useState('online');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [channels, setChannels] = useState([]);
+  const [channels, setChannels] = useState([]); 
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [selectedThread, setSelectedThread] = useState(null);
   const [channelsLoading, setChannelsLoading] = useState(false);
@@ -167,8 +168,16 @@ const BotManager = () => {
     
     const fetchData = async () => {
       if (mounted) {
-        await fetchLogs();
-        await fetchChannels();
+        setIsLoading(true);
+        try {
+          await fetchLogs();
+          await fetchChannels();
+        } catch (error) {
+          console.error('Error fetching initial data:', error);
+          setError('Failed to load initial data');
+        } finally {
+          setIsLoading(false);
+        }
       }
     };
     
@@ -254,6 +263,18 @@ const BotManager = () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
+
+  if (isLoading) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            Loading...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
