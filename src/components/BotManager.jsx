@@ -358,7 +358,10 @@ const BotManager = () => {
               </Button>
             ))}
           </div>
-          <div aria-label="Status Selector" role="combobox">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
+              {envVars.BOT_NAME || 'Bot'}
+            </span>
             <select 
               style={{
                 ...styles.select,
