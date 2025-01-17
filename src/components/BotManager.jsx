@@ -413,9 +413,8 @@ const BotManager = () => {
               </div>
           )}
 
-          <div>
-            {activeTab === 'Messages' && (
-              <div className="space-y-4">
+          {activeTab === 'Messages' && (
+            <div className="space-y-4">
                 {error && (
                   <Alert variant="destructive" className="mb-4">
                     <AlertDescription>{error}</AlertDescription>
@@ -512,11 +511,10 @@ const BotManager = () => {
                     </div>
                   </div>
                 </div>
-              </div>
-              </div>
-            )}
+            </div>
+          )}
 
-            {activeTab === 'Slash Commands' && (
+          {activeTab === 'Slash Commands' && (
               <div style={{ height: '460px' }}>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Slash Commands</h3>
