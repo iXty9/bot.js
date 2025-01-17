@@ -254,7 +254,9 @@ class CommandHandler {
 
   async handleFactCommand(interaction) {
     try {
-      await interaction.deferReply();
+      if (!interaction.deferred) {
+        await interaction.deferReply({ ephemeral: true });
+      }
       const response = await axios.get('https://uselessfacts.jsph.pl/random.json?language=en');
       const fact = response.data.text;
       await interaction.editReply({

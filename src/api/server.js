@@ -95,9 +95,9 @@ function initializeBotManager(client) {
   return new Promise((resolve, reject) => {
     try {
       if (!botManager) {
-        botManager = new BotManager(client);
+        botManager = new BotManager(client, process.env.WEBHOOK_URL);
         // Wait for bot manager to be ready
-        botManager.once('ready', () => {
+        botManager.on('ready', () => {
           resolve(botManager);
         });
       } else {
@@ -263,7 +263,7 @@ app.post('/api/commands', authenticateToken, async (req, res) => {
     // Send the response
     res.json({ 
       success: true,
-      result: result
+      result: result || 'Command executed successfully'
     });
   } catch (error) {
     console.error('Server Error:', error);
@@ -474,6 +474,20 @@ io.on('connection', (socket) => {
     console.log(`Client disconnected: ${reason}`);
     if (reason === 'transport close') {
       socket.connect();
+    }
+  });
+
+  // Handle command events from client
+  socket.on('command', async (data) => {
+    try {
+      const { command, args } = data;
+      const result = await botManager.executeCommand(command, args);
+      socket.emit('commandResponse', { success: true, result });
+    } catch (error) {
+      socket.emit('commandResponse', { 
+        success: false, 
+        error: error.message || 'Command execution failed' 
+      });
     }
   });
   
