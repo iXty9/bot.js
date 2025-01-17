@@ -14,12 +14,17 @@ class CommandHandler {
 
   async initialize() {
     try {
-      const channels = await this.botManager.listChannels();
-      this.currentChannel = channels.find(ch => ch.name === 'general') || channels[0];
-      this.updateStatusBar();
+      try {
+        const channels = await this.botManager.listChannels();
+        this.currentChannel = channels.find(ch => ch.name === 'general') || channels[0];
+        this.updateStatusBar();
+      } catch (error) {
+        this.consoleUI.addLog(chalk.red('Error initializing channels: ' + error.message));
+      }
     } catch (error) {
       this.consoleUI.addLog('Error initializing channels: ' + error.message);
     }
+    this.awaitingChannelSelection = false;
     this.awaitingChannelSelection = false;
   }
 
@@ -39,6 +44,7 @@ class CommandHandler {
   }
 
   async handleInput(input) {
+    this.consoleUI.addLog(chalk.green(`Executing command: ${input}`));
     if (this.awaitingChannelSelection) {
       this.handleChannelSelection(input);
       return;
@@ -56,6 +62,11 @@ class CommandHandler {
   async handleCommand(command, args) {
     if (!command) {
       this.consoleUI.addLog('No command provided. Type "/help" for a list of commands.');
+      return;
+    }
+
+    if (!command) {
+      this.consoleUI.addLog(chalk.red('No command provided. Type "/help" for a list of commands.'));
       return;
     }
 
@@ -89,7 +100,7 @@ class CommandHandler {
         process.exit(0);
         break;
       default:
-        this.consoleUI.addLog('Unknown command. Type "/help" for a list of commands.');
+        this.consoleUI.addLog(chalk.red('Unknown command. Type "/help" for a list of commands.'));
     }
   }
 
@@ -130,7 +141,7 @@ class CommandHandler {
       this.consoleUI.addLog(result);
       this.updateStatusBar();
     } catch (error) {
-      this.consoleUI.addLog('Error changing status: ' + error.message);
+      this.consoleUI.addLog(chalk.red('Error changing status: ' + error.message));
     }
   }
 
@@ -165,6 +176,8 @@ class CommandHandler {
     this.consoleUI.addLog(chalk.green('Enter the number of the channel you want to select:'));
     this.awaitingChannelSelection = true;
     this.channelSelectionOptions = channels;
+    this.awaitingChannelSelection = true;
+    this.channelSelectionOptions = channels;
   }
 
   handleChannelSelection(input) {
@@ -184,13 +197,18 @@ class CommandHandler {
       return;
     }
 
+    if (!this.currentChannel || this.currentChannel.type !== 'forum') {
+      this.consoleUI.addLog(chalk.red('Current channel is not a forum. Select a forum channel first.'));
+      return;
+    }
+
     const thread = this.currentChannel.threads.find(t => t.name === threadName);
     if (thread) {
       this.currentThread = thread;
       this.updateStatusBar();
-      this.consoleUI.addLog(`Switched to thread: ${thread.name}`);
+      this.consoleUI.addLog(chalk.green(`Switched to thread: ${thread.name}`));
     } else {
-      this.consoleUI.addLog(`Thread "${threadName}" not found in the current forum channel.`);
+      this.consoleUI.addLog(chalk.red(`Thread "${threadName}" not found in the current forum channel.`));
     }
   }
 
@@ -212,7 +230,7 @@ class CommandHandler {
       this.consoleUI.addLog(result);
       this.clearComposer();
     } catch (error) {
-      this.consoleUI.addLog('Error sending message: ' + error);
+      this.consoleUI.addLog(chalk.red('Error sending message: ' + error.message));
     }
   }
 
