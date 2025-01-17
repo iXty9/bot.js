@@ -24,10 +24,15 @@ export const useSendMessage = () => {
 
   return useMutation({
     mutationFn: async ({ message, channelId, threadId }) => {
+      const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
       const { data } = await axios.post(`${API_BASE}/send`, {
         message,
         channelId,
         threadId
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       return data;
     },
