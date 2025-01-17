@@ -24,7 +24,7 @@ export const useSendMessage = () => {
 
   return useMutation({
     mutationFn: async ({ message, channelId, threadId }) => {
-      const token = localStorage.getItem('discord_token');
+      const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
       if (!token) {
         throw new Error('No authentication token available');
       }
@@ -35,7 +35,8 @@ export const useSendMessage = () => {
         threadId
       }, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
       return data;
