@@ -525,7 +525,7 @@ const BotManager = () => {
                   </div>
                 </div>
             </div>
-          )}
+          </>)}
 
           {activeTab === 'Slash Commands' && (
               <div style={{ height: '460px' }}>
