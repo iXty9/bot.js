@@ -465,10 +465,10 @@ const BotManager = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
                 </div>
 
-                <Textarea
+                <div>
+                  <Textarea
                   placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
