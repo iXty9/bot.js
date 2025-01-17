@@ -23,6 +23,12 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
+rl.on('SIGINT', () => {
+  rl.question('Are you sure you want to exit? (y/n) ', (answer) => {
+    if (answer.match(/^y(es)?$/i)) process.exit(0);
+  });
+});
+
 // Initialize bot components.
 const botManager = new BotManager(client, process.env.WEBHOOK_URL);
 initializeBotManager(client); // Initialize the API server's BotManager instance
@@ -45,10 +51,10 @@ async function registerSlashCommands() {
 
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
-    await rest.put(
-      Routes.applicationCommands(client.user.id),
-      { body: commands },
-    );
+    await rest.put(Routes.applicationCommands(client.user.id), { body: commands })
+      .catch(error => {
+        console.error('Error registering slash commands:', error);
+      });
 
     console.log('Successfully reloaded application (/) commands.');
   } catch (error) {
@@ -104,6 +110,8 @@ console.log('Current working directory:', process.cwd());
 const PORT = process.env.API_PORT || 6987;
 const HOST = process.env.API_HOST || '0.0.0.0';
 
+console.log(`Configured API server to run on http://${HOST}:${PORT}`);
+
 let server;
 const startServer = () => {
   return new Promise((resolve, reject) => {
@@ -130,6 +138,7 @@ const startServer = () => {
           await client.destroy();
           console.log('Discord client destroyed');
         }
+        console.log('Exiting process...');
         process.exit(0);
       };
 
@@ -147,5 +156,6 @@ const startServer = () => {
 // Start the server and handle any errors
 startServer().catch(error => {
   console.error('Failed to start server:', error);
+  console.log('Ensure that the API_PORT and API_HOST are correctly configured.');
   process.exit(1);
 });
