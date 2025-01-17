@@ -15,10 +15,11 @@ export const initializeSocket = (token) => {
   }
   
   const socket = io('/', {
-    auth: { token },
+    auth: { token: token.trim() },
     transports: ['websocket'],
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
+    timeout: 5000
   });
 
   socket.on('connect', () => {

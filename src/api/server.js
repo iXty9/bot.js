@@ -65,8 +65,11 @@ function authenticateToken(req, res, next) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    // Compare with stored token
-    if (token === process.env.DISCORD_TOKEN) {
+    // Clean and compare tokens
+    const cleanStoredToken = process.env.DISCORD_TOKEN.trim();
+    const cleanProvidedToken = token.trim();
+    
+    if (cleanProvidedToken === cleanStoredToken) {
       next();
     } else {
       console.error('Invalid token provided');
