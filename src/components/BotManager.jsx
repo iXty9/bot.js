@@ -82,7 +82,7 @@ const BotManager = () => {
       alignItems: 'center',
       gap: '0.5rem',
       boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-      background: 'hsl(var(--secondary))',
+      background: 'hsla(var(--secondary), 0.9)',
       color: 'hsl(var(--secondary-foreground))',
       '&:hover': {
         transform: 'translateY(-1px)',
@@ -432,7 +432,7 @@ const BotManager = () => {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-6 mb-4">
                 <Select
                   value={selectedChannel?.id || ""}
                   onValueChange={(value) => {
@@ -522,13 +522,13 @@ const BotManager = () => {
                   onChange={(e) => setMessage(e.target.value)}
                   disabled={!selectedChannel}
                   style={{
-                    minHeight: '150px',
+                    minHeight: '200px',
                     marginBottom: '1rem',
                     resize: 'none',
                   }}
                 />
               
-                <div className="flex justify-end gap-2 mt-4">
+                <div className="flex justify-end gap-4 mt-4">
                   <button
                     style={{
                       ...styles.button,
