@@ -24,6 +24,23 @@ class ErrorBoundary extends React.Component {
       error,
       errorInfo
     });
+
+    // Report to error tracking service if available
+    if (window.errorReporter) {
+      window.errorReporter.captureException(error, { extra: errorInfo });
+    }
+
+    // Attempt recovery
+    if (this.props.onError) {
+      this.props.onError(error);
+    }
+
+    // Reset error state after 5 seconds if recovery prop is true
+    if (this.props.autoReset) {
+      setTimeout(() => {
+        this.setState({ hasError: false, error: null, errorInfo: null });
+      }, 5000);
+    }
   }
 
   render() {

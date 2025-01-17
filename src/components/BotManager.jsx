@@ -27,6 +27,7 @@ const BotManager = () => {
   const [localError, setLocalError] = useState('');
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [selectedThread, setSelectedThread] = useState(null);
+  const [previousChannelId, setPreviousChannelId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState('Messages');
@@ -156,12 +157,21 @@ const BotManager = () => {
 
   useEffect(() => {
     let mounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
     
     const fetchData = async () => {
       if (mounted && !initialized) {
         setIsLoading(true);
         try {
-          const envResponse = await fetch('/api/env');
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+          
+          const envResponse = await fetch('/api/env', {
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeout);
           const envData = await envResponse.json();
           setEnvVars((prevEnvVars) => ({ ...prevEnvVars, ...envData }));
           if (envData.BOT_NAME) {
@@ -191,9 +201,17 @@ const BotManager = () => {
     setSelectedThread(null);
   }, [selectedChannel]);
 
+  const validateStatus = (status) => {
+    const validStatuses = ['online', 'idle', 'dnd', 'invisible'];
+    return validStatuses.includes(status);
+  };
+
   const handleStatusChange = async (newStatus) => {
     try {
       setLocalError('');
+      if (!validateStatus(newStatus)) {
+        throw new Error('Invalid status value');
+      }
       const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
       const response = await fetch('/api/status', {
         method: 'POST',
@@ -250,9 +268,15 @@ const BotManager = () => {
   const handleSendMessage = async () => {
     if (!message.trim() || !selectedChannel) return;
     
+    const messageContent = message.trim();
+    if (messageContent.length > 2000) {
+      handleError(new Error('Message exceeds Discord\'s 2000 character limit'));
+      return;
+    }
+    
     try {
       await sendMessage({
-        message: message.trim(),
+        message: messageContent,
         channelId: selectedChannel.id,
         threadId: selectedThread?.id
       }, {
