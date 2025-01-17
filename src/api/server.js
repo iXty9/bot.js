@@ -315,8 +315,6 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
   }
 });
 
-const path = require('path');
-
 // Serve webpack bundle and static files
 app.use(express.static(path.join(__dirname, '../../src/public')));
 
