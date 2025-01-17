@@ -163,7 +163,7 @@ const BotManager = () => {
         try {
           const envResponse = await fetch('/api/env');
           const envData = await envResponse.json();
-          setEnvVars(envData);
+          setEnvVars((prevEnvVars) => ({ ...prevEnvVars, ...envData }));
           await fetchLogs();
           setInitialized(true);
         } catch (error) {
@@ -226,7 +226,8 @@ const BotManager = () => {
     API_HOST: '',
     DISCORD_TOKEN: '',
     JWT_SECRET: '',
-    WEBHOOK_URL: ''
+    WEBHOOK_URL: '',
+    BOT_NAME: ''
   });
 
   const fetchEnvVars = async () => {
