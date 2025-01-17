@@ -109,7 +109,8 @@ class ConsoleUI {
   }
 
   promptUser(callback) {
-    this.rl.question(chalk.green('> '), (input) => {
+    const PROMPT_SYMBOL = '> ';
+    this.rl.question(chalk.green(PROMPT_SYMBOL), (input) => {
       if (input.trim() === '') {
         console.log(chalk.red('Empty input is not allowed.'));
       } else {
