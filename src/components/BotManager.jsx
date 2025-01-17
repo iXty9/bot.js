@@ -236,6 +236,7 @@ const BotManager = () => {
       console.error('Error fetching environment variables:', error);
     }
   };
+  const handleSendMessage = async () => {
     if (!message.trim() || !selectedChannel) return;
     
     try {
