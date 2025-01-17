@@ -553,14 +553,21 @@ const BotManager = () => {
                   onChange={(e) => setMessage(e.target.value)}
                   disabled={!selectedChannel}
                   style={{
-                    minHeight: '200px',
-                    height: 'auto',
-                    marginBottom: '1rem',
+                    background: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '0.75rem',
+                    padding: '1.5rem',
+                    height: '460px',
+                    fontSize: '0.9rem',
+                    color: 'hsl(var(--foreground))',
+                    fontFamily: 'monospace',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
                     resize: 'none',
                   }}
                 />
-              
-                <div className="flex justify-end gap-4 mt-4 flex-row">
+
+                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
                   <button
                     style={{
                       ...styles.button,
