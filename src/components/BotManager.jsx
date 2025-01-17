@@ -483,7 +483,7 @@ const BotManager = () => {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     disabled={!selectedChannel}
-                    className="min-h-[300px] mb-4"
+                    className="min-h-[300px] mb-8"
                   />
                 
                   <div className="flex justify-end gap-4">
