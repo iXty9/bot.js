@@ -145,7 +145,7 @@ const BotManager = () => {
       setLogs(data.logs);
     } catch (err) {
       console.error('Error fetching logs:', err);
-      setError(`Failed to load logs: ${err.message}`);
+      setLocalError(`Failed to load logs: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -166,7 +166,7 @@ const BotManager = () => {
           setInitialized(true);
         } catch (error) {
           console.error('Error fetching initial data:', error);
-          setError('Failed to load initial data');
+          setLocalError('Failed to load initial data');
         } finally {
           setIsLoading(false);
         }
@@ -322,7 +322,7 @@ const BotManager = () => {
 
   return (
     <div style={styles.container}>
-      <div style={styles.card}>
+      <div style={{ ...styles.card, position: 'relative' }}>
         <div style={{
           display: 'flex', 
           justifyContent: 'space-between',
@@ -355,7 +355,7 @@ const BotManager = () => {
               </Button>
             ))}
           </div>
-          <div>
+          <div aria-label="Status Selector" role="combobox">
             <select 
               style={{
                 ...styles.select,
@@ -444,6 +444,7 @@ const BotManager = () => {
                       color: 'white'
                     }}
                     onClick={fetchLogs}
+                    aria-label="Refresh Logs"
                   >
                     <RefreshCw size={16} />
                     Refresh Logs
@@ -488,6 +489,9 @@ const BotManager = () => {
                         backgroundPosition: 'right 0.5rem center',
                         backgroundSize: '1rem',
                       }}
+                    aria-label="Select a channel"
+                    aria-label="Select a thread"
+                    aria-label="Save Configuration"
                     >
                       <SelectValue placeholder="Select a channel..." />
                     </SelectTrigger>
@@ -773,9 +777,11 @@ const BotManager = () => {
               </div>
             </div>
           )}
-            <Alert variant="destructive" className="mt-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            {localError && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertDescription>{localError}</AlertDescription>
+              </Alert>
+            )}
           )}
         </div>
       </div>
