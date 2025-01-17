@@ -234,7 +234,7 @@ const BotManager = () => {
         throw new Error('Failed to fetch environment variables');
       }
       const data = await response.json();
-      setEnvVars(data);
+      setEnvVars((prevEnvVars) => ({ ...prevEnvVars, ...data }));
     } catch (error) {
       console.error('Error fetching environment variables:', error);
       setLocalError('Failed to load environment variables');
@@ -490,8 +490,6 @@ const BotManager = () => {
                         backgroundSize: '1rem',
                       }}
                     aria-label="Select a channel"
-                    aria-label="Select a thread"
-                    aria-label="Save Configuration"
                     >
                       <SelectValue placeholder="Select a channel..." />
                     </SelectTrigger>
