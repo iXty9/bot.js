@@ -777,7 +777,7 @@ const BotManager = () => {
               </div>
             </div>
           )}
-            {localError && (
+            {activeTab === 'Configuration' && localError && (
               <Alert variant="destructive" className="mt-4">
                 <AlertDescription>{localError}</AlertDescription>
               </Alert>
