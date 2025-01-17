@@ -30,7 +30,9 @@ const BotManager = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState('Messages');
-  const [commands, setCommands] = useState([]);
+  const [commands, setCommands] = useState([
+    { name: '/fact', description: 'Get a random fact', code: 'fetchRandomFact()' }
+  ]);
 
   const styles = {
     container: {
@@ -649,6 +651,20 @@ const BotManager = () => {
                         style={{
                           ...styles.select,
                           flex: '2'
+                        }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Command code"
+                        value={cmd.code}
+                        onChange={(e) => {
+                          const newCommands = [...commands];
+                          newCommands[index].code = e.target.value;
+                          setCommands(newCommands);
+                        }}
+                        style={{
+                          ...styles.select,
+                          flex: '3'
                         }}
                       />
                       <button
