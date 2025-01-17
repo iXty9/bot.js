@@ -12,8 +12,18 @@ class BotManager extends EventEmitter {
     super();
     this.client = client;
     this.webhookUrl = webhookUrl;
-    this.logs = [];
-    this.maxLogs = 50; // Keep only last 50 logs
+    this.logs = new Map(); // Use Map for O(1) access and automatic cleanup
+    this.maxLogs = 50;
+    
+    // Cleanup old logs every hour
+    setInterval(() => {
+      const oneHourAgo = Date.now() - 3600000;
+      for (const [timestamp] of this.logs) {
+        if (timestamp < oneHourAgo) {
+          this.logs.delete(timestamp);
+        }
+      }
+    }, 3600000);
     this.stats = {
       messagesReceived: 0,
       messagesSent: 0,
@@ -137,6 +147,7 @@ class BotManager extends EventEmitter {
   async sendMessage(message, channelId, threadId = null) {
     try {
       const channel = await this.client.channels.fetch(channelId);
+      await this.handleRateLimit();
       if (!channel) {
         throw new Error(`Channel with ID "${channelId}" not found`);
       }
@@ -189,17 +200,15 @@ class BotManager extends EventEmitter {
 
         try {
           const response = await axios.post(this.webhookUrl, webhookData);
-          console.log('Webhook response:', response.status, response.statusText);
-          console.log('Webhook response data:', JSON.stringify(response.data, null, 2));
+          this.log(`Webhook response: ${response.status} ${response.statusText}`);
+          this.log(`Webhook data: ${JSON.stringify(response.data)}`);
         } catch (error) {
-          console.error('Failed to send message to webhook:', error);
+          this.log(`Webhook error: ${error.message}`);
           if (error.response) {
-            console.error('Error response:', error.response.status, error.response.statusText);
-            console.error('Error data:', JSON.stringify(error.response.data, null, 2));
+            this.log(`Error status: ${error.response.status}`);
+            this.log(`Error data: ${JSON.stringify(error.response.data)}`);
           }
         }
-        console.log('Webhook response:', response.status, response.statusText);
-        console.log('Webhook response data:', JSON.stringify(response.data, null, 2));
       } catch (error) {
         console.error('Failed to send message to webhook:', error);
         if (error.response) {
@@ -239,6 +248,15 @@ class BotManager extends EventEmitter {
       }
     }
     return channels;
+  }
+
+  async handleRateLimit() {
+    const rateLimits = this.client.rest.globalLimit;
+    if (rateLimits) {
+      const delay = rateLimits.timeToReset;
+      this.log(`Rate limit hit, waiting ${delay}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
   }
 }
 

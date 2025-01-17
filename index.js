@@ -114,8 +114,19 @@ client.login(process.env.DISCORD_TOKEN).catch((error) => {
 });
 
 // Handle unhandled promise rejections.
-process.on('unhandledRejection', (error) => {
+const unhandledRejectionHandler = (error) => {
   console.error('Unhandled promise rejection:', error);
+};
+process.on('unhandledRejection', unhandledRejectionHandler);
+
+// Cleanup on exit
+process.on('SIGINT', async () => {
+  console.log('Cleaning up...');
+  process.removeListener('unhandledRejection', unhandledRejectionHandler);
+  if (client) {
+    await client.destroy();
+  }
+  process.exit(0);
 });
 
 // Log the current working directory

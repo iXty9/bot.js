@@ -9,7 +9,11 @@ const app = express();
 const PORT = process.env.API_PORT || 6987;
 const HOST = process.env.API_HOST || '0.0.0.0';
 app.set('trust proxy', true);
-const secretKey = process.env.JWT_SECRET || 'your-secret-key';
+const secretKey = process.env.JWT_SECRET;
+if (!secretKey) {
+  console.error('JWT_SECRET environment variable is required');
+  process.exit(1);
+}
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -40,10 +44,21 @@ function authenticateToken(req, res, next) {
 let botManager = null;
 
 function initializeBotManager(client) {
-  if (!botManager) {
-    botManager = new BotManager(client);
-  }
-  return botManager;
+  return new Promise((resolve, reject) => {
+    try {
+      if (!botManager) {
+        botManager = new BotManager(client);
+        // Wait for bot manager to be ready
+        botManager.once('ready', () => {
+          resolve(botManager);
+        });
+      } else {
+        resolve(botManager);
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 
 // Export for use in index.js
@@ -297,8 +312,25 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   console.log('Client connected');
   
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
+  const pingInterval = setInterval(() => {
+    socket.emit('ping');
+  }, 30000);
+  
+  socket.on('pong', () => {
+    socket.lastPong = Date.now();
+  });
+  
+  socket.on('disconnect', (reason) => {
+    clearInterval(pingInterval);
+    console.log(`Client disconnected: ${reason}`);
+    if (reason === 'transport close') {
+      socket.connect();
+    }
+  });
+  
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
+    socket.connect();
   });
 });
 
