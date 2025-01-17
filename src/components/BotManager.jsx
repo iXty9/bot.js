@@ -316,7 +316,7 @@ const BotManager = () => {
             borderRadius: '0.75rem',
             boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.2)',
           }}>
-            {['Messages', 'Logs', 'Slash Commands'].map((tab) => (
+            {['Messages', 'Logs', 'Slash Commands', 'Configuration'].map((tab) => (
               <Button
                 key={tab}
                 variant={activeTab === tab ? "default" : "ghost"}
@@ -673,7 +673,66 @@ const BotManager = () => {
             </div>
           )}
 
-          {error && (
+          {activeTab === 'Configuration' && (
+            <div style={{ height: '460px' }}>
+              <div className="flex flex-col space-y-4">
+                {['API_PORT', 'API_HOST', 'DISCORD_TOKEN', 'JWT_SECRET', 'WEBHOOK_URL'].map((envVar) => (
+                  <div key={envVar} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <label style={{ flex: '1', fontWeight: 'bold' }}>{envVar}</label>
+                    <input
+                      type={envVar.includes('TOKEN') || envVar.includes('SECRET') ? 'password' : 'text'}
+                      value={process.env[envVar] || ''}
+                      onChange={(e) => process.env[envVar] = e.target.value}
+                      style={{
+                        ...styles.select,
+                        flex: '2',
+                        padding: '0.5rem',
+                      }}
+                    />
+                    {envVar.includes('TOKEN') || envVar.includes('SECRET') && (
+                      <button
+                        onClick={(e) => {
+                          const input = e.target.previousSibling;
+                          input.type = input.type === 'password' ? 'text' : 'password';
+                        }}
+                        style={{
+                          ...styles.button,
+                          padding: '0.5rem',
+                          backgroundColor: 'var(--primary)',
+                          color: 'white'
+                        }}
+                      >
+                        I
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    style={{
+                      ...styles.button,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      backgroundColor: 'var(--primary)',
+                      color: 'white'
+                    }}
+                    onClick={async () => {
+                      try {
+                        // Save changes and restart service
+                        await fetch('/api/restart', { method: 'POST' });
+                        setOutput('Configuration updated and service restarted');
+                      } catch (err) {
+                        setError('Failed to update configuration');
+                      }
+                    }}
+                  >
+                    Save Configuration
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
             <Alert variant="destructive" className="mt-4">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
