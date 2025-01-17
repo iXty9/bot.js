@@ -69,6 +69,12 @@ function authenticateToken(req, res, next) {
     const cleanStoredToken = process.env.DISCORD_TOKEN.trim();
     const cleanProvidedToken = token.trim();
     
+    console.log('Comparing tokens:', {
+      stored: cleanStoredToken,
+      provided: cleanProvidedToken,
+      match: cleanProvidedToken === cleanStoredToken
+    });
+    
     if (cleanProvidedToken === cleanStoredToken) {
       next();
     } else {

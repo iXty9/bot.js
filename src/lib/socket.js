@@ -14,8 +14,9 @@ export const initializeSocket = (token) => {
     useSocketStore.getState().socket.disconnect();
   }
   
+  console.log('Initializing socket with token:', token);
   const socket = io('/', {
-    auth: { token: token.trim() },
+    auth: { token },
     transports: ['websocket'],
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
