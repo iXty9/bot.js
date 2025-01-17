@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { QueryClientProvider, QueryClient, useQueryClient } from '@tanstack/react-query';
 import { useSocket, initializeSocket } from '../lib/socket';
 import { useMessageHistory, useSendMessage, useChannels, useError } from '../lib/hooks';
 import { Send, Trash2, Command, RefreshCw } from 'lucide-react';
@@ -200,6 +200,7 @@ const BotManager = () => {
     }
   };
 
+  const queryClient = useQueryClient();
   const { mutate: sendMessage, isLoading: isSending } = useSendMessage();
   const { data: channels = [], isLoading: isLoadingChannels } = useChannels();
   const { data: messages = [], isLoading: isLoadingMessages } = useMessageHistory(selectedChannel?.id);
