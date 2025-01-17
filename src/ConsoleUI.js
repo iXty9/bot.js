@@ -8,8 +8,8 @@ class ConsoleUI {
     this.output = '';
     this.statusBar = '';
     this.composer = '';
-    this.terminalWidth = process.stdout.columns;
-    this.terminalHeight = process.stdout.rows;
+    this.terminalWidth = process.stdout.columns || 80;
+    this.terminalHeight = process.stdout.rows || 24;
   }
 
   updateStatusBar(status) {
@@ -23,16 +23,12 @@ class ConsoleUI {
   }
 
   addLog(message) {
-    this.output = message;
+    this.output += message + '\n';
     this.render();
   }
 
   clearScreen() {
-    process.stdout.write('\x1b[2J');
-    process.stdout.write('\x1b[3J');
-    process.stdout.write('\x1b[H');
-    readline.cursorTo(process.stdout, 0, 0);
-    readline.clearScreenDown(process.stdout);
+    console.clear();
   }
 
   formatChannelsAndThreads(content) {
@@ -42,7 +38,7 @@ class ConsoleUI {
 
     for (const line of lines) {
       if (currentLine.length + line.length + 2 > this.terminalWidth - 4) {
-        formatted += currentLine.trim() + '\n';
+        formatted += `${currentLine.trim()}\n`;
         currentLine = '';
       }
       currentLine += line + '  ';
@@ -63,14 +59,15 @@ class ConsoleUI {
   }
 
   render() {
-    this.clearScreen();
-    
-    // Only show status bar if it exists
-    if (this.statusBar) {
-      console.log(chalk.bgBlue.white.bold(` ${this.statusBar} `));
-    }
-    
-    let formattedOutput = this.output || '';
+    try {
+      this.clearScreen();
+      
+      // Only show status bar if it exists
+      if (this.statusBar) {
+        console.log(chalk.bgBlue.white.bold(` ${this.statusBar} `));
+      }
+      
+      let formattedOutput = this.output || '';
 
     if (this.output.includes('Available commands:')) {
       const [preHelp, helpContent] = this.output.split('Available commands:');
@@ -83,7 +80,7 @@ class ConsoleUI {
       formattedOutput = preChannels + 'Available channels and threads:\n' + formattedChannels;
     }
 
-    const outputBox = boxen(formattedOutput, {
+    const BOXEN_OPTIONS = {
       padding: 1,
       margin: 1,
       borderStyle: 'round',
@@ -92,7 +89,8 @@ class ConsoleUI {
       titleAlignment: 'center',
       width: this.terminalWidth - 4,
       height: this.terminalHeight - 10
-    });
+    };
+    const outputBox = boxen(formattedOutput, BOXEN_OPTIONS);
     console.log(outputBox);
     
     const composerBox = boxen(this.composer || 'Type your message here...', {
@@ -105,13 +103,18 @@ class ConsoleUI {
     });
     console.log(composerBox);
     
-    console.log(chalk.cyan('Enter a command or message:'));
+    const PROMPT_MESSAGE = 'Enter a command or message:';
+    console.log(chalk.cyan(PROMPT_MESSAGE));
     this.rl.prompt();
   }
 
   promptUser(callback) {
     this.rl.question(chalk.green('> '), (input) => {
-      callback(input);
+      if (input.trim() === '') {
+        console.log(chalk.red('Empty input is not allowed.'));
+      } else {
+        callback(input);
+      }
       this.promptUser(callback);
     });
   }
