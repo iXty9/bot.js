@@ -17,6 +17,7 @@ const BotManager = () => {
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [selectedThread, setSelectedThread] = useState(null);
   const [channelsLoading, setChannelsLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState('Messages');
   const [commands, setCommands] = useState([]);
 
@@ -167,11 +168,12 @@ const BotManager = () => {
     let mounted = true;
     
     const fetchData = async () => {
-      if (mounted) {
+      if (mounted && !initialized) {
         setIsLoading(true);
         try {
           await fetchLogs();
           await fetchChannels();
+          setInitialized(true);
         } catch (error) {
           console.error('Error fetching initial data:', error);
           setError('Failed to load initial data');
@@ -187,7 +189,7 @@ const BotManager = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [initialized]);
 
   // Reset thread when channel changes
   useEffect(() => {
@@ -425,10 +427,14 @@ const BotManager = () => {
                 <div style={{ marginBottom: '12px' }}>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                     <Select
-                      value={selectedChannel?.id || ''}
+                      value={selectedChannel?.id ?? ''}
                       onValueChange={(value) => {
-                        const channel = channels?.find(c => c.id === value) || null;
-                        setSelectedChannel(channel);
+                        if (!value) {
+                          setSelectedChannel(null);
+                          return;
+                        }
+                        const channel = channels?.find(c => c.id === value);
+                        setSelectedChannel(channel || null);
                       }}
                     >
                       <SelectTrigger className="w-full">
@@ -445,10 +451,14 @@ const BotManager = () => {
 
                     <select
                       style={{ ...styles.select, flex: 1 }}
-                        value={selectedThread?.id || ''}
+                        value={selectedThread?.id ?? ''}
                         onChange={(e) => {
-                          const thread = selectedChannel?.threads?.find(t => t.id === e.target.value) || null;
-                          setSelectedThread(thread);
+                          if (!e.target.value) {
+                            setSelectedThread(null);
+                            return;
+                          }
+                          const thread = selectedChannel?.threads?.find(t => t.id === e.target.value);
+                          setSelectedThread(thread || null);
                         }}
                         disabled={!selectedChannel?.threads?.length}
                       >
