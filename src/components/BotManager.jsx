@@ -18,6 +18,8 @@ const BotManager = () => {
   const [selectedThread, setSelectedThread] = useState(null);
   const [channelsLoading, setChannelsLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [error, setError] = useState('');
+  const [output, setOutput] = useState('');
   const [activeTab, setActiveTab] = useState('Messages');
   const [commands, setCommands] = useState([]);
 
@@ -424,6 +426,11 @@ const BotManager = () => {
 
           {activeTab === 'Messages' && (
               <div>
+                {error && (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
                 <div style={{ marginBottom: '12px' }}>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                     <Select
@@ -463,7 +470,7 @@ const BotManager = () => {
                         disabled={!selectedChannel?.threads?.length}
                       >
                         <option value="">Select a thread...</option>
-                        {selectedChannel.threads?.map(thread => (
+                        {selectedChannel?.threads?.map(thread => (
                           <option key={thread.id} value={thread.id}>
                             {thread.name}
                           </option>
