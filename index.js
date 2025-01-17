@@ -25,7 +25,10 @@ const rl = readline.createInterface({
 
 rl.on('SIGINT', () => {
   rl.question('Are you sure you want to exit? (y/n) ', (answer) => {
-    if (answer.match(/^y(es)?$/i)) process.exit(0);
+    if (answer.match(/^y(es)?$/i)) {
+      rl.close();
+      process.exit(0);
+    }
   });
 });
 
@@ -57,6 +60,9 @@ async function registerSlashCommands() {
       });
 
     console.log('Successfully reloaded application (/) commands.');
+    commands.forEach(command => {
+      console.log(`Registered command: ${command.name} - ${command.description}`);
+    });
   } catch (error) {
     console.error('Error registering slash commands:', error);
   }
@@ -95,6 +101,7 @@ client.on('interactionCreate', async (interaction) => {
 // Log in to Discord.
 client.login(process.env.DISCORD_TOKEN).catch((error) => {
   console.error('Failed to log in:', error);
+  console.log('Please check your DISCORD_TOKEN in the environment variables.');
   process.exit(1);
 });
 
@@ -130,21 +137,26 @@ const startServer = () => {
       // Graceful shutdown
       const shutdown = async () => {
         console.log('Shutdown signal received');
-        if (server) {
-          await new Promise(resolve => server.close(resolve));
-          console.log('HTTP server closed');
+        try {
+          if (server) {
+            await new Promise(resolve => server.close(resolve));
+            console.log('HTTP server closed');
+          }
+          if (client) {
+            await client.destroy();
+            console.log('Discord client destroyed');
+          }
+        } catch (error) {
+          console.error('Error during shutdown:', error);
+        } finally {
+          console.log('Exiting process...');
+          process.exit(0);
         }
-        if (client) {
-          await client.destroy();
-          console.log('Discord client destroyed');
-        }
-        console.log('Exiting process...');
-        process.exit(0);
       };
 
-      process.on('SIGTERM', shutdown);
-      process.on('SIGINT', shutdown);
-      process.on('SIGHUP', shutdown);
+      ['SIGTERM', 'SIGINT', 'SIGHUP'].forEach(signal => {
+        process.on(signal, shutdown);
+      });
 
     } catch (error) {
       console.error('Critical server error:', error);
