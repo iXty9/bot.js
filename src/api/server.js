@@ -223,12 +223,33 @@ app.get('/api/logs', authenticateToken, (req, res) => {
 
 app.post('/api/commands', authenticateToken, async (req, res) => {
   try {
-    const { command, args } = req.body;
-    const result = await botManager.executeCommand(command, args);
-    res.json({ result });
+    const { command, args = [] } = req.body;
+    
+    switch (command) {
+      case 'status':
+        const statusResult = await botManager.changeStatus(args[0]);
+        res.json({ result: statusResult });
+        break;
+        
+      case 'send':
+        if (!args[0] || !args[1]) {
+          throw new Error('Channel ID and message are required');
+        }
+        const sendResult = await botManager.sendMessage(args[1], args[0]);
+        res.json({ result: sendResult });
+        break;
+        
+      case 'fact':
+        const response = await axios.get('https://uselessfacts.jsph.pl/random.json?language=en');
+        res.json({ result: response.data.text });
+        break;
+        
+      default:
+        res.status(400).json({ error: `Unknown command: ${command}` });
+    }
   } catch (error) {
     console.error('Server Error:', error);
-    res.status(500).json({ error: 'Failed to execute command' });
+    res.status(500).json({ error: error.message || 'Failed to execute command' });
   }
 });
 
