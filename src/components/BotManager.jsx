@@ -15,11 +15,9 @@ const BotManager = () => {
   const [status, setStatus] = useState('online');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [channels, setChannels] = useState([]); 
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [selectedThread, setSelectedThread] = useState(null);
-  const [channelsLoading, setChannelsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState('Messages');
   const [commands, setCommands] = useState([]);
@@ -143,29 +141,6 @@ const BotManager = () => {
     }
   };
 
-  const fetchChannels = async () => {
-    try {
-      setChannelsLoading(true);
-      setError('');
-      const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
-      const response = await fetch('/api/channels', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch channels: ${response.statusText}`);
-      }
-      const data = await response.json();
-      setChannels(data);
-    } catch (err) {
-      console.error('Error fetching channels:', err);
-      setError(err.message || 'Failed to load channels');
-      setChannels([]);
-    } finally {
-      setChannelsLoading(false);
-    }
-  };
 
   useEffect(() => {
     let mounted = true;
@@ -175,7 +150,6 @@ const BotManager = () => {
         setIsLoading(true);
         try {
           await fetchLogs();
-          await fetchChannels();
           setInitialized(true);
         } catch (error) {
           console.error('Error fetching initial data:', error);
