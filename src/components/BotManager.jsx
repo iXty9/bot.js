@@ -377,7 +377,8 @@ const BotManager = () => {
                   fontSize: '0.9rem',
                   color: 'var(--text-secondary)',
                   fontFamily: 'monospace',
-                  overflow: 'hidden'
+                  overflowY: 'auto',
+                  overflowX: 'hidden'
                 }}>
                   {loading ? (
                     <div style={{ 
@@ -423,26 +424,25 @@ const BotManager = () => {
           {activeTab === 'messages' && (
               <div>
                 <div style={{ marginBottom: '12px' }}>
-                  <select
-                    style={{ ...styles.select, marginRight: '8px' }}
-                    value={selectedChannel?.id || ''}
-                    onChange={(e) => {
-                      const channel = channels.find(c => c.id === e.target.value);
-                      setSelectedChannel(channel);
-                    }}
-                  >
-                    <option value="">Select a channel...</option>
-                    {channels.map(channel => (
-                      <option key={channel.id} value={channel.id}>
-                        {channel.name} ({channel.guildName})
-                      </option>
-                    ))}
-                  </select>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                    <select
+                      style={{ ...styles.select, flex: 1 }}
+                      value={selectedChannel?.id || ''}
+                      onChange={(e) => {
+                        const channel = channels.find(c => c.id === e.target.value);
+                        setSelectedChannel(channel);
+                      }}
+                    >
+                      <option value="">Select a channel...</option>
+                      {channels.map(channel => (
+                        <option key={channel.id} value={channel.id}>
+                          {channel.name} ({channel.guildName})
+                        </option>
+                      ))}
+                    </select>
 
-                  {selectedChannel?.type === 'forum' && (
-                    <div style={{ marginTop: '8px' }}>
-                      <select
-                        style={styles.select}
+                    <select
+                      style={{ ...styles.select, flex: 1 }}
                         value={selectedThread?.id || ''}
                         onChange={(e) => {
                           const thread = selectedChannel.threads?.find(t => t.id === e.target.value);
