@@ -20,6 +20,12 @@ function authenticateToken(req, res, next) {
   const token = authHeader && authHeader.split(' ')[1];
   
   if (!token) {
+    // Check for token in query params
+    const queryToken = req.query.token;
+    if (queryToken && queryToken === process.env.DISCORD_TOKEN) {
+      next();
+      return;
+    }
     return res.status(401).json({ error: 'No token provided' });
   }
 
