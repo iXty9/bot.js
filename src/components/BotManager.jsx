@@ -237,7 +237,7 @@ const BotManager = () => {
       setEnvVars(data);
     } catch (error) {
       console.error('Error fetching environment variables:', error);
-      setError('Failed to load environment variables');
+      setLocalError('Failed to load environment variables');
     }
   };
   const handleSendMessage = async () => {
@@ -707,33 +707,36 @@ const BotManager = () => {
                 {['API_PORT', 'API_HOST', 'DISCORD_TOKEN', 'JWT_SECRET', 'WEBHOOK_URL'].map((envVar) => (
                   <div key={envVar} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <label style={{ flex: '1', fontWeight: 'bold' }}>{envVar}</label>
-                    <input
-                      type={envVar.includes('TOKEN') || envVar.includes('SECRET') ? 'password' : 'text'}
-                      value={envVars[envVar] || ''}
-                      onChange={(e) => setEnvVars({ ...envVars, [envVar]: e.target.value })}
-                      style={{
-                        ...styles.select,
-                        flex: '2',
-                        padding: '0.5rem',
-                      }}
-                    />
-                    {envVar.includes('TOKEN') || envVar.includes('SECRET') && (
-                      <button
-                        onClick={(e) => {
-                          const input = e.target.previousSibling;
-                          input.type = input.type === 'password' ? 'text' : 'password';
-                          e.target.textContent = input.type === 'password' ? 'Show' : 'Hide';
-                        }}
+                    <div style={{ display: 'flex', alignItems: 'center', flex: '2' }}>
+                      <input
+                        type={envVar.includes('TOKEN') || envVar.includes('SECRET') ? 'password' : 'text'}
+                        value={envVars[envVar] || ''}
+                        onChange={(e) => setEnvVars({ ...envVars, [envVar]: e.target.value })}
                         style={{
-                          ...styles.button,
+                          ...styles.select,
+                          flex: '1',
                           padding: '0.5rem',
-                          backgroundColor: 'var(--primary)',
-                          color: 'white'
                         }}
-                      >
-                        I
-                      </button>
-                    )}
+                      />
+                      {envVar.includes('TOKEN') || envVar.includes('SECRET') && (
+                        <button
+                          onClick={(e) => {
+                            const input = e.target.previousSibling;
+                            input.type = input.type === 'password' ? 'text' : 'password';
+                            e.target.textContent = input.type === 'password' ? 'Show' : 'Hide';
+                          }}
+                          style={{
+                            ...styles.button,
+                            padding: '0.5rem',
+                            backgroundColor: 'var(--primary)',
+                            color: 'white',
+                            marginLeft: '0.5rem'
+                          }}
+                        >
+                          Show
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -748,11 +751,19 @@ const BotManager = () => {
                     }}
                     onClick={async () => {
                       try {
-                        // Save changes and restart service
-                        await fetch('/api/restart', { method: 'POST' });
+                        const response = await fetch('/api/env', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify(envVars),
+                        });
+                        if (!response.ok) {
+                          throw new Error('Failed to update configuration');
+                        }
                         setOutput('Configuration updated and service restarted');
                       } catch (err) {
-                        setError('Failed to update configuration');
+                        setLocalError('Failed to update configuration');
                       }
                     }}
                   >
