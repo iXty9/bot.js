@@ -12,32 +12,54 @@ class BotManager extends EventEmitter {
     super();
     this.client = client;
     this.webhookUrl = webhookUrl;
-    this.log('Starting server...');
-    this.startServer();
-    this.log('Server started.');
+    this.logs = [];
+    this.maxLogs = 50; // Keep only last 50 logs
+    this.stats = {
+      messagesReceived: 0,
+      messagesSent: 0,
+      commandsExecuted: 0,
+      startTime: Date.now(),
+      lastActivity: Date.now()
+    };
 
-    this.log('Setting up event listeners...');
     this.on('statusChanged', (status) => {
-      console.log(`Status changed to: ${status}`);
+      this.log(`Status: ${status}`);
     });
 
     this.on('messageSent', (info) => {
-      this.log(`Message sent event triggered: ${info}`);
-      console.log(`Message sent: ${info}`);
+      this.stats.messagesSent++;
+      this.stats.lastActivity = Date.now();
+      this.log(`Sent: ${info}`);
     });
-    this.log('BotManager initialized');
+  }
+
+  getUsageStats() {
+    return {
+      ...this.stats,
+      uptime: Math.floor((Date.now() - this.stats.startTime) / 1000), // in seconds
+      lastActivityAgo: Math.floor((Date.now() - this.stats.lastActivity) / 1000) // in seconds
+    };
   }
 
   getLogs() {
-    this.log('Attempting to read logs from console.log...');
     try {
+      if (!fs.existsSync('console.log')) {
+        return [];
+      }
       const logs = fs.readFileSync('console.log', 'utf-8');
-      return logs.split('\n').filter(line => line).map(line => {
-        return { log: line };
-      });
+      if (!logs.trim()) {
+        return [];
+      }
+      return logs.split('\n')
+        .filter(line => line && line.trim())
+        .map(line => ({ 
+          log: line,
+          timestamp: new Date(line.split(' - ')[0]).getTime()
+        }))
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .slice(0, 50); // Only return last 50 logs
     } catch (error) {
-      this.log(`Error occurred while reading logs: ${error.message}`);
-      this.log(`Error reading logs: ${error.message}`);
+      console.error(`Error reading logs: ${error.message}`);
       return [];
     }
   }
@@ -69,25 +91,42 @@ class BotManager extends EventEmitter {
   }
 
   log(message) {
-    const logMessage = `[BotManager] ${message}`;
-    console.log(logMessage);
-    logFile.write(`${new Date().toISOString()} - ${logMessage}\n`);
+    const timestamp = new Date().toISOString();
+    const logMessage = `${timestamp} - [BotManager] ${message}`;
+    
+    // Add to in-memory logs array
+    this.logs.unshift({ log: logMessage });
+    
+    // Keep only last maxLogs entries
+    if (this.logs.length > this.maxLogs) {
+      this.logs.pop();
+    }
+    
+    // Emit the log event for UI to display
+    this.emit('log', logMessage);
+    
+    // Write to file
+    logFile.write(`${logMessage}\n`);
   }
 
   emitStatusChange(status) {
     this.emit('statusChanged', status);
     this.log(`Status changed to: ${status}`);
+    this.emit('output', `Status changed to: ${status}`);
   }
 
   emitMessageSent(info) {
     this.emit('messageSent', info);
     this.log(`Message sent: ${info}`);
+    this.emit('output', `Message sent: ${info}`);
   }
 
   async changeStatus(newStatus) {
     try {
       await this.client.user.setStatus(newStatus);
       this.emitStatusChange(newStatus);
+      this.stats.commandsExecuted++;
+      this.stats.lastActivity = Date.now();
       return `Status changed to ${newStatus}`;
     } catch (error) {
       this.log(`Error changing status: ${error.message}`);
@@ -111,10 +150,15 @@ class BotManager extends EventEmitter {
         targetChannel = thread;
       }
       
-      await targetChannel.send(message);
-      const info = `Message sent to ${channel.name}${threadId ? ` (thread: ${targetChannel.name})` : ''}`;
-      this.emitMessageSent(info);
-      return info;
+      try {
+        const sentMessage = await targetChannel.send(message);
+        const info = `Message sent to ${channel.name}${threadId ? ` (thread: ${targetChannel.name})` : ''}`;
+        this.emitMessageSent(info);
+        return sentMessage;
+      } catch (error) {
+        this.log(`Error sending message: ${error.message}`);
+        throw new Error(`Failed to send message: ${error.message}`);
+      }
     } catch (error) {
       this.log(`Error sending message: ${error.message}`);
       throw new Error(`Failed to send message: ${error.message}`);
@@ -122,6 +166,9 @@ class BotManager extends EventEmitter {
   }
 
   async handleIncomingMessage(message) {
+    this.stats.messagesReceived++;
+    this.stats.lastActivity = Date.now();
+    
     if (this.webhookUrl) {
       try {
         const webhookData = {
@@ -140,7 +187,17 @@ class BotManager extends EventEmitter {
 
         console.log('Sending webhook data:', JSON.stringify(webhookData, null, 2));
 
-        const response = await axios.post(this.webhookUrl, webhookData);
+        try {
+          const response = await axios.post(this.webhookUrl, webhookData);
+          console.log('Webhook response:', response.status, response.statusText);
+          console.log('Webhook response data:', JSON.stringify(response.data, null, 2));
+        } catch (error) {
+          console.error('Failed to send message to webhook:', error);
+          if (error.response) {
+            console.error('Error response:', error.response.status, error.response.statusText);
+            console.error('Error data:', JSON.stringify(error.response.data, null, 2));
+          }
+        }
         console.log('Webhook response:', response.status, response.statusText);
         console.log('Webhook response data:', JSON.stringify(response.data, null, 2));
       } catch (error) {

@@ -23,6 +23,15 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
+rl.on('SIGINT', () => {
+  rl.question('Are you sure you want to exit? (y/n) ', (answer) => {
+    if (answer.match(/^y(es)?$/i)) {
+      rl.close();
+      process.exit(0);
+    }
+  });
+});
+
 // Initialize bot components.
 const botManager = new BotManager(client, process.env.WEBHOOK_URL);
 initializeBotManager(client); // Initialize the API server's BotManager instance
@@ -45,12 +54,12 @@ async function registerSlashCommands() {
 
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
-    await rest.put(
-      Routes.applicationCommands(client.user.id),
-      { body: commands },
-    );
+    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
 
     console.log('Successfully reloaded application (/) commands.');
+    commands.forEach(command => {
+      console.log(`Registered command: ${command.name} - ${command.description}`);
+    });
   } catch (error) {
     console.error('Error registering slash commands:', error);
   }
@@ -86,9 +95,21 @@ client.on('interactionCreate', async (interaction) => {
   // Add more command handlers here as needed
 });
 
+
+if (!process.env.DISCORD_TOKEN) {
+  console.error('DISCORD_TOKEN is not set in the environment variables.');
+  process.exit(1);
+}
+
+if (!process.env.API_PORT || !process.env.API_HOST) {
+  console.error('API_PORT or API_HOST is not set in the environment variables.');
+  process.exit(1);
+}
+
 // Log in to Discord.
 client.login(process.env.DISCORD_TOKEN).catch((error) => {
   console.error('Failed to log in:', error);
+  console.log('Please check your DISCORD_TOKEN in the environment variables.');
   process.exit(1);
 });
 
@@ -104,6 +125,8 @@ console.log('Current working directory:', process.cwd());
 const PORT = process.env.API_PORT || 6987;
 const HOST = process.env.API_HOST || '0.0.0.0';
 
+console.log(`Configured API server to run on http://${HOST}:${PORT}`);
+
 let server;
 const startServer = () => {
   return new Promise((resolve, reject) => {
@@ -115,27 +138,33 @@ const startServer = () => {
           return;
         }
         console.log(`API server successfully running on http://${HOST}:${PORT}`);
-        console.log('Server is now listening for incoming connections...');
         resolve(server);
       });
 
       // Graceful shutdown
       const shutdown = async () => {
         console.log('Shutdown signal received');
-        if (server) {
-          await new Promise(resolve => server.close(resolve));
-          console.log('HTTP server closed');
+        try {
+          if (server) {
+            await new Promise(resolve => server.close(resolve));
+            console.log('HTTP server closed');
+          }
+          if (client) {
+            await client.destroy();
+            console.log('Discord client destroyed');
+          }
+        } catch (error) {
+          console.error('Error during shutdown:', error);
+        } finally {
+          console.log('Exiting process...');
+          process.exit(0);
         }
-        if (client) {
-          await client.destroy();
-          console.log('Discord client destroyed');
-        }
-        process.exit(0);
       };
 
-      process.on('SIGTERM', shutdown);
-      process.on('SIGINT', shutdown);
-      process.on('SIGHUP', shutdown);
+      const signals = ['SIGTERM', 'SIGINT', 'SIGHUP'];
+      signals.forEach(signal => {
+        process.on(signal, shutdown);
+      });
 
     } catch (error) {
       console.error('Critical server error:', error);
@@ -147,5 +176,7 @@ const startServer = () => {
 // Start the server and handle any errors
 startServer().catch(error => {
   console.error('Failed to start server:', error);
+  console.log('Ensure that the API_PORT and API_HOST are correctly configured.');
+  console.log('Ensure that the API_PORT and API_HOST are correctly configured.');
   process.exit(1);
 });
