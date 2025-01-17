@@ -18,8 +18,6 @@ const BotManager = () => {
   const [selectedThread, setSelectedThread] = useState(null);
   const [channelsLoading, setChannelsLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  const [error, setError] = useState('');
-  const [output, setOutput] = useState('');
   const [activeTab, setActiveTab] = useState('Messages');
   const [commands, setCommands] = useState([]);
 
