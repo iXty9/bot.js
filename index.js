@@ -44,7 +44,36 @@ const commands = [
     name: 'fact',
     description: 'Get a random fact',
   },
-  // Add more slash commands here as needed
+  {
+    name: 'status',
+    description: 'Change bot status',
+    options: [{
+      name: 'newstatus',
+      description: 'New status to set (online, idle, dnd, invisible)',
+      type: 3,
+      required: true,
+      choices: [
+        { name: 'Online', value: 'online' },
+        { name: 'Idle', value: 'idle' },
+        { name: 'Do Not Disturb', value: 'dnd' },
+        { name: 'Invisible', value: 'invisible' }
+      ]
+    }]
+  },
+  {
+    name: 'channel',
+    description: 'List available channels or switch to a specific channel',
+    options: [{
+      name: 'name',
+      description: 'Channel name to switch to',
+      type: 3,
+      required: false
+    }]
+  },
+  {
+    name: 'help',
+    description: 'Show available commands and their usage'
+  }
 ];
 
 // Function to register slash commands
@@ -89,10 +118,30 @@ client.on('messageCreate', async (message) => {
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
 
-  if (interaction.commandName === 'fact') {
-    await commandHandler.handleFactCommand(interaction);
+  try {
+    switch (interaction.commandName) {
+      case 'fact':
+        await commandHandler.handleFactCommand(interaction);
+        break;
+      case 'status':
+        await commandHandler.handleStatusCommand(interaction);
+        break;
+      case 'channel':
+        await commandHandler.handleChannelCommand(interaction);
+        break;
+      case 'help':
+        await commandHandler.handleHelpCommand(interaction);
+        break;
+      default:
+        await interaction.reply({ content: 'Unknown command', ephemeral: true });
+    }
+  } catch (error) {
+    console.error('Error handling slash command:', error);
+    await interaction.reply({ 
+      content: 'An error occurred while processing the command', 
+      ephemeral: true 
+    }).catch(console.error);
   }
-  // Add more command handlers here as needed
 });
 
 

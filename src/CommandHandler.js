@@ -264,6 +264,76 @@ class CommandHandler {
       await interaction.editReply('Sorry, I couldn\'t fetch a random fact at the moment.');
     }
   }
+
+  async handleStatusCommand(interaction) {
+    const newStatus = interaction.options.getString('newstatus');
+    try {
+      const result = await this.botManager.changeStatus(newStatus);
+      await interaction.reply({ content: result, ephemeral: true });
+    } catch (error) {
+      await interaction.reply({ 
+        content: `Error changing status: ${error.message}`, 
+        ephemeral: true 
+      });
+    }
+  }
+
+  async handleChannelCommand(interaction) {
+    const channelName = interaction.options.getString('name');
+    
+    if (!channelName) {
+      // List all channels if no name provided
+      const channels = await this.botManager.listChannels();
+      const channelList = channels.map(ch => 
+        `- ${ch.name} (${ch.guildName}) - ${ch.type}`
+      ).join('\n');
+      
+      await interaction.reply({
+        content: `Available channels:\n${channelList}`,
+        ephemeral: true
+      });
+      return;
+    }
+
+    try {
+      const channels = await this.botManager.listChannels();
+      const matchingChannel = channels.find(ch => ch.name === channelName);
+      
+      if (!matchingChannel) {
+        await interaction.reply({
+          content: `Channel "${channelName}" not found.`,
+          ephemeral: true
+        });
+        return;
+      }
+
+      this.setCurrentChannel(matchingChannel);
+      await interaction.reply({
+        content: `Switched to channel: ${matchingChannel.name} (${matchingChannel.guildName})`,
+        ephemeral: true
+      });
+    } catch (error) {
+      await interaction.reply({
+        content: `Error changing channel: ${error.message}`,
+        ephemeral: true
+      });
+    }
+  }
+
+  async handleHelpCommand(interaction) {
+    const helpText = [
+      '**Available Commands:**',
+      '`/fact` - Get a random fact',
+      '`/status <newstatus>` - Change bot status (online, idle, dnd, invisible)',
+      '`/channel [name]` - List channels or switch to a specific channel',
+      '`/help` - Show this help message'
+    ].join('\n');
+
+    await interaction.reply({
+      content: helpText,
+      ephemeral: true
+    });
+  }
 }
 
 module.exports = CommandHandler;
