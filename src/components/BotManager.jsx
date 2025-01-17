@@ -204,6 +204,7 @@ const BotManager = () => {
   const { data: channels = [], isLoading: isLoadingChannels } = useChannels();
   const { data: messages = [], isLoading: isLoadingMessages } = useMessageHistory(selectedChannel?.id);
   const { error, handleError } = useError();
+  const [editingMessage, setEditingMessage] = useState(null);
 
   const handleSendMessage = async () => {
     if (!message.trim() || !selectedChannel) return;
@@ -430,6 +431,7 @@ const BotManager = () => {
                         const channel = channels?.find(c => c.id === value);
                         setSelectedChannel(channel || null);
                       }}
+                      disabled={isLoadingChannels}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a channel..." />
@@ -527,15 +529,94 @@ const BotManager = () => {
                           key={msg.id} 
                           className="p-3 rounded-lg bg-card"
                         >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-sm text-primary">
-                              {msg.author}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(msg.timestamp).toLocaleString()}
-                            </span>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm text-primary">
+                                {msg.author}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(msg.timestamp).toLocaleTimeString()} {new Date(msg.timestamp).toLocaleDateString()}
+                              </span>
+                            </div>
+                            {msg.author === botManager?.client?.user?.username && (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingMessage(msg);
+                                    setMessage(msg.content);
+                                  }}
+                                  className="text-xs text-muted-foreground hover:text-primary"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await fetch(`/api/messages/${selectedChannel.id}/${msg.id}`, {
+                                        method: 'DELETE',
+                                        headers: {
+                                          'Authorization': `Bearer ${localStorage.getItem('discord_token')}`
+                                        }
+                                      });
+                                      // Refetch messages after deletion
+                                      queryClient.invalidateQueries(['messages', selectedChannel.id]);
+                                    } catch (err) {
+                                      handleError(err);
+                                    }
+                                  }}
+                                  className="text-xs text-destructive hover:text-destructive/80"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
                           </div>
-                          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                          {editingMessage?.id === msg.id ? (
+                            <div className="mt-2">
+                              <Textarea
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
+                                className="min-h-[60px] mb-2"
+                              />
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingMessage(null);
+                                    setMessage('');
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      await fetch(`/api/messages/${selectedChannel.id}/${msg.id}`, {
+                                        method: 'PATCH',
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                          'Authorization': `Bearer ${localStorage.getItem('discord_token')}`
+                                        },
+                                        body: JSON.stringify({ content: message })
+                                      });
+                                      setEditingMessage(null);
+                                      setMessage('');
+                                      // Refetch messages after edit
+                                      queryClient.invalidateQueries(['messages', selectedChannel.id]);
+                                    } catch (err) {
+                                      handleError(err);
+                                    }
+                                  }}
+                                >
+                                  Save
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                          )}
                           {msg.attachments.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-2">
                               {msg.attachments.map(attachment => (

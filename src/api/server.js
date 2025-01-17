@@ -140,6 +140,52 @@ app.get('/api/messages/:channelId', authenticateToken, async (req, res) => {
   }
 });
 
+// Message deletion endpoint
+app.delete('/api/messages/:channelId/:messageId', authenticateToken, async (req, res) => {
+  try {
+    const { channelId, messageId } = req.params;
+    const channel = await botManager.client.channels.fetch(channelId);
+    if (!channel) {
+      return res.status(404).json({ error: 'Channel not found' });
+    }
+    
+    const message = await channel.messages.fetch(messageId);
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    await message.delete();
+    res.json({ message: 'Message deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting message:', error);
+    res.status(500).json({ error: 'Failed to delete message' });
+  }
+});
+
+// Message editing endpoint
+app.patch('/api/messages/:channelId/:messageId', authenticateToken, async (req, res) => {
+  try {
+    const { channelId, messageId } = req.params;
+    const { content } = req.body;
+    
+    const channel = await botManager.client.channels.fetch(channelId);
+    if (!channel) {
+      return res.status(404).json({ error: 'Channel not found' });
+    }
+    
+    const message = await channel.messages.fetch(messageId);
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    await message.edit(content);
+    res.json({ message: 'Message edited successfully' });
+  } catch (error) {
+    console.error('Error editing message:', error);
+    res.status(500).json({ error: 'Failed to edit message' });
+  }
+});
+
 app.post('/api/send', authenticateToken, async (req, res) => {
   try {
     const { message, channelId, threadId } = req.body;
