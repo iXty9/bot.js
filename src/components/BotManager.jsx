@@ -420,7 +420,7 @@ const BotManager = () => {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-2 gap-10 mb-4">
                   <Select
                     value={selectedChannel?.id || ""}
                     onValueChange={(value) => {
@@ -469,169 +469,47 @@ const BotManager = () => {
 
                 <div>
                   <Textarea
-                  placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  disabled={!selectedChannel}
-                  className="min-h-[120px] mb-4"
-                />
+                    placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    disabled={!selectedChannel}
+                    className="min-h-[200px] mb-4"
+                  />
                 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                  <button
-                    style={{
-                      ...styles.button,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                    onClick={() => setMessage('')}
-                  >
-                    <Trash2 size={16} />
-                    Clear
-                  </button>
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!message.trim() || isSending}
-                    className="gap-2 bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80"
-                    variant="secondary"
-                  >
-                    {isSending ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Send size={16} />
-                        Send Message
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                <div className="h-[460px] mt-4 overflow-y-auto p-4 bg-card rounded-lg border border-border">
-                  {isLoadingMessages ? (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <div className="flex flex-col gap-4">
+                    <div className="flex justify-end gap-4">
+                      <button
+                        style={{
+                          ...styles.button,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                        onClick={() => setMessage('')}
+                      >
+                        <Trash2 size={16} />
+                        Clear
+                      </button>
+                      <Button
+                        onClick={handleSendMessage}
+                        disabled={!message.trim() || isSending}
+                        className="gap-2 bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80"
+                        variant="secondary"
+                      >
+                        {isSending ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Send size={16} />
+                            Send Message
+                          </>
+                        )}
+                      </Button>
                     </div>
-                  ) : messages.length > 0 ? (
-                    <div className="space-y-4">
-                      {messages.map((msg) => (
-                        <div 
-                          key={msg.id} 
-                          className="p-3 rounded-lg bg-card"
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm text-primary">
-                                {msg.author}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(msg.timestamp).toLocaleTimeString()} {new Date(msg.timestamp).toLocaleDateString()}
-                              </span>
-                            </div>
-                            {msg.author === botManager?.client?.user?.username && (
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    setEditingMessage(msg);
-                                    setMessage(msg.content);
-                                  }}
-                                  className="text-xs text-muted-foreground hover:text-primary"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      await fetch(`/api/messages/${selectedChannel.id}/${msg.id}`, {
-                                        method: 'DELETE',
-                                        headers: {
-                                          'Authorization': `Bearer ${localStorage.getItem('discord_token')}`
-                                        }
-                                      });
-                                      // Refetch messages after deletion
-                                      queryClient.invalidateQueries(['messages', selectedChannel.id]);
-                                    } catch (err) {
-                                      handleError(err);
-                                    }
-                                  }}
-                                  className="text-xs text-destructive hover:text-destructive/80"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          {editingMessage?.id === msg.id ? (
-                            <div className="mt-2">
-                              <Textarea
-                                value={message}
-                                onChange={(e) => setMessage(e.target.value)}
-                                className="min-h-[60px] mb-2"
-                              />
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setEditingMessage(null);
-                                    setMessage('');
-                                  }}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      await fetch(`/api/messages/${selectedChannel.id}/${msg.id}`, {
-                                        method: 'PATCH',
-                                        headers: {
-                                          'Content-Type': 'application/json',
-                                          'Authorization': `Bearer ${localStorage.getItem('discord_token')}`
-                                        },
-                                        body: JSON.stringify({ content: message })
-                                      });
-                                      setEditingMessage(null);
-                                      setMessage('');
-                                      // Refetch messages after edit
-                                      queryClient.invalidateQueries(['messages', selectedChannel.id]);
-                                    } catch (err) {
-                                      handleError(err);
-                                    }
-                                  }}
-                                >
-                                  Save
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                          )}
-                          {msg.attachments.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {msg.attachments.map(attachment => (
-                                <a
-                                  key={attachment.id}
-                                  href={attachment.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-primary hover:underline"
-                                >
-                                  {attachment.name}
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                      No messages to display
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
