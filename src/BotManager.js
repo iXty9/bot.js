@@ -102,23 +102,23 @@ class BotManager extends EventEmitter {
       this.logs.pop();
     }
     
-    // Only write important logs to console
-    if (!message.includes('initialized') && !message.includes('Starting')) {
-      console.log(logMessage);
-    }
+    // Emit the log event for UI to display
+    this.emit('log', logMessage);
     
-    // Write all logs to file
+    // Write to file
     logFile.write(`${logMessage}\n`);
   }
 
   emitStatusChange(status) {
     this.emit('statusChanged', status);
     this.log(`Status changed to: ${status}`);
+    this.emit('output', `Status changed to: ${status}`);
   }
 
   emitMessageSent(info) {
     this.emit('messageSent', info);
     this.log(`Message sent: ${info}`);
+    this.emit('output', `Message sent: ${info}`);
   }
 
   async changeStatus(newStatus) {
