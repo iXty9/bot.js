@@ -92,6 +92,22 @@ app.get('/api/channels', authenticateToken, async (req, res) => {
   }
 });
 
+app.post('/api/send', authenticateToken, async (req, res) => {
+  try {
+    const { message, channelId, threadId } = req.body;
+    
+    if (!message || !channelId) {
+      return res.status(400).json({ error: 'Message and channelId are required' });
+    }
+
+    const result = await botManager.sendMessage(message, channelId, threadId);
+    res.json({ message: result });
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({ error: 'Failed to send message' });
+  }
+});
+
 app.post('/api/channel', authenticateToken, async (req, res) => {
   try {
     const { channelId } = req.body;
