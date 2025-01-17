@@ -420,11 +420,10 @@ const BotManager = () => {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
-                <div className="flex gap-4 mb-4">
-                  <div className="flex-1">
-                    <Select
-                      value={selectedChannel?.id || ""}
-                      onValueChange={(value) => {
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <Select
+                    value={selectedChannel?.id || ""}
+                    onValueChange={(value) => {
                         const channel = channels?.find(c => c.id === value);
                         setSelectedChannel(channel || null);
                         setSelectedThread(null); // Reset thread when channel changes
@@ -442,10 +441,7 @@ const BotManager = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-
-                  <div className="flex-1">
-                    <Select
+                  <Select
                       value={selectedThread?.id || "no_thread"}
                       onValueChange={(value) => {
                         if (value === "no_thread") {
@@ -496,7 +492,8 @@ const BotManager = () => {
                   <Button
                     onClick={handleSendMessage}
                     disabled={!message.trim() || isSending}
-                    className="gap-2"
+                    className="gap-2 bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80"
+                    variant="secondary"
                   >
                     {isSending ? (
                       <>
