@@ -54,10 +54,7 @@ async function registerSlashCommands() {
 
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
-    await rest.put(Routes.applicationCommands(client.user.id), { body: commands })
-      .catch(error => {
-        console.error('Error registering slash commands:', error);
-      });
+    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
 
     console.log('Successfully reloaded application (/) commands.');
     commands.forEach(command => {
@@ -160,7 +157,7 @@ const startServer = () => {
           console.error('Error during shutdown:', error);
         } finally {
           console.log('Exiting process...');
-          process.exit(0);
+          shutdown();
         }
       };
 

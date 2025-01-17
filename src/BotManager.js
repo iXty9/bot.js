@@ -150,10 +150,10 @@ class BotManager extends EventEmitter {
         targetChannel = thread;
       }
       
-      await targetChannel.send(message);
+      const sentMessage = await targetChannel.send(message);
       const info = `Message sent to ${channel.name}${threadId ? ` (thread: ${targetChannel.name})` : ''}`;
       this.emitMessageSent(info);
-      return info;
+      return sentMessage;
     } catch (error) {
       this.log(`Error sending message: ${error.message}`);
       throw new Error(`Failed to send message: ${error.message}`);
@@ -182,7 +182,13 @@ class BotManager extends EventEmitter {
 
         console.log('Sending webhook data:', JSON.stringify(webhookData, null, 2));
 
-        const response = await axios.post(this.webhookUrl, webhookData);
+        const response = await axios.post(this.webhookUrl, webhookData).catch(error => {
+          console.error('Failed to send message to webhook:', error);
+          if (error.response) {
+            console.error('Error response:', error.response.status, error.response.statusText);
+            console.error('Error data:', JSON.stringify(error.response.data, null, 2));
+          }
+        });
         console.log('Webhook response:', response.status, response.statusText);
         console.log('Webhook response data:', JSON.stringify(response.data, null, 2));
       } catch (error) {

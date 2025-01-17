@@ -9,7 +9,6 @@ class CommandHandler {
     this.currentChannel = null;
     this.currentThread = null;
     this.composingMessage = '';
-    this.awaitingChannelSelection = false;
   }
 
   async initialize() {

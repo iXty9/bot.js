@@ -241,7 +241,7 @@ app.get(/^(?!\/api\/).+/, (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
+  console.error('Server Error:', err);
   
   if (err.name === 'UnauthorizedError') {
     return res.status(401).json({ error: 'Invalid token' });
