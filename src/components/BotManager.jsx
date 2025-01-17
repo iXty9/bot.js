@@ -450,7 +450,7 @@ const BotManager = () => {
                     <Select
                       value={selectedThread?.id ?? ''}
                       onValueChange={(value) => {
-                        if (!value) {
+                        if (value === "no_thread" || value === "no_threads_available") {
                           setSelectedThread(null);
                           return;
                         }
@@ -463,12 +463,18 @@ const BotManager = () => {
                         <SelectValue placeholder="Select a thread..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No thread</SelectItem>
-                        {selectedChannel?.threads?.map(thread => (
-                          <SelectItem key={thread.id} value={thread.id}>
-                            {thread.name}
-                          </SelectItem>
-                        ))}
+                        {selectedChannel?.threads?.length > 0 ? (
+                          <>
+                            <SelectItem value="no_thread">No thread</SelectItem>
+                            {selectedChannel.threads.map(thread => (
+                              <SelectItem key={thread.id} value={thread.id}>
+                                {thread.name}
+                              </SelectItem>
+                            ))}
+                          </>
+                        ) : (
+                          <SelectItem value="no_threads_available">No threads available</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
