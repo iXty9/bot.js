@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { useSocket, initializeSocket } from '../lib/socket';
+import { useMessageHistory, useSendMessage, useChannels, useError } from '../lib/hooks';
 import { Send, Trash2, Command, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -224,36 +226,25 @@ const BotManager = () => {
     }
   };
 
-  const handleSendMessage = async () => {
+  const { mutate: sendMessage, isLoading: isSending } = useSendMessage();
+  const { data: channels = [], isLoading: isLoadingChannels } = useChannels();
+  const { data: messages = [], isLoading: isLoadingMessages } = useMessageHistory(selectedChannel?.id);
+  const { error, handleError } = useError();
+
+  const handleSendMessage = () => {
     if (!message.trim() || !selectedChannel) return;
     
-    try {
-      setError('');
-      const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
-      const response = await fetch('/api/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          message: message.trim(),
-          channelId: selectedChannel.id,
-          threadId: selectedThread?.id
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to send message: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      setOutput(data.message || 'Message sent successfully');
-      setMessage('');
-    } catch (err) {
-      console.error('Error sending message:', err);
-      setError(err.message || 'Failed to send message');
-    }
+    sendMessage({
+      message: message.trim(),
+      channelId: selectedChannel.id,
+      threadId: selectedThread?.id
+    }, {
+      onSuccess: () => {
+        setMessage('');
+        setOutput('Message sent successfully');
+      },
+      onError: handleError
+    });
   };
 
   useEffect(() => {

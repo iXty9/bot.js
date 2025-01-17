@@ -109,6 +109,37 @@ app.get('/api/channels', authenticateToken, async (req, res) => {
   }
 });
 
+// Message history endpoint
+app.get('/api/messages/:channelId', authenticateToken, async (req, res) => {
+  try {
+    const { channelId } = req.params;
+    const { limit = 50 } = req.query;
+    
+    const channel = await botManager.client.channels.fetch(channelId);
+    if (!channel) {
+      return res.status(404).json({ error: 'Channel not found' });
+    }
+
+    const messages = await channel.messages.fetch({ limit: Number(limit) });
+    const formattedMessages = messages.map(msg => ({
+      id: msg.id,
+      content: msg.content,
+      author: msg.author.username,
+      timestamp: msg.createdTimestamp,
+      attachments: msg.attachments.map(a => ({
+        id: a.id,
+        url: a.url,
+        name: a.name
+      }))
+    }));
+
+    res.json(formattedMessages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
 app.post('/api/send', authenticateToken, async (req, res) => {
   try {
     const { message, channelId, threadId } = req.body;
@@ -155,6 +186,21 @@ app.use(express.static(path.join(__dirname, '../../src/public')));
 app.get(/^(?!\/api\/).+/, (req, res) => {
   console.log('Serving index.html...');
   res.sendFile(path.join(__dirname, '../../src/public/index.html'));
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  
+  if (err.name === 'UnauthorizedError') {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+  
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({ error: err.message });
+  }
+  
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 // Handle 404s by serving index.html
