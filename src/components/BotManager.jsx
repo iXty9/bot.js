@@ -414,7 +414,7 @@ const BotManager = () => {
           )}
 
           {activeTab === 'Messages' && (
-              <div>
+              <div className="space-y-4">
                 {error && (
                   <Alert variant="destructive" className="mb-4">
                     <AlertDescription>{error}</AlertDescription>
@@ -634,6 +634,7 @@ const BotManager = () => {
                   )}
                 </div>
               </div>
+            </div>
           )}
 
           {activeTab === 'Slash Commands' && (
