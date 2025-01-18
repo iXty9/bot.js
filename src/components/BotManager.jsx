@@ -427,7 +427,7 @@ const BotManager = () => {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
-              {envVars.BOT_NAME || 'Bot'}
+              {status === 'online' ? envVars.BOT_NAME || 'Bot' : 'Bot'}
             </span>
             <select 
               style={{
@@ -506,7 +506,7 @@ const BotManager = () => {
                     </div>
                   )}
                 </div>
-                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'flex-end' }}>
                   <button
                     style={{
                       ...styles.button,
