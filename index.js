@@ -38,22 +38,48 @@ const consoleUI = new ConsoleUI(rl);
 const commandHandler = new CommandHandler(client, botManager, consoleUI);
 
 // Initialize the bot manager
-async function init() {
+client.once('ready', async () => {
   try {
     await initializeBotManager(client);
     if (!botManager) {
       console.error('Failed to initialize bot manager');
       process.exit(1);
     }
+    consoleUI.addLog(`Logged in as ${client.user.tag}!`);
+    consoleUI.addLog('Type "/help" for a list of commands.');
+    
+    // Register slash commands first
+    try {
+      const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+      
+      consoleUI.addLog('Started refreshing application (/) commands.');
+      
+      await rest.put(
+        Routes.applicationCommands(client.user.id),
+        { body: commands }
+      );
+      
+      consoleUI.addLog('Successfully reloaded application (/) commands:');
+      commands.forEach(cmd => {
+        consoleUI.addLog(`- /${cmd.name}`);
+      });
+    } catch (error) {
+      consoleUI.addLog(`Failed to register commands: ${error.message}`);
+    }
+    
+    try {
+      await commandHandler.initialize(); // Initialize the current channel
+    } catch (error) {
+      consoleUI.addLog(`Error initializing command handler: ${error.message}`);
+    }
+    
+    const serverStatus = await botManager.checkServerStatus();
+    consoleUI.addLog(`Web server status: ${serverStatus}`);
+    consoleUI.promptUser(commandHandler.handleInput.bind(commandHandler));
   } catch (error) {
     console.error('Failed to initialize bot manager:', error);
     process.exit(1);
   }
-}
-
-init().catch(error => {
-  console.error('Initialization failed:', error);
-  process.exit(1);
 });
 
 // Define slash commands
