@@ -62,7 +62,10 @@ function authenticateToken(req, res, next) {
 
     jwt.verify(token, secretKey, (err, user) => {
       if (err) {
-        console.error('Invalid token provided');
+        if (!req.invalidTokenLogged) {
+          console.error('Invalid token provided');
+          req.invalidTokenLogged = true;
+        }
         return res.status(403).json({ error: 'Invalid authentication token' });
       }
       req.user = user;
