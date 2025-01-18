@@ -216,7 +216,7 @@ class BotManager extends EventEmitter {
         }
       }
     } else {
-      console.log(`Message received: ${message.content} (from ${message.author.username} in ${message.guild.name}#${message.channel.name}${message.channel.isThread() ? ` (thread: ${message.channel.name})` : ''})`);
+      console.log(`Message received: ${message.content} (from ${message.author.username} in ${message.guild ? message.guild.name : 'DM'}#${message.channel.name}${message.channel.isThread() ? ` (thread: ${message.channel.name})` : ''})`);
     }
   }
 
