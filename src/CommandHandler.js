@@ -24,7 +24,6 @@ class CommandHandler {
       this.consoleUI.addLog('Error initializing channels: ' + error.message);
     }
     this.awaitingChannelSelection = false;
-    this.awaitingChannelSelection = false;
   }
 
   updateStatusBar() {
@@ -143,6 +142,10 @@ class CommandHandler {
   }
 
   async changeChannel(channelName) {
+    if (!channelName) {
+      this.consoleUI.addLog('Channel name is required.');
+      return;
+    }
     const channels = await this.botManager.listChannels();
     const matchingChannels = channels.filter(ch => ch.name === channelName);
 

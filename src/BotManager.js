@@ -89,7 +89,7 @@ class BotManager extends EventEmitter {
 
   async checkServerStatus() {
     try {
-      const response = await axios.get('http://127.0.0.1:6987');
+      const response = await axios.get(`http://${process.env.API_HOST}:${process.env.API_PORT}`);
       return response.status === 200 ? 'Running' : 'Not Running';
     } catch (error) {
       return 'Not Running';
@@ -161,15 +161,14 @@ class BotManager extends EventEmitter {
         targetChannel = thread;
       }
       
-      try {
-        const sentMessage = await targetChannel.send(message);
-        const info = `Message sent to ${channel.name}${threadId ? ` (thread: ${targetChannel.name})` : ''}`;
-        this.emitMessageSent(info);
-        return sentMessage;
-      } catch (error) {
-        this.log(`Error sending message: ${error.message}`);
-        throw new Error(`Failed to send message: ${error.message}`);
+      if (!targetChannel) {
+        throw new Error('Target channel or thread not found');
       }
+      
+      const sentMessage = await targetChannel.send(message);
+      const info = `Message sent to ${channel.name}${threadId ? ` (thread: ${targetChannel.name})` : ''}`;
+      this.emitMessageSent(info);
+      return sentMessage;
     } catch (error) {
       this.log(`Error sending message: ${error.message}`);
       throw new Error(`Failed to send message: ${error.message}`);

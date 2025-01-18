@@ -112,7 +112,11 @@ client.once('ready', async () => {
     consoleUI.addLog(`Failed to register commands: ${error.message}`);
   }
   
-  await commandHandler.initialize(); // Initialize the current channel
+  try {
+    await commandHandler.initialize(); // Initialize the current channel
+  } catch (error) {
+    consoleUI.addLog(`Error initializing command handler: ${error.message}`);
+  }
   
   const serverStatus = await botManager.checkServerStatus();
   consoleUI.addLog(`Web server status: ${serverStatus}`);
@@ -215,7 +219,12 @@ const startServer = () => {
         console.log('Shutdown signal received');
         try {
           if (server) {
-            await new Promise(resolve => server.close(resolve));
+            await new Promise((resolve, reject) => {
+              server.close((err) => {
+                if (err) reject(err);
+                else resolve();
+              });
+            });
             console.log('HTTP server closed');
           }
           if (client) {

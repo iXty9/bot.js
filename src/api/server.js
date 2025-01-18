@@ -56,32 +56,18 @@ function authenticateToken(req, res, next) {
     }
 
     if (!token) {
-      // Check for token in query params
-      const queryToken = req.query.token;
-      if (queryToken && queryToken === process.env.DISCORD_TOKEN) {
-        next();
-        return;
-      }
       console.error('No authentication token provided');
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    // Clean and compare tokens
-    const cleanStoredToken = process.env.DISCORD_TOKEN.trim();
-    const cleanProvidedToken = token.trim();
-    
-    console.log('Token validation:', {
-      match: cleanProvidedToken === cleanStoredToken,
-      providedLength: cleanProvidedToken.length,
-      storedLength: cleanStoredToken.length
-    });
-    
-    if (cleanProvidedToken === cleanStoredToken) {
+    jwt.verify(token, secretKey, (err, user) => {
+      if (err) {
+        console.error('Invalid token provided');
+        return res.status(403).json({ error: 'Invalid authentication token' });
+      }
+      req.user = user;
       next();
-    } else {
-      console.error('Invalid token provided');
-      return res.status(403).json({ error: 'Invalid authentication token' });
-    }
+    });
   } catch (error) {
     console.error('Authentication error:', error);
     return res.status(500).json({ error: 'Authentication failed' });
@@ -94,6 +80,10 @@ let botManager = null;
 function initializeBotManager(client) {
   return new Promise((resolve, reject) => {
     try {
+      if (!client || !client.isReady()) {
+        reject(new Error('Discord client is not ready'));
+        return;
+      }
       if (!botManager) {
         botManager = new BotManager(client, process.env.WEBHOOK_URL);
         // Wait for bot manager to be ready
@@ -120,9 +110,6 @@ app.get('/api/env', authenticateToken, (req, res) => {
     const envVars = {
       API_PORT: process.env.API_PORT || '6987',
       API_HOST: process.env.API_HOST || '0.0.0.0',
-      DISCORD_TOKEN: process.env.DISCORD_TOKEN || '',
-      JWT_SECRET: process.env.JWT_SECRET || '',
-      WEBHOOK_URL: process.env.WEBHOOK_URL || '',
       BOT_NAME: process.env.BOT_NAME || ''
     };
     res.json(envVars);
