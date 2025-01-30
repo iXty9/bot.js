@@ -179,6 +179,13 @@ class BotManager extends EventEmitter {
     this.stats.messagesReceived++;
     this.stats.lastActivity = Date.now();
     
+    // Start typing indicator
+    try {
+      await message.channel.sendTyping();
+    } catch (error) {
+      this.log(`Error starting typing indicator: ${error.message}`);
+    }
+    
     if (this.webhookUrl) {
       try {
         const webhookData = {
@@ -213,6 +220,12 @@ class BotManager extends EventEmitter {
         if (error.response) {
           console.error('Error response:', error.response.status, error.response.statusText);
           console.error('Error data:', JSON.stringify(error.response.data, null, 2));
+        }
+        // Stop typing indicator on error
+        try {
+          await message.channel.sendTyping();
+        } catch (typingError) {
+          this.log(`Error stopping typing indicator: ${typingError.message}`);
         }
       }
     } else {
