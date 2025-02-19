@@ -59,11 +59,11 @@ export default {
   plugins: [
     new Dotenv({
       systemvars: true,
-      safe: false,
-      allowEmptyValues: true,
+      safe: true,
+      allowEmptyValues: false,
       defaults: true,
       path: '.env',
-      silent: true
+      silent: false
     })
   ],
   performance: {

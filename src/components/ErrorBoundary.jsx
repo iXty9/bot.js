@@ -39,6 +39,9 @@ class ErrorBoundary extends React.Component {
     if (this.props.autoReset) {
       setTimeout(() => {
         this.setState({ hasError: false, error: null, errorInfo: null });
+        if (this.props.onReset) {
+          this.props.onReset();
+        }
       }, 5000);
     }
   }

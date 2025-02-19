@@ -32,9 +32,7 @@ export const initializeSocket = (token) => {
     
     if (reason === 'io server disconnect') {
       // Disconnected by server, attempt reconnection
-      setTimeout(() => {
-        socket.connect();
-      }, 1000);
+      socket.connect();
     }
   });
 
