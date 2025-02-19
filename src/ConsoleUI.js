@@ -1,6 +1,6 @@
-const readline = require('readline');
-const chalk = require('chalk');
-const boxen = require('boxen');
+import readline from 'readline';
+import chalk from 'chalk';
+import boxen from 'boxen';
 
 class ConsoleUI {
   constructor(rl) {
@@ -124,4 +124,4 @@ class ConsoleUI {
   }
 }
 
-module.exports = ConsoleUI;
+export default ConsoleUI;

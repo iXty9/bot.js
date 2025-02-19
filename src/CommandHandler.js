@@ -1,5 +1,5 @@
-const chalk = require('chalk');
-const axios = require('axios');
+import chalk from 'chalk';
+import axios from 'axios';
 
 class CommandHandler {
   constructor(client, botManager, consoleUI) {
@@ -433,4 +433,4 @@ class CommandHandler {
   }
 }
 
-module.exports = CommandHandler;
+export default CommandHandler;

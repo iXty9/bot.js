@@ -1,9 +1,9 @@
-const EventEmitter = require('events');
-const axios = require('axios');
-const { ChannelType } = require('discord.js');
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
+import EventEmitter from 'events';
+import axios from 'axios';
+import { ChannelType } from 'discord.js';
+import express from 'express';
+import fs from 'fs';
+import path from 'path';
 const logFile = fs.createWriteStream('console.log', { flags: 'a' });
 let serverInstance = null;
 
@@ -272,4 +272,4 @@ class BotManager extends EventEmitter {
   }
 }
 
-module.exports = BotManager;
+export default BotManager;

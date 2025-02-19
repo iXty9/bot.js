@@ -1,11 +1,16 @@
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const jwt = require('jsonwebtoken');
-const dotenv = require('dotenv');
-const fs = require('fs');
-const path = require('path');
-const axios = require('axios');
+import express from 'express';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import axios from 'axios';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load environment variables
 const envPath = path.join(__dirname, '../../.env');
@@ -27,9 +32,9 @@ if (process.env.DISCORD_TOKEN === 'your-token-here' || process.env.DISCORD_TOKEN
   process.exit(1);
 }
 
-const { Server } = require('socket.io');
-const http = require('http');
-const BotManager = require('../BotManager');
+import { Server } from 'socket.io';
+import http from 'http';
+import BotManager from '../BotManager.js';
 const app = express();
 const PORT = process.env.API_PORT || 6987;
 const HOST = process.env.API_HOST || '0.0.0.0';
@@ -525,7 +530,7 @@ io.on('connection', (socket) => {
 });
 
 // Export the server instance so we can start it from index.js
-module.exports = { 
+export { 
   initializeBotManager,
   app,
   server,
