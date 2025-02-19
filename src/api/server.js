@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
@@ -39,11 +38,6 @@ const app = express();
 const PORT = process.env.API_PORT || 6987;
 const HOST = process.env.API_HOST || '0.0.0.0';
 app.set('trust proxy', true);
-const secretKey = process.env.JWT_SECRET;
-if (!secretKey) {
-  console.error('JWT_SECRET environment variable is required');
-  process.exit(1);
-}
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -405,7 +399,7 @@ app.use((err, req, res, next) => {
   console.error('Server Error:', err);
   
   if (err.name === 'UnauthorizedError') {
-    return res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({ error: 'Authentication required' });
   }
   
   if (err.name === 'ValidationError') {
