@@ -170,7 +170,8 @@ const BotManager = () => {
           
           const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
           if (!token || token.trim() === '') {
-            throw new Error('No authentication token found');
+            setLocalError('No authentication token found. Please set the DISCORD_TOKEN in your environment variables or local storage.');
+            return;
           }
           if (!token) {
             throw new Error('No authentication token found');
