@@ -169,7 +169,7 @@ const BotManager = () => {
           const timeout = setTimeout(() => controller.abort(), 5000);
           
           const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
-          if (!token) {
+          if (!token || token.trim() === '') {
             throw new Error('No authentication token found');
           }
           if (!token) {
