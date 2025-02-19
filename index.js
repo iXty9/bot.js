@@ -32,17 +32,17 @@ rl.on('SIGINT', () => {
 });
 
 // Initialize bot components.
-async function init() {
-  const botManager = new BotManager(client, process.env.WEBHOOK_URL);
-  const consoleUI = new ConsoleUI(rl);
-  const commandHandler = new CommandHandler(client, botManager, consoleUI);
+// Initialize bot components
+const botManager = new BotManager(client, process.env.WEBHOOK_URL);
+const consoleUI = new ConsoleUI(rl);
+const commandHandler = new CommandHandler(client, botManager, consoleUI);
 
-  try {
-    await initializeBotManager(client);
-  } catch (error) {
-    console.error('Failed to initialize bot manager:', error);
-    process.exit(1);
-  }
+try {
+  await initializeBotManager(client);
+} catch (error) {
+  console.error('Failed to initialize bot manager:', error);
+  process.exit(1);
+}
 
 // Define slash commands
 const commands = [
@@ -182,7 +182,6 @@ const startServer = () => {
 // Start the server and handle any errors
 startServer().catch(error => {
   console.error('Failed to start server:', error);
-  console.log('Ensure that the API_PORT and API_HOST are correctly configured.');
   console.log('Ensure that the API_PORT and API_HOST are correctly configured.');
   process.exit(1);
 });
