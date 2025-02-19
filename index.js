@@ -31,18 +31,10 @@ rl.on('SIGINT', () => {
   });
 });
 
-// Initialize bot components.
-// Initialize bot components
-const botManager = new BotManager(client, process.env.WEBHOOK_URL);
+// Initialize UI components
 const consoleUI = new ConsoleUI(rl);
-const commandHandler = new CommandHandler(client, botManager, consoleUI);
-
-try {
-  await initializeBotManager(client);
-} catch (error) {
-  console.error('Failed to initialize bot manager:', error);
-  process.exit(1);
-}
+let botManager;
+let commandHandler;
 
 // Define slash commands
 const commands = [
@@ -73,6 +65,17 @@ async function registerSlashCommands() {
 
 // Event listener for when the client is ready.
 client.once('ready', async () => {
+  // Initialize bot components after client is ready
+  botManager = new BotManager(client, process.env.WEBHOOK_URL);
+  commandHandler = new CommandHandler(client, botManager, consoleUI);
+  
+  try {
+    await initializeBotManager(client);
+  } catch (error) {
+    console.error('Failed to initialize bot manager:', error);
+    process.exit(1);
+  }
+
   consoleUI.addLog(`Logged in as ${client.user.tag}!`);
   consoleUI.addLog('Type "/help" for a list of commands.');
   
