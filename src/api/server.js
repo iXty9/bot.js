@@ -103,7 +103,13 @@ function initializeBotManager(client) {
 }
 
 // Export for use in index.js
-export { initializeBotManager, app, getBotManager: () => botManager };
+export { 
+  initializeBotManager, 
+  app, 
+  server, 
+  io,
+  getBotManager: () => botManager 
+};
 
 // API routes
 // Environment variables endpoint
