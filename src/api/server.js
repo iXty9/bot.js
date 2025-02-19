@@ -25,7 +25,8 @@ requiredEnvVars.forEach((varName) => {
 
 if (process.env.DISCORD_TOKEN === 'your-discord-bot-token-here') {
   console.error('Error: Please configure a valid DISCORD_TOKEN in .env file');
-  process.exit(1);
+  // Instead of exiting, set a flag to indicate the token needs to be updated
+  process.env.DISCORD_TOKEN = '';
 }
 
 import { Server } from 'socket.io';
