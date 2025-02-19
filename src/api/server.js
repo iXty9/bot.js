@@ -389,14 +389,6 @@ app.post('/api/restart', authenticateToken, async (req, res) => {
     if (!botManager) {
       throw new Error('Bot manager not initialized');
     }
-    
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    if (token !== process.env.DISCORD_TOKEN) {
-      console.error('Invalid authentication token detected');
-      return res.status(403).json({ error: 'Invalid authentication token' });
-    }
 
     const result = await botManager.restart();
     res.json({ message: result });
