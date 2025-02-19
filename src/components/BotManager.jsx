@@ -312,6 +312,14 @@ const BotManager = () => {
         )
       }));
 
+      // Ensure API_PORT and API_HOST are set
+      if (!data.API_PORT) {
+        setEnvVars(prevVars => ({ ...prevVars, API_PORT: '6987' }));
+      }
+      if (!data.API_HOST) {
+        setEnvVars(prevVars => ({ ...prevVars, API_HOST: '0.0.0.0' }));
+      }
+
       setLocalError(''); // Clear any previous errors
       setOutput('Configuration loaded successfully');
     } catch (error) {
