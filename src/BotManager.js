@@ -135,10 +135,8 @@ class BotManager extends EventEmitter {
       return 'Not Running';
     }
   }
-}
-
- // SECTION: BotManager Methods
-// This section covers additional methods added to the BotManager class, representing the actions the bot can perform, including logging, emitting events, changing status, sending messages, handling incoming messages, listing channels, and handling rate limits.
+  // SECTION: BotManager Methods
+  // This section covers additional methods added to the BotManager class, representing the actions the bot can perform, including logging, emitting events, changing status, sending messages, handling incoming messages, listing channels, and handling rate limits.
 
   // FUNCTION: log
   // Logs a message with a timestamp, storing it in-memory, writing it to a file, and emitting a log event for display purposes.
