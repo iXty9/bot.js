@@ -60,17 +60,17 @@ function authenticateToken(req, res, next) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    jwt.verify(token, secretKey, (err, user) => {
-      if (err) {
-        if (!req.invalidTokenLogged) {
-          console.error('Invalid token provided');
-          req.invalidTokenLogged = true;
-        }
-        return res.status(403).json({ error: 'Invalid authentication token' });
-      }
-      req.user = user;
+    // Compare directly with Discord token
+    if (token === process.env.DISCORD_TOKEN) {
+      req.user = { authorized: true };
       next();
-    });
+    } else {
+      if (!req.invalidTokenLogged) {
+        console.error('Invalid token provided');
+        req.invalidTokenLogged = true;
+      }
+      return res.status(403).json({ error: 'Invalid authentication token' });
+    }
   } catch (error) {
     console.error('Authentication error:', error);
     return res.status(500).json({ error: 'Authentication failed' });
@@ -439,14 +439,21 @@ const io = new Server(server, {
 
 // Socket.IO authentication middleware
 io.use((socket, next) => {
-  const token = socket.handshake.auth.token;
-  if (!token) {
-    return next(new Error('Authentication error'));
-  }
-  if (token === process.env.DISCORD_TOKEN) {
-    next();
-  } else {
-    next(new Error('Invalid token'));
+  try {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+      return next(new Error('Authentication error: No token provided'));
+    }
+    
+    // Direct comparison with Discord token
+    if (token === process.env.DISCORD_TOKEN) {
+      socket.user = { authorized: true };
+      next();
+    } else {
+      next(new Error('Invalid authentication token'));
+    }
+  } catch (error) {
+    next(new Error(`Authentication error: ${error.message}`));
   }
 });
 
