@@ -339,6 +339,28 @@ class BotManager extends EventEmitter {
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
+
+  async restart() {
+    try {
+      this.log('Attempting to restart bot...');
+      
+      // Destroy the current client connection
+      await this.client.destroy();
+      
+      // Wait a moment to ensure clean disconnect
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Login again with the token
+      await this.client.login(process.env.DISCORD_TOKEN);
+      
+      this.log('Bot successfully restarted');
+      return 'Bot successfully restarted';
+    } catch (error) {
+      const errorMsg = `Failed to restart bot: ${error.message}`;
+      this.log(errorMsg);
+      throw new Error(errorMsg);
+    }
+  }
 }
 
 // EXPORT: BotManager

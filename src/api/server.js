@@ -384,6 +384,16 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
   }
 });
 
+app.post('/api/restart', authenticateToken, async (req, res) => {
+  try {
+    const result = await botManager.restart();
+    res.json({ message: result });
+  } catch (error) {
+    console.error('Error restarting bot:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Serve webpack bundle and static files
 app.use(express.static(path.join(__dirname, '../../src/public')));
 
