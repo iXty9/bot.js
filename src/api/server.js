@@ -107,9 +107,10 @@ export {
   initializeBotManager,
   app,
   server,
-  io,
-  getBotManager: () => botManager
+  io
 };
+
+export const getBotManager = () => botManager;
 
 // API routes
 // Environment variables endpoint
