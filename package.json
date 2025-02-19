@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "sudo node index.js",
-    "build": "sudo webpack --mode production"
+    "build": "sudo NODE_OPTIONS=--experimental-json-modules webpack --mode production"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.7",

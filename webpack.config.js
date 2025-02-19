@@ -40,11 +40,11 @@ export default {
             options: {
               postcssOptions: {
                 plugins: [
-                  require('tailwindcss'),
-                  require('autoprefixer'),
-                  require('postcss-preset-env')({
+                  ['tailwindcss'],
+                  ['autoprefixer'],
+                  ['postcss-preset-env', {
                     stage: 1
-                  })
+                  }]
                 ]
               }
             }

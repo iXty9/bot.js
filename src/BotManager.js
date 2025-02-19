@@ -71,8 +71,16 @@ class BotManager extends EventEmitter {
   }
 
   startServer() {
-    // Server functionality moved to server.js
-    return 'Server management handled by server.js';
+    if (serverInstance) {
+      return 'Server is already running.';
+    }
+    try {
+      const app = express();
+      serverInstance = app.listen(process.env.API_PORT || 6987, process.env.API_HOST || '0.0.0.0');
+      return 'Server started successfully.';
+    } catch (error) {
+      return `Failed to start server: ${error.message}`;
+    }
   }
 
   stopServer() {
