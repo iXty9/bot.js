@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "A Discord bot manager with an improved CLI",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "sudo node index.js",
     "build": "sudo webpack --mode production"

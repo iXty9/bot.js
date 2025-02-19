@@ -1,12 +1,11 @@
 // Load environment variables from the .env file.
-require('dotenv').config();
-
-const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
-const { initializeBotManager, app } = require('./src/api/server');
-const readline = require('readline');
-const BotManager = require('./src/BotManager');
-const ConsoleUI = require('./src/ConsoleUI');
-const CommandHandler = require('./src/CommandHandler');
+import 'dotenv/config';
+import { Client, GatewayIntentBits, REST, Routes } from 'discord.js';
+import { initializeBotManager, app } from './src/api/server.js';
+import readline from 'readline';
+import BotManager from './src/BotManager.js';
+import ConsoleUI from './src/ConsoleUI.js';
+import CommandHandler from './src/CommandHandler.js';
 
 // Create a new Discord.js client instance with required intents.
 const client = new Client({
@@ -33,15 +32,17 @@ rl.on('SIGINT', () => {
 });
 
 // Initialize bot components.
-const botManager = new BotManager(client, process.env.WEBHOOK_URL);
-const consoleUI = new ConsoleUI(rl);
-const commandHandler = new CommandHandler(client, botManager, consoleUI);
+async function init() {
+  const botManager = new BotManager(client, process.env.WEBHOOK_URL);
+  const consoleUI = new ConsoleUI(rl);
+  const commandHandler = new CommandHandler(client, botManager, consoleUI);
 
-// Initialize the API server's BotManager instance
-await initializeBotManager(client).catch(error => {
-  console.error('Failed to initialize bot manager:', error);
-  process.exit(1);
-});
+  try {
+    await initializeBotManager(client);
+  } catch (error) {
+    console.error('Failed to initialize bot manager:', error);
+    process.exit(1);
+  }
 
 // Define slash commands
 const commands = [
