@@ -57,7 +57,7 @@ function authenticateToken(req, res, next) {
     }
 
     // Compare directly with Discord token
-    if (token === process.env.DISCORD_TOKEN) {
+    if (token.trim() === process.env.DISCORD_TOKEN.trim()) {
       req.user = { authorized: true };
       next();
     } else {
