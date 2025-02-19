@@ -397,11 +397,6 @@ app.get(/^(?!\/api\/).+/, (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server Error:', err);
-  
-  if (err.name === 'ValidationError') {
-    return res.status(400).json({ error: err.message });
-  }
-  
   res.status(500).json({ error: 'Internal server error' });
 });
 
