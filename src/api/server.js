@@ -106,7 +106,10 @@ app.get('/api/env', authenticateToken, (req, res) => {
     const envVars = {
       API_PORT: process.env.API_PORT || '6987',
       API_HOST: process.env.API_HOST || '0.0.0.0',
-      BOT_NAME: process.env.BOT_NAME || ''
+      BOT_NAME: process.env.BOT_NAME || '',
+      DISCORD_TOKEN: process.env.DISCORD_TOKEN || '',
+      JWT_SECRET: process.env.JWT_SECRET || '',
+      WEBHOOK_URL: process.env.WEBHOOK_URL || ''
     };
     res.json(envVars);
   } catch (error) {
