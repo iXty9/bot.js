@@ -104,11 +104,11 @@ function initializeBotManager(client) {
 
 // Export for use in index.js
 export { 
-  initializeBotManager, 
-  app, 
-  server, 
+  initializeBotManager,
+  app,
+  server,
   io,
-  getBotManager: () => botManager 
+  getBotManager: () => botManager
 };
 
 // API routes
@@ -535,10 +535,3 @@ io.on('connection', (socket) => {
   });
 });
 
-// Export the server instance so we can start it from index.js
-export { 
-  initializeBotManager,
-  app,
-  server,
-  io
-};
