@@ -391,7 +391,7 @@ app.post('/api/restart', authenticateToken, async (req, res) => {
     res.json({ message: result });
   } catch (error) {
     console.error('Error restarting bot:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message || 'Failed to restart bot' });
   }
 });
 
