@@ -62,7 +62,7 @@ export default {
       safe: true,
       allowEmptyValues: false,
       defaults: true,
-      path: '.env',
+      path: path.resolve(__dirname, '../../.env'),
       silent: false
     })
   ],

@@ -173,6 +173,7 @@ const BotManager = () => {
             setLocalError('No authentication token found. Please set the DISCORD_TOKEN in your environment variables or local storage.');
             return;
           }
+          console.log('Using token:', token);
           if (!token) {
             throw new Error('No authentication token found');
           }

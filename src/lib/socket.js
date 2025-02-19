@@ -14,6 +14,10 @@ export const initializeSocket = (token) => {
     useSocketStore.getState().socket.disconnect();
   }
   
+  if (!token) {
+    console.error('No token provided for socket initialization');
+    return null;
+  }
   console.log('Initializing socket with token:', token);
   const socket = io('/', {
     auth: { token },
@@ -24,10 +28,12 @@ export const initializeSocket = (token) => {
   });
 
   socket.on('connect', () => {
+    console.log('Socket connected');
     useSocketStore.getState().setConnected(true);
   });
 
   socket.on('disconnect', (reason) => {
+    console.log('Socket disconnected:', reason);
     useSocketStore.getState().setConnected(false);
     
     if (reason === 'io server disconnect') {

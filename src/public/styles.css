@@ -8,6 +8,8 @@
   }
   body {
     @apply bg-background text-foreground min-h-screen font-sans;
+    margin: 0;
+    padding: 0;
   }
   html {
     @apply antialiased dark;

@@ -9,7 +9,7 @@ const Textarea = React.forwardRef(({ className, placeholder = "Enter text here..
         className
       )}
       ref={ref}
-      defaultValue={defaultValue || ''}
+      defaultValue={defaultValue}
       {...props}
     />
   )
