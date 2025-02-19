@@ -174,6 +174,18 @@ const BotManager = () => {
             return;
           }
           console.log('Using token:', token);
+
+          // Fallback to prompt user for token if not found
+          if (!token) {
+            const userToken = prompt('Please enter your Discord token:');
+            if (userToken) {
+              localStorage.setItem('discord_token', userToken);
+              setLocalError('');
+            } else {
+              setLocalError('No authentication token provided.');
+              return;
+            }
+          }
           if (!token) {
             throw new Error('No authentication token found');
           }
