@@ -96,9 +96,7 @@ function initializeBotManager(client) {
 // Export for use in index.js
 export { 
   initializeBotManager,
-  app,
-  server,
-  io
+  app
 };
 
 export const getBotManager = () => botManager;
