@@ -87,15 +87,10 @@ function initializeBotManager(client) {
         reject(new Error('Discord client is not ready'));
         return;
       }
-      if (!botManager) {
-        botManager = new BotManager(client, process.env.WEBHOOK_URL);
-        // Wait for bot manager to be ready
-        botManager.on('ready', () => {
-          resolve(botManager);
-        });
-      } else {
-        resolve(botManager);
-      }
+      
+      botManager = new BotManager(client, process.env.WEBHOOK_URL);
+      resolve(botManager);
+      
     } catch (error) {
       reject(error);
     }
@@ -103,7 +98,7 @@ function initializeBotManager(client) {
 }
 
 // Export for use in index.js
-module.exports = { initializeBotManager, app };
+module.exports = { initializeBotManager, app, getBotManager: () => botManager };
 
 // API routes
 // Environment variables endpoint

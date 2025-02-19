@@ -34,9 +34,14 @@ rl.on('SIGINT', () => {
 
 // Initialize bot components.
 const botManager = new BotManager(client, process.env.WEBHOOK_URL);
-initializeBotManager(client); // Initialize the API server's BotManager instance
 const consoleUI = new ConsoleUI(rl);
 const commandHandler = new CommandHandler(client, botManager, consoleUI);
+
+// Initialize the API server's BotManager instance
+await initializeBotManager(client).catch(error => {
+  console.error('Failed to initialize bot manager:', error);
+  process.exit(1);
+});
 
 // Define slash commands
 const commands = [
