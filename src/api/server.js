@@ -61,7 +61,7 @@ function authenticateToken(req, res, next) {
     }
 
     if (!token) {
-      console.error('No authentication token provided');
+      // Silently return 401 without logging
       return res.status(401).json({ error: 'Authentication required' });
     }
 
@@ -70,10 +70,7 @@ function authenticateToken(req, res, next) {
       req.user = { authorized: true };
       next();
     } else {
-      if (!req.invalidTokenLogged) {
-        console.error('Invalid token provided');
-        req.invalidTokenLogged = true;
-      }
+      console.error('Invalid authentication token detected');
       return res.status(403).json({ error: 'Invalid authentication token' });
     }
   } catch (error) {
