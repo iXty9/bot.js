@@ -1,25 +1,40 @@
-import EventEmitter from 'events';
-import axios from 'axios';
-import { ChannelType } from 'discord.js';
-import express from 'express';
-import fs from 'fs';
-import path from 'path';
-const logFile = fs.createWriteStream('console.log', { flags: 'a' });
-let serverInstance = null;
+// SECTION: Module Imports
+// This section imports necessary modules and libraries needed for the functionality of the BotManager. 'events' is used for handling event-driven architecture, 'axios' for making HTTP requests, and 'discord.js', 'express', 'fs', and 'path' for respective functionalities such as Discord bot features, web server operations, and file system tasks.
+
+import EventEmitter from 'events'; // Importing EventEmitter for handling events
+import axios from 'axios'; // Importing axios for HTTP requests
+import { ChannelType } from 'discord.js'; // Importing ChannelType from discord.js
+import express from 'express'; // Importing express for server creation
+import fs from 'fs'; // Importing fs for file system operations
+import path from 'path'; // Importing path for path operations
+
+// SECTION: Global Variables
+// Defines a log file writer and a variable to keep track of the server instance. The log file is set to append mode ensuring that logs are not overwritten.
+
+const logFile = fs.createWriteStream('console.log', { flags: 'a' }); // Log file setup
+let serverInstance = null; // To track server instance status
+
+// SECTION: BotManager Class Definition
+// The BotManager class extends the EventEmitter to handle various bot-related events. It manages log retention, user statistics, and server operations. The class includes methods for recording bot activities, starting/stopping a server, and checking server status.
 
 class BotManager extends EventEmitter {
+  // FUNCTION: constructor
+  // Initial setup for the BotManager instance with parameters 'client' and 'webhookUrl'. Initializes logs, setups statistics and an event listener for scheduled log cleanup.
+
   constructor(client, webhookUrl) {
     super();
     this.client = client;
     this.webhookUrl = webhookUrl;
     this.logs = []; // Use array for ordered logs
     this.maxLogs = 50;
-    
-    // Cleanup old logs every hour
+
+    // Set up a timer for log cleanup every hour
     setInterval(() => {
       const oneHourAgo = Date.now() - 3600000;
-      this.logs = this.logs.filter(log => log.timestamp > oneHourAgo);
+      this.logs = this.logs.filter(log => log.timestamp > oneHourAgo); // Cleanup old logs
     }, 3600000);
+
+    // Initialize statistics
     this.stats = {
       messagesReceived: 0,
       messagesSent: 0,
@@ -28,10 +43,12 @@ class BotManager extends EventEmitter {
       lastActivity: Date.now()
     };
 
+    // Event listener for status changes
     this.on('statusChanged', (status) => {
       this.log(`Status: ${status}`);
     });
 
+    // Event listener for message sent
     this.on('messageSent', (info) => {
       this.stats.messagesSent++;
       this.stats.lastActivity = Date.now();
@@ -39,13 +56,19 @@ class BotManager extends EventEmitter {
     });
   }
 
+  // FUNCTION: getUsageStats
+  // Retrieves and returns the usage statistics such as uptime and last activity duration in seconds.
+
   getUsageStats() {
     return {
       ...this.stats,
-      uptime: Math.floor((Date.now() - this.stats.startTime) / 1000), // in seconds
-      lastActivityAgo: Math.floor((Date.now() - this.stats.lastActivity) / 1000) // in seconds
+      uptime: Math.floor((Date.now() - this.stats.startTime) / 1000), // Convert milliseconds to seconds
+      lastActivityAgo: Math.floor((Date.now() - this.stats.lastActivity) / 1000) // Convert to seconds
     };
   }
+
+  // FUNCTION: getLogs
+  // Fetches and returns the last 50 log entries from a log file. Handles errors during file operations.
 
   getLogs() {
     try {
@@ -58,7 +81,7 @@ class BotManager extends EventEmitter {
       }
       return logs.split('\n')
         .filter(line => line && line.trim())
-        .map(line => ({ 
+        .map(line => ({
           log: line,
           timestamp: new Date(line.split(' - ')[0]).getTime()
         }))
@@ -69,6 +92,9 @@ class BotManager extends EventEmitter {
       return [];
     }
   }
+
+  // FUNCTION: startServer
+  // Initiates an Express server instance if not already running. Returns status message indicating the server state.
 
   startServer() {
     if (serverInstance) {
@@ -83,6 +109,9 @@ class BotManager extends EventEmitter {
     }
   }
 
+  // FUNCTION: stopServer
+  // Stops a running server instance if it exists and logs the server stop event. Returns a message indicating the result.
+
   stopServer() {
     if (!serverInstance) {
       this.log('Server is not running.');
@@ -95,6 +124,9 @@ class BotManager extends EventEmitter {
     return 'Server stopped.';
   }
 
+  // FUNCTION: checkServerStatus
+  // An asynchronous function to check if the server is running by sending a GET request to the server's URL.
+
   async checkServerStatus() {
     try {
       const response = await axios.get(`http://${process.env.API_HOST}:${process.env.API_PORT}`);
@@ -103,41 +135,59 @@ class BotManager extends EventEmitter {
       return 'Not Running';
     }
   }
+}
+
+ // SECTION: BotManager Methods
+// This section covers additional methods added to the BotManager class, representing the actions the bot can perform, including logging, emitting events, changing status, sending messages, handling incoming messages, listing channels, and handling rate limits.
+
+  // FUNCTION: log
+  // Logs a message with a timestamp, storing it in-memory, writing it to a file, and emitting a log event for display purposes.
 
   log(message) {
     const timestamp = Date.now();
     const isoTime = new Date(timestamp).toISOString();
     const logMessage = `${isoTime} - [BotManager] ${message}`;
-    
+  
     // Add to in-memory logs array
-    this.logs.unshift({ 
+    this.logs.unshift({
       log: logMessage,
       timestamp: timestamp
     });
-    
-    // Keep only last maxLogs entries
+  
+    // VALIDATION: Log Retention
+    // Ensure the logs array does not exceed the predefined maximum number of log entries.
     if (this.logs.length > this.maxLogs) {
-      this.logs.pop();
+      this.logs.pop(); // Remove oldest log
     }
-    
-    // Emit the log event for UI to display
+  
+    // UI FEEDBACK: Emit log
+    // Emit the log message to update any UI components joined listening for log events.
     this.emit('log', logMessage);
-    
+  
     // Write to file
     logFile.write(`${logMessage}\n`);
   }
+  
+  // FUNCTION: emitStatusChange
+  // Emmits a status change event, logs the change, and updates UI via the 'output' event.
 
   emitStatusChange(status) {
     this.emit('statusChanged', status);
     this.log(`Status changed to: ${status}`);
     this.emit('output', `Status changed to: ${status}`);
   }
+  
+  // FUNCTION: emitMessageSent
+  // Logs a message sent event and notifies UI components by emitting the corresponding event.
 
   emitMessageSent(info) {
     this.emit('messageSent', info);
     this.log(`Message sent: ${info}`);
     this.emit('output', `Message sent: ${info}`);
   }
+  
+  // FUNCTION: changeStatus
+  // Attempts to change the bot's status, logs the outcome, and manages a command execution count.
 
   async changeStatus(newStatus) {
     try {
@@ -151,6 +201,9 @@ class BotManager extends EventEmitter {
       throw new Error(`Failed to change status: ${error.message}`);
     }
   }
+  
+  // FUNCTION: sendMessage
+  // Sends a message to a specified channel or thread, handling possible errors and logging the process.
 
   async sendMessage(message, channelId, threadId = null) {
     try {
@@ -159,7 +212,7 @@ class BotManager extends EventEmitter {
       if (!channel) {
         throw new Error(`Channel with ID "${channelId}" not found`);
       }
-      
+  
       let targetChannel = channel;
       if (threadId) {
         const thread = await channel.threads.fetch(threadId);
@@ -168,13 +221,13 @@ class BotManager extends EventEmitter {
         }
         targetChannel = thread;
       }
-      
+  
       if (!targetChannel) {
         throw new Error('Target channel or thread not found');
       }
-      
+  
       const sentMessage = await targetChannel.send(message);
-      const info = `Message sent to ${channel.name}${threadId ? ` (thread: ${targetChannel.name})` : ''}`;
+      const info = `Message sent to ${channel.name}${threadId ?` (thread: ${targetChannel.name})` : ''}`;
       this.emitMessageSent(info);
       return sentMessage;
     } catch (error) {
@@ -182,18 +235,22 @@ class BotManager extends EventEmitter {
       throw new Error(`Failed to send message: ${error.message}`);
     }
   }
+  
+  // FUNCTION: handleIncomingMessage
+  // Processes incoming messages, manages stats, and attempts to send the message to a specified webhook if available.
 
   async handleIncomingMessage(message) {
     this.stats.messagesReceived++;
     this.stats.lastActivity = Date.now();
-    
-    // Start typing indicator
+  
+    // UI FEEDBACK: Typing Indicator
+    // Sends a typing indicator to signal to users that the bot is processing a message.
     try {
       await message.channel.sendTyping();
     } catch (error) {
       this.log(`Error starting typing indicator: ${error.message}`);
     }
-    
+  
     if (this.webhookUrl) {
       try {
         const webhookData = {
@@ -209,9 +266,9 @@ class BotManager extends EventEmitter {
           threadId: message.channel.isThread() ? message.channel.id : null,
           threadName: message.channel.isThread() ? message.channel.name : null
         };
-
+  
         console.log('Sending webhook data:', JSON.stringify(webhookData, null, 2));
-
+  
         try {
           const response = await axios.post(this.webhookUrl, webhookData);
           this.log(`Webhook response: ${response.status} ${response.statusText}`);
@@ -237,9 +294,12 @@ class BotManager extends EventEmitter {
         }
       }
     } else {
-      console.log(`Message received: ${message.content} (from ${message.author.username} in ${message.guild ? message.guild.name : 'DM'}#${message.channel.name}${message.channel.isThread() ? ` (thread: ${message.channel.name})` : ''})`);
+      console.log(`Message received: ${message.content} (from ${message.author.username} in ${message.guild ? message.guild.name : 'DM'}#${message.channel.name}${message.channel.isThread() ? `(thread: ${message.channel.name})` : ''})`);
     }
   }
+  
+  // FUNCTION: listChannels
+  // Fetches and returns a list of channels from all guilds the bot is part of, including text and forum types.
 
   async listChannels() {
     const channels = [];
@@ -254,7 +314,7 @@ class BotManager extends EventEmitter {
             guildId: guild.id,
             type: channel.type === ChannelType.GuildForum ? 'forum' : 'text'
           };
-
+  
           if (channel.type === ChannelType.GuildForum) {
             const threads = await channel.threads.fetch();
             channelInfo.threads = threads.threads.map(thread => ({
@@ -262,13 +322,16 @@ class BotManager extends EventEmitter {
               name: thread.name
             }));
           }
-
+  
           channels.push(channelInfo);
         }
       }
     }
     return channels;
   }
+  
+  // FUNCTION: handleRateLimit
+  // Manages potential rate limiting by delaying further requests. Logs when rate limits are encountered.
 
   async handleRateLimit() {
     const rateLimits = this.client.rest.globalLimit;
@@ -280,4 +343,13 @@ class BotManager extends EventEmitter {
   }
 }
 
+// EXPORT: BotManager
+// Exports the BotManager class for use in other modules.
+
 export default BotManager;
+
+// SECURITY: Error Handling
+// Ensure sensitive information is not logged in error messages, especially those that might be visible in logs or accessible through webhooks. 
+
+// IMPROVEMENT SUGGESTION: Rate Limit Handling
+// Consider using exponential backoff strategy for better handling of rate limits to improve efficiency and reduce possible conflicts with API limits. 
