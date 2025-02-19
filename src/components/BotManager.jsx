@@ -909,7 +909,8 @@ const BotManager = () => {
                           await fetchEnvVars();
                           setOutput('Configuration reloaded');
                         } catch (err) {
-                          setLocalError('Failed to reload configuration');
+                          console.error('Error reloading configuration:', err);
+                          setLocalError('Failed to reload configuration: ' + err.message);
                         }
                       }}
                     >
