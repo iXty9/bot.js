@@ -12,21 +12,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load environment variables
-const envPath = path.join(__dirname, '../../.env');
-if (!fs.existsSync(envPath)) {
-  console.error('Error: .env file not found');
-  process.exit(1);
-}
-
-dotenv.config({ path: envPath });
+dotenv.config();
 
 // Validate required environment variables
-if (!process.env.DISCORD_TOKEN) {
-  console.error('Error: DISCORD_TOKEN is required in .env file');
-  process.exit(1);
-}
+const requiredEnvVars = ['DISCORD_TOKEN', 'API_PORT', 'API_HOST'];
+requiredEnvVars.forEach((varName) => {
+  if (!process.env[varName] || process.env[varName].trim() === '') {
+    console.error(`Error: ${varName} is required in .env file`);
+    process.exit(1);
+  }
+});
 
-if (process.env.DISCORD_TOKEN === 'your-token-here' || process.env.DISCORD_TOKEN.trim() === '') {
+if (process.env.DISCORD_TOKEN === 'your-discord-bot-token-here') {
   console.error('Error: Please configure a valid DISCORD_TOKEN in .env file');
   process.exit(1);
 }
