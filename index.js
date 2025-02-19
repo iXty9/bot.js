@@ -34,53 +34,9 @@ rl.on('SIGINT', () => {
 
 // Initialize bot components.
 const botManager = new BotManager(client, process.env.WEBHOOK_URL);
+initializeBotManager(client); // Initialize the API server's BotManager instance
 const consoleUI = new ConsoleUI(rl);
 const commandHandler = new CommandHandler(client, botManager, consoleUI);
-
-// Initialize the bot manager
-client.once('ready', async () => {
-  try {
-    await initializeBotManager(client);
-    if (!botManager) {
-      console.error('Failed to initialize bot manager');
-      process.exit(1);
-    }
-    consoleUI.addLog(`Logged in as ${client.user.tag}!`);
-    consoleUI.addLog('Type "/help" for a list of commands.');
-    
-    // Register slash commands first
-    try {
-      const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-      
-      consoleUI.addLog('Started refreshing application (/) commands.');
-      
-      await rest.put(
-        Routes.applicationCommands(client.user.id),
-        { body: commands }
-      );
-      
-      consoleUI.addLog('Successfully reloaded application (/) commands:');
-      commands.forEach(cmd => {
-        consoleUI.addLog(`- /${cmd.name}`);
-      });
-    } catch (error) {
-      consoleUI.addLog(`Failed to register commands: ${error.message}`);
-    }
-    
-    try {
-      await commandHandler.initialize(); // Initialize the current channel
-    } catch (error) {
-      consoleUI.addLog(`Error initializing command handler: ${error.message}`);
-    }
-    
-    const serverStatus = await botManager.checkServerStatus();
-    consoleUI.addLog(`Web server status: ${serverStatus}`);
-    consoleUI.promptUser(commandHandler.handleInput.bind(commandHandler));
-  } catch (error) {
-    console.error('Failed to initialize bot manager:', error);
-    process.exit(1);
-  }
-});
 
 // Define slash commands
 const commands = [
@@ -88,61 +44,34 @@ const commands = [
     name: 'fact',
     description: 'Get a random fact',
   },
-  {
-    name: 'status',
-    description: 'Change bot status',
-    options: [{
-      name: 'newstatus',
-      description: 'New status to set (online, idle, dnd, invisible)',
-      type: 3,
-      required: true,
-      choices: [
-        { name: 'Online', value: 'online' },
-        { name: 'Idle', value: 'idle' },
-        { name: 'Do Not Disturb', value: 'dnd' },
-        { name: 'Invisible', value: 'invisible' }
-      ]
-    }]
-  },
-  {
-    name: 'help',
-    description: 'Show available commands and their usage'
-  }
+  // Add more slash commands here as needed
 ];
 
-// Make commands available globally
-global.botCommands = commands;
+// Function to register slash commands
+async function registerSlashCommands() {
+  try {
+    console.log('Started refreshing application (/) commands.');
 
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
+    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+
+    console.log('Successfully reloaded application (/) commands.');
+    commands.forEach(command => {
+      console.log(`Registered command: ${command.name} - ${command.description}`);
+    });
+  } catch (error) {
+    console.error('Error registering slash commands:', error);
+  }
+}
 
 // Event listener for when the client is ready.
 client.once('ready', async () => {
   consoleUI.addLog(`Logged in as ${client.user.tag}!`);
   consoleUI.addLog('Type "/help" for a list of commands.');
   
-  // Register slash commands first
-  try {
-    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-    
-    consoleUI.addLog('Started refreshing application (/) commands.');
-    
-    await rest.put(
-      Routes.applicationCommands(client.user.id),
-      { body: commands }
-    );
-    
-    consoleUI.addLog('Successfully reloaded application (/) commands:');
-    commands.forEach(cmd => {
-      consoleUI.addLog(`- /${cmd.name}`);
-    });
-  } catch (error) {
-    consoleUI.addLog(`Failed to register commands: ${error.message}`);
-  }
-  
-  try {
-    await commandHandler.initialize(); // Initialize the current channel
-  } catch (error) {
-    consoleUI.addLog(`Error initializing command handler: ${error.message}`);
-  }
+  await commandHandler.initialize(); // Initialize the current channel
+  await registerSlashCommands(); // Register slash commands
   
   const serverStatus = await botManager.checkServerStatus();
   consoleUI.addLog(`Web server status: ${serverStatus}`);
@@ -160,27 +89,10 @@ client.on('messageCreate', async (message) => {
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
 
-  try {
-    switch (interaction.commandName) {
-      case 'fact':
-        await commandHandler.handleFactCommand(interaction);
-        break;
-      case 'status':
-        await commandHandler.handleStatusCommand(interaction);
-        break;
-      case 'help':
-        await commandHandler.handleHelpCommand(interaction);
-        break;
-      default:
-        await interaction.reply({ content: 'Unknown command', ephemeral: true });
-    }
-  } catch (error) {
-    console.error('Error handling slash command:', error);
-    await interaction.reply({ 
-      content: 'An error occurred while processing the command', 
-      ephemeral: true 
-    }).catch(console.error);
+  if (interaction.commandName === 'fact') {
+    await commandHandler.handleFactCommand(interaction);
   }
+  // Add more command handlers here as needed
 });
 
 
@@ -202,19 +114,8 @@ client.login(process.env.DISCORD_TOKEN).catch((error) => {
 });
 
 // Handle unhandled promise rejections.
-const unhandledRejectionHandler = (error) => {
+process.on('unhandledRejection', (error) => {
   console.error('Unhandled promise rejection:', error);
-};
-process.on('unhandledRejection', unhandledRejectionHandler);
-
-// Cleanup on exit
-process.on('SIGINT', async () => {
-  console.log('Cleaning up...');
-  process.removeListener('unhandledRejection', unhandledRejectionHandler);
-  if (client) {
-    await client.destroy();
-  }
-  process.exit(0);
 });
 
 // Log the current working directory
@@ -245,12 +146,7 @@ const startServer = () => {
         console.log('Shutdown signal received');
         try {
           if (server) {
-            await new Promise((resolve, reject) => {
-              server.close((err) => {
-                if (err) reject(err);
-                else resolve();
-              });
-            });
+            await new Promise(resolve => server.close(resolve));
             console.log('HTTP server closed');
           }
           if (client) {
