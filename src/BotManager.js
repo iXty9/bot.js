@@ -72,14 +72,28 @@ class BotManager extends EventEmitter {
 
   getLogs() {
     try {
+      // First try to return in-memory logs
+      if (this.logs && this.logs.length > 0) {
+        return this.logs;
+      }
+      
+      // If no in-memory logs, try to read from file
       if (!fs.existsSync('console.log')) {
+        this.log('No log file found. Creating new log file.');
+        fs.writeFileSync('console.log', `${new Date().toISOString()} - [BotManager] Log file created\n`, 'utf-8');
+        return [{
+          log: `${new Date().toISOString()} - [BotManager] Log file created`,
+          timestamp: Date.now()
+        }];
+      }
+      
+      const logContent = fs.readFileSync('console.log', 'utf-8');
+      if (!logContent.trim()) {
         return [];
       }
-      const logs = fs.readFileSync('console.log', 'utf-8');
-      if (!logs.trim()) {
-        return [];
-      }
-      return logs.split('\n')
+      
+      // Convert file logs to the same format as in-memory logs
+      return logContent.split('\n')
         .filter(line => line && line.trim())
         .map(line => ({
           log: line,
@@ -155,7 +169,7 @@ class BotManager extends EventEmitter {
     // VALIDATION: Log Retention
     // Ensure the logs array does not exceed the predefined maximum number of log entries.
     if (this.logs.length > this.maxLogs) {
-      this.logs.pop(); // Remove oldest log
+      this.logs = this.logs.slice(0, this.maxLogs); // Keep only the most recent logs
     }
   
     // UI FEEDBACK: Emit log
@@ -168,6 +182,34 @@ class BotManager extends EventEmitter {
   
   // FUNCTION: emitStatusChange
   // Emmits a status change event, logs the change, and updates UI via the 'output' event.
+
+  refreshLogs() {
+    try {
+      // Clear in-memory logs
+      this.logs = [];
+      
+      // Read logs from file if it exists
+      if (fs.existsSync('console.log')) {
+        const logContent = fs.readFileSync('console.log', 'utf-8');
+        if (logContent.trim()) {
+          // Parse file logs into the same format as in-memory logs
+          this.logs = logContent.split('\n')
+            .filter(line => line.trim())
+            .map(line => ({
+              log: line,
+              timestamp: new Date(line.split(' - ')[0]).getTime() || Date.now()
+            }))
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, this.maxLogs);
+        }
+      }
+      
+      return this.logs;
+    } catch (error) {
+      console.error('Error refreshing logs:', error);
+      return [];
+    }
+  }
 
   emitStatusChange(status) {
     this.emit('statusChanged', status);

@@ -264,11 +264,24 @@ app.post('/api/status', authenticateToken, async (req, res) => {
 
 app.get('/api/logs', authenticateToken, (req, res) => {
   try {
-    const logs = botManager.getLogs();
+    // Force refresh logs from file system
+    const logs = botManager ? botManager.getLogs() : [];
+    
+    // If no logs are available, return an empty array with a message
+    if (!logs || logs.length === 0) {
+      return res.json({ 
+        logs: [],
+        message: 'No logs available. The application may have just started or logging is disabled.'
+      });
+    }
+    
     res.json({ logs });
   } catch (error) {
     console.error('Error retrieving logs:', error);
-    res.status(500).json({ error: 'Failed to retrieve logs' });
+    res.status(500).json({ 
+      error: 'Failed to retrieve logs',
+      message: error.message
+    });
   }
 });
 
@@ -445,6 +458,28 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error retrieving statistics:', error);
     res.status(500).json({ error: 'Failed to retrieve statistics' });
+  }
+});
+
+// Add a dedicated endpoint to refresh logs
+app.post('/api/logs/refresh', authenticateToken, (req, res) => {
+  try {
+    if (!botManager) {
+      return res.status(500).json({ error: 'Bot manager not initialized' });
+    }
+    
+    // Force reload logs from file
+    botManager.refreshLogs();
+    const logs = botManager.getLogs();
+    
+    res.json({ 
+      logs,
+      message: 'Logs refreshed successfully',
+      count: logs.length
+    });
+  } catch (error) {
+    console.error('Error refreshing logs:', error);
+    res.status(500).json({ error: 'Failed to refresh logs' });
   }
 });
 
