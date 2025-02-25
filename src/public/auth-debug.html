@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Debugger</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .result { background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 10px; }
+        button { padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        input { padding: 8px; width: 100%; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Authentication Debugger</h1>
+        <p>This tool helps debug authentication issues with the Discord bot API.</p>
+        
+        <h2>Health Check (No Auth Required)</h2>
+        <button id="healthCheck">Check API Health</button>
+        <div id="healthResult" class="result"></div>
+        
+        <h2>Test Authentication</h2>
+        <p>Enter your Discord token to test authentication:</p>
+        <input type="password" id="tokenInput" placeholder="Discord Token">
+        <button id="testAuth">Test Authentication</button>
+        <div id="authResult" class="result"></div>
+        
+        <h2>Environment Check</h2>
+        <button id="envCheck">Check Environment</button>
+        <div id="envResult" class="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('healthCheck').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                document.getElementById('healthResult').innerText = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('healthResult').innerText = `Error: ${error.message}`;
+            }
+        });
+
+        document.getElementById('testAuth').addEventListener('click', async () => {
+            try {
+                const token = document.getElementById('tokenInput').value;
+                const response = await fetch('/api/status', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('authResult').innerText = `Authentication successful!\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    const error = await response.json();
+                    document.getElementById('authResult').innerText = `Authentication failed: ${error.error}`;
+                }
+            } catch (error) {
+                document.getElementById('authResult').innerText = `Error: ${error.message}`;
+            }
+        });
+
+        document.getElementById('envCheck').addEventListener('click', async () => {
+            try {
+                const token = document.getElementById('tokenInput').value;
+                const response = await fetch('/api/env', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    // Mask the token for security
+                    if (data.DISCORD_TOKEN) {
+                        data.DISCORD_TOKEN = data.DISCORD_TOKEN.substring(0, 5) + '...' + 
+                                            (data.DISCORD_TOKEN.length > 10 ? 
+                                             data.DISCORD_TOKEN.substring(data.DISCORD_TOKEN.length - 5) : '');
+                    }
+                    document.getElementById('envResult').innerText = JSON.stringify(data, null, 2);
+                } else {
+                    const error = await response.json();
+                    document.getElementById('envResult').innerText = `Failed: ${error.error}`;
+                }
+            } catch (error) {
+                document.getElementById('envResult').innerText = `Error: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

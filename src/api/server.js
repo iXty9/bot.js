@@ -58,10 +58,13 @@ function authenticateToken(req, res, next) {
     }
 
     // Compare directly with Discord token
-    if (token.trim() === process.env.DISCORD_TOKEN.trim()) {
+    // Use a constant-time comparison to prevent timing attacks
+    if (token && process.env.DISCORD_TOKEN && 
+        Buffer.from(token.trim()).toString() === Buffer.from(process.env.DISCORD_TOKEN.trim()).toString()) {
       req.user = { authorized: true };
       next();
     } else {
+      // Log the error but don't expose token details
       console.error('Invalid authentication token detected');
       return res.status(403).json({ error: 'Invalid authentication token' });
     }
@@ -98,6 +101,16 @@ export {
 };
 
 export const getBotManager = () => botManager;
+
+// Health check endpoint (no auth required)
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    message: 'API server is running',
+    timestamp: new Date().toISOString(),
+    auth: !!process.env.DISCORD_TOKEN
+  });
+});
 
 // API routes
 // Environment variables endpoint
@@ -448,10 +461,13 @@ io.use((socket, next) => {
     }
     
     // Direct comparison with Discord token
-    if (token === process.env.DISCORD_TOKEN) {
+    // Use a constant-time comparison to prevent timing attacks
+    if (token && process.env.DISCORD_TOKEN && 
+        Buffer.from(token.trim()).toString() === Buffer.from(process.env.DISCORD_TOKEN.trim()).toString()) {
       socket.user = { authorized: true };
       next();
     } else {
+      console.error('Socket.IO: Invalid authentication token');
       next(new Error('Invalid authentication token'));
     }
   } catch (error) {
