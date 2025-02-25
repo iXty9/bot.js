@@ -23,7 +23,13 @@ export const initializeSocket = (token) => {
   }
   
   // Get token from localStorage if not provided
-  let authToken = token ? token.trim() : localStorage.getItem('discord_bot_token');
+  // Try to use the original token first (not normalized)
+  let authToken = token ? token.trim() : localStorage.getItem('discord_bot_token_original');
+  
+  // Fall back to normalized token if original is not available
+  if (!authToken) {
+    authToken = localStorage.getItem('discord_bot_token');
+  }
   if (!authToken) {
     console.error('No token available for socket initialization');
     useSocketStore.getState().setAuthError('No authentication token available');

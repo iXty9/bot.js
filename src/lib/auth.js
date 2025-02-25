@@ -45,11 +45,19 @@ export const hasToken = () => {
  * @returns {Object} Headers object with Authorization
  */
 export const getAuthHeaders = () => {
-  const token = getToken();
+  // Try to use the original token first (not normalized)
+  let token = localStorage.getItem('discord_bot_token_original');
+  
+  // Fall back to normalized token if original is not available
+  if (!token) {
+    token = getToken();
+  }
+  
   // Only include Authorization header if token exists
   if (!token) {
     return { 'Content-Type': 'application/json' };
   }
+  
   return {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'

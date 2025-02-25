@@ -24,7 +24,10 @@ const extractTokenFromUrl = () => {
   const token = urlParams.get('token');
   
   if (token) {
-    // Store token and remove it from URL for security
+    // Store token exactly as provided without normalization for authentication
+    localStorage.setItem('discord_bot_token_original', token.trim());
+    
+    // Also store normalized version for other operations
     storeToken(token.trim());
     
     // Remove token from URL without refreshing

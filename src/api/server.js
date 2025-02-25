@@ -68,7 +68,23 @@ function authenticateToken(req, res, next) {
       console.log(`Auth token first 5 chars: ${cleanToken.substring(0, 5)}, Env token first 5 chars: ${cleanEnvToken.substring(0, 5)}`);
       console.log(`Auth token last 5 chars: ${cleanToken.slice(-5)}, Env token last 5 chars: ${cleanEnvToken.slice(-5)}`);
         
-      // Normalize tokens completely before comparison
+      // Check for direct token match first
+      if (cleanToken === cleanEnvToken) {
+        req.user = { authorized: true };
+        next();
+        return;
+      }
+      
+      // Check for web UI token from URL parameter
+      const webUiToken = process.env.WEB_UI_TOKEN || process.env.DISCORD_TOKEN;
+      if (webUiToken && cleanToken === webUiToken.trim().replace(/\s+/g, '')) {
+        console.log('Web UI token authentication successful');
+        req.user = { authorized: true };
+        next();
+        return;
+      }
+      
+      // Normalize tokens completely before comparison as a fallback
       // Remove all whitespace, make lowercase, and trim any invisible characters
       const normalizedToken = cleanToken.toLowerCase().replace(/\s+/g, '').trim();
       const normalizedEnvToken = cleanEnvToken.toLowerCase().replace(/\s+/g, '').trim();
@@ -580,7 +596,24 @@ io.use((socket, next) => {
     console.log(`Socket auth token first 5 chars: ${cleanToken.substring(0, 5)}, Env token first 5 chars: ${cleanEnvToken.substring(0, 5)}`);
     console.log(`Socket auth token last 5 chars: ${cleanToken.slice(-5)}, Env token last 5 chars: ${cleanEnvToken.slice(-5)}`);
     
-    // Normalize tokens completely before comparison
+    // Check for direct token match first
+    if (cleanToken === cleanEnvToken) {
+      socket.user = { authorized: true };
+      console.log('Socket.IO: Authentication successful (direct match)');
+      next();
+      return;
+    }
+    
+    // Check for web UI token from URL parameter
+    const webUiToken = process.env.WEB_UI_TOKEN || process.env.DISCORD_TOKEN;
+    if (webUiToken && cleanToken === webUiToken.trim().replace(/\s+/g, '')) {
+      console.log('Socket.IO: Web UI token authentication successful');
+      socket.user = { authorized: true };
+      next();
+      return;
+    }
+    
+    // Normalize tokens completely before comparison as a fallback
     // Remove all whitespace, make lowercase, and trim any invisible characters
     const normalizedToken = cleanToken.toLowerCase().replace(/\s+/g, '').trim();
     const normalizedEnvToken = cleanEnvToken.toLowerCase().replace(/\s+/g, '').trim();

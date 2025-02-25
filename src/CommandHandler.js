@@ -245,7 +245,8 @@ class CommandHandler {
 
   async openWebUI() {
     try {
-      const token = process.env.DISCORD_TOKEN;
+      // Use WEB_UI_TOKEN if available, otherwise use DISCORD_TOKEN
+      const token = process.env.WEB_UI_TOKEN || process.env.DISCORD_TOKEN;
       const port = process.env.API_PORT || '6987';
       const host = process.env.API_HOST || 'localhost';
       
