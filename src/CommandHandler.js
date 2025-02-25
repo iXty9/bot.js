@@ -91,6 +91,9 @@ class CommandHandler {
       case 'server':
         await this.toggleServer(args[0]);
         break;
+      case 'web':
+        await this.openWebUI();
+        break;
       case 'exit':
         this.consoleUI.addLog('Exiting...');
         process.exit(0);
@@ -111,6 +114,7 @@ class CommandHandler {
       chalk.cyan('  /clear              ') + '- Clear the message composer',
       chalk.cyan('  /list               ') + '- List all available channels and threads',
       chalk.cyan('  /server <action>    ') + '- Start or stop the web server (action: start, stop)',
+      chalk.cyan('  /web                ') + '- Open the web UI in browser',
       chalk.cyan('  /exit               ') + '- Exit the program',
       '',
       chalk.green('Compose your message by typing or pasting. Use /send to send the message.')
@@ -237,6 +241,40 @@ class CommandHandler {
   clearComposer() {
     this.composingMessage = '';
     this.consoleUI.updateComposer('');
+  }
+
+  async openWebUI() {
+    try {
+      const token = process.env.DISCORD_TOKEN;
+      const port = process.env.API_PORT || '6987';
+      const host = process.env.API_HOST || 'localhost';
+      
+      if (!token) {
+        this.consoleUI.addLog(chalk.red('No Discord token available. Check your .env configuration.'));
+        return;
+      }
+      
+      // Create URL with token
+      const url = `http://${host}:${port}?token=${encodeURIComponent(token)}`;
+      
+      // Open URL in default browser
+      const { exec } = require('child_process');
+      const command = process.platform === 'win32' 
+        ? `start ${url}`
+        : process.platform === 'darwin'
+          ? `open ${url}`
+          : `xdg-open ${url}`;
+      
+      exec(command, (error) => {
+        if (error) {
+          this.consoleUI.addLog(chalk.red(`Failed to open browser: ${error.message}`));
+        }
+      });
+      
+      this.consoleUI.addLog(chalk.green('Opening web UI in browser...'));
+    } catch (error) {
+      this.consoleUI.addLog(chalk.red(`Error opening web UI: ${error.message}`));
+    }
   }
 
   async listChannels() {

@@ -4,8 +4,10 @@ import { create } from 'zustand';
 const useSocketStore = create((set) => ({
   socket: null,
   connected: false,
+  authError: null,
   setSocket: (socket) => set({ socket }),
   setConnected: (connected) => set({ connected }),
+  setAuthError: (error) => set({ authError: error }),
 }));
 
 export const initializeSocket = (token) => {
@@ -16,11 +18,21 @@ export const initializeSocket = (token) => {
   
   if (!token) {
     console.error('No token provided for socket initialization');
+    useSocketStore.getState().setAuthError('No authentication token provided');
     return null;
   }
-  console.log('Initializing socket with token:', token);
+  
+  // Get token from localStorage if not provided
+  const authToken = token || localStorage.getItem('discord_bot_token');
+  if (!authToken) {
+    console.error('No token available for socket initialization');
+    useSocketStore.getState().setAuthError('No authentication token available');
+    return null;
+  }
+  
+  console.log('Initializing socket connection...');
   const socket = io('/', {
-    auth: { token },
+    auth: { token: authToken },
     transports: ['websocket'],
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,

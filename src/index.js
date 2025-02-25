@@ -9,12 +9,37 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import BotManager from './components/BotManager.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import { storeToken } from './lib/auth.js';
 import './public/styles.css';
 
 // SECTION: Initialize Query Client
 // This initializes a new instance of QueryClient which will be used to handle asynchronous data-fetching operations and manage cache.
 
 const queryClient = new QueryClient();
+
+// SECTION: Token Extraction
+// Extract token from URL if present (for CLI integration)
+const extractTokenFromUrl = () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  
+  if (token) {
+    // Store token and remove it from URL for security
+    storeToken(token);
+    
+    // Remove token from URL without refreshing
+    const newUrl = window.location.pathname + 
+                  (urlParams.size > 1 ? '?' + urlParams.toString() : '');
+    window.history.replaceState({}, document.title, newUrl);
+    
+    console.log('Token extracted from URL and stored');
+    return true;
+  }
+  return false;
+};
+
+// Extract token on page load
+extractTokenFromUrl();
 
 // SECTION: DOM Element Selection
 // Selecting the root DOM element where the React application is going to be rendered using 'getElementById'.
