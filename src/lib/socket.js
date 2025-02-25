@@ -23,10 +23,10 @@ export const initializeSocket = (token) => {
   }
   
   // Get token from localStorage if not provided
-  // Try to use the original token first (not normalized)
-  let authToken = token ? token.trim() : localStorage.getItem('discord_bot_token_original');
+  // Use the original token exactly as it was received
+  let authToken = token || localStorage.getItem('discord_bot_token_original');
   
-  // Fall back to normalized token if original is not available
+  // Fall back to regular token if original is not available
   if (!authToken) {
     authToken = localStorage.getItem('discord_bot_token');
   }
@@ -35,10 +35,6 @@ export const initializeSocket = (token) => {
     useSocketStore.getState().setAuthError('No authentication token available');
     return null;
   }
-  
-  // Clean the token thoroughly and normalize case
-  // Ensure consistent lowercase format for comparison
-  authToken = authToken.trim().replace(/^Bearer\s+/i, '').replace(/\s+/g, '').toLowerCase();
   
   console.log('Initializing socket connection...');
   console.log(`Socket token length: ${authToken.length}, first 5 chars: ${authToken.substring(0, 5)}, last 5 chars: ${authToken.slice(-5)}`);

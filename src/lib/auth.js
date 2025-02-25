@@ -6,11 +6,9 @@
  */
 export const storeToken = (token) => {
   if (!token) return;
-  // Ensure we're storing a clean token with no whitespace or invisible characters
-  // Normalize to lowercase to ensure consistent comparison
-  const cleanToken = token.trim().replace(/\s+/g, '').toLowerCase();
-  localStorage.setItem('discord_bot_token', cleanToken);
-  console.log('Token stored:', cleanToken.substring(0, 5) + '...', 'last 5 chars:', cleanToken.slice(-5));
+  // Store token exactly as is without any modification
+  localStorage.setItem('discord_bot_token', token);
+  console.log('Token stored:', token.substring(0, 5) + '...', 'last 5 chars:', token.slice(-5));
 };
 
 /**
@@ -18,10 +16,8 @@ export const storeToken = (token) => {
  * @returns {string|null} The stored token or null if not found
  */
 export const getToken = () => {
-  const token = localStorage.getItem('discord_bot_token');
-  // Ensure token is clean when retrieved
-  // Normalize to lowercase to ensure consistent comparison
-  return token ? token.trim().replace(/\s+/g, '').toLowerCase() : null;
+  // Return token exactly as stored without any modification
+  return localStorage.getItem('discord_bot_token');
 };
 
 /**
@@ -45,12 +41,12 @@ export const hasToken = () => {
  * @returns {Object} Headers object with Authorization
  */
 export const getAuthHeaders = () => {
-  // Try to use the original token first (not normalized)
+  // Use the original token exactly as it was received
   let token = localStorage.getItem('discord_bot_token_original');
   
-  // Fall back to normalized token if original is not available
+  // Fall back to regular token if original is not available
   if (!token) {
-    token = getToken();
+    token = localStorage.getItem('discord_bot_token');
   }
   
   // Only include Authorization header if token exists

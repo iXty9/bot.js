@@ -24,17 +24,15 @@ const extractTokenFromUrl = () => {
   const token = urlParams.get('token');
   
   if (token) {
-    // Store token exactly as provided without normalization for authentication
-    localStorage.setItem('discord_bot_token_original', token.trim());
-    
-    // Also store normalized version for other operations
-    storeToken(token.trim());
+    // Store token exactly as provided without any modification
+    localStorage.setItem('discord_bot_token_original', token);
+    localStorage.setItem('discord_bot_token', token);
     
     // Remove token from URL without refreshing
     const newUrl = window.location.pathname;
     window.history.replaceState({}, document.title, newUrl);
     
-    console.log('Token extracted from URL and stored:', token.trim().substring(0, 5) + '...');
+    console.log('Token extracted from URL and stored:', token.substring(0, 5) + '...');
     return true;
   }
   return false;
