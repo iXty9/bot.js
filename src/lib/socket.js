@@ -10,40 +10,28 @@ const useSocketStore = create((set) => ({
   setAuthError: (error) => set({ authError: error }),
 }));
 
-export const initializeSocket = (token) => {
+export const initializeSocket = () => {
   // Clean up any existing socket connection
   if (useSocketStore.getState().socket) {
     useSocketStore.getState().socket.disconnect();
   }
   
-  if (!token) {
-    console.error('No token provided for socket initialization');
-    useSocketStore.getState().setAuthError('No authentication token provided');
-    return null;
-  }
+  // Get session token from localStorage
+  const sessionToken = localStorage.getItem('session_token');
   
-  // Get token from localStorage if not provided
-  // Use the original token exactly as it was received
-  let authToken = token || localStorage.getItem('discord_bot_token_original');
-  
-  // Fall back to regular token if original is not available
-  if (!authToken) {
-    authToken = localStorage.getItem('discord_bot_token');
-  }
-  if (!authToken) {
-    console.error('No token available for socket initialization');
-    useSocketStore.getState().setAuthError('No authentication token available');
+  if (!sessionToken) {
+    console.error('No session token available for socket initialization');
+    useSocketStore.getState().setAuthError('No session token available');
     return null;
   }
   
   console.log('Initializing socket connection...');
-  console.log(`Socket token length: ${authToken.length}, first 5 chars: ${authToken.substring(0, 5)}, last 5 chars: ${authToken.slice(-5)}`);
   
   // Check if we have an access key in localStorage (from URL exchange)
   const accessKey = localStorage.getItem('access_key');
   
   const socket = io('/', {
-    auth: accessKey ? { access_key: accessKey } : { token: authToken },
+    auth: accessKey ? { access_key: accessKey } : { token: sessionToken },
     transports: ['websocket'],
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,

@@ -1,102 +1,102 @@
 import React, { useState, useEffect } from 'react';
+import { login, validateSession } from '../lib/auth';
 import { Button } from './ui/button';
-import { storeToken, hasToken, getToken } from '../lib/auth';
+import { Alert, AlertDescription } from './ui/alert';
 
-export default function Login({ onLogin }) {
-  const [token, setToken] = useState('');
-  const [error, setError] = useState('');
+const Login = ({ onLoginSuccess }) => {
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  
-  // Check if token exists in URL or localStorage on mount
+  const [error, setError] = useState('');
+  const [accessKey, setAccessKey] = useState('');
+
+  // Check for access key in URL
   useEffect(() => {
-    // Check if we already have a token
-    if (hasToken()) {
-      handleLogin(getToken());
+    const params = new URLSearchParams(window.location.search);
+    const key = params.get('access_key');
+    if (key) {
+      setAccessKey(key);
+      // Remove from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Auto-login with access key
+      handleLogin(null, key);
     }
     
-    // Extract token from URL if present
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('token');
+    // Check if already logged in
+    const checkSession = async () => {
+      try {
+        const isValid = await validateSession();
+        if (isValid) {
+          onLoginSuccess();
+        }
+      } catch (error) {
+        console.error('Session validation error:', error);
+      }
+    };
     
-    if (urlToken) {
-      setToken(urlToken);
-      handleLogin(urlToken);
-      
-      // Remove token from URL for security
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-    }
-  }, []);
-  
-  const handleLogin = async (tokenToUse) => {
-    setLoading(true);
+    checkSession();
+  }, [onLoginSuccess]);
+
+  const handleLogin = async (e, key = null) => {
+    if (e) e.preventDefault();
     setError('');
+    setLoading(true);
     
     try {
-      // Clean the token and ensure it's properly formatted
-      const cleanToken = tokenToUse.trim();
+      // Use provided access key or the one from state
+      const useKey = key || accessKey;
       
-      // Test the token with a simple API call
-      const response = await fetch('/api/status', {
-        headers: {
-          'Authorization': `Bearer ${cleanToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        // Store token and notify parent component
-        storeToken(tokenToUse);
-        onLogin(tokenToUse);
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Authentication failed');
+      // If we have an access key, use it directly
+      if (useKey) {
+        const result = await login('', useKey);
+        setLoading(false);
+        onLoginSuccess(result);
+        return;
       }
-    } catch (err) {
-      setError(`Connection error: ${err.message}`);
-    } finally {
+      
+      // Otherwise use password
+      if (!password.trim()) {
+        setError('Password is required');
+        setLoading(false);
+        return;
+      }
+      
+      const result = await login(password);
+      setLoading(false);
+      onLoginSuccess(result);
+    } catch (error) {
+      console.error('Login error:', error);
+      setError(error.message || 'Login failed');
       setLoading(false);
     }
   };
-  
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!token.trim()) {
-      setError('Please enter your Discord bot token');
-      return;
-    }
-    
-    handleLogin(token);
-  };
-  
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8 rounded-lg border p-6 shadow-md">
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-xl shadow-lg">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Discord Bot Manager</h1>
-          <p className="mt-2 text-gray-600">Please enter your Discord bot token to continue</p>
+          <p className="text-muted-foreground mt-2">Please log in to continue</p>
         </div>
         
         {error && (
-          <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
         
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+        <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label htmlFor="token" className="block text-sm font-medium text-gray-700">
-              Discord Bot Token
+            <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
+              Password
             </label>
             <input
-              id="token"
-              name="token"
+              id="password"
               type="password"
-              required
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
-              placeholder="Enter your Discord bot token"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Enter admin password"
+              disabled={loading || !!accessKey}
             />
           </div>
           
@@ -104,17 +104,33 @@ export default function Login({ onLogin }) {
             <Button
               type="submit"
               className="w-full"
-              disabled={loading}
+              disabled={loading || (!password.trim() && !accessKey)}
             >
-              {loading ? 'Authenticating...' : 'Login'}
+              {loading ? 'Logging in...' : 'Log In'}
             </Button>
           </div>
+          
+          {accessKey && (
+            <p className="text-sm text-center text-muted-foreground">
+              Logging in with access key...
+            </p>
+          )}
+          
+          {process.env.NODE_ENV !== 'production' && (
+            <div className="text-center mt-4">
+              <button
+                type="button"
+                onClick={() => setPassword('dev')}
+                className="text-sm text-primary hover:underline"
+              >
+                Use development login
+              </button>
+            </div>
+          )}
         </form>
-        
-        <div className="mt-4 text-center text-sm text-gray-600">
-          <p>Need help? Check the <a href="https://discord.com/developers/applications" className="text-indigo-600 hover:text-indigo-500" target="_blank" rel="noreferrer">Discord Developer Portal</a></p>
-        </div>
       </div>
     </div>
   );
-}
+};
+
+export default Login;

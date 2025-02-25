@@ -40,6 +40,9 @@ app.set('trust proxy', true);
 app.use(cors());
 app.use(bodyParser.json());
 
+// Import session management utilities
+import { validateSession } from '../lib/session.js';
+
 // Authentication middleware
 function authenticateToken(req, res, next) {
   try {
@@ -55,65 +58,29 @@ function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     
-    // First check if Discord token is configured
-    if (!process.env.DISCORD_TOKEN) {
-      console.error('DISCORD_TOKEN not configured in environment');
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
-
     if (!token) {
       // Silently return 401 without logging
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    // Compare directly with Discord token
-    if (token && process.env.DISCORD_TOKEN) {
-      // Remove any Bearer prefix if present and trim whitespace
-      const cleanToken = token.trim().replace(/^Bearer\s+/i, '').replace(/\s+/g, '');
-      const cleanEnvToken = process.env.DISCORD_TOKEN.trim().replace(/\s+/g, '');
+    // Validate session token
+    if (validateSession(token)) {
+      console.log('Session token authentication successful');
+      req.user = { authorized: true };
+      next();
+      return;
+    }
     
-      // More detailed debug logging
-      console.log(`Auth attempt - Token length: ${cleanToken.length}, Env token length: ${cleanEnvToken.length}`);
-      console.log(`Auth token first 5 chars: ${cleanToken.substring(0, 5)}, Env token first 5 chars: ${cleanEnvToken.substring(0, 5)}`);
-      console.log(`Auth token last 5 chars: ${cleanToken.slice(-5)}, Env token last 5 chars: ${cleanEnvToken.slice(-5)}`);
-  
-      // BYPASS: Always authenticate if the first 5 characters match
-      // This is a temporary solution to fix the authentication issue
-      if (cleanToken.substring(0, 5) === cleanEnvToken.substring(0, 5)) {
-        console.log('Authentication successful: First 5 characters match');
-        req.user = { authorized: true };
-        next();
-        return;
-      }
-  
-      // Simple direct comparison without any token cleaning
-      if (token === process.env.DISCORD_TOKEN) {
-        console.log('Direct token match successful');
-        req.user = { authorized: true };
-        next();
-        return;
-      }
-  
-      // Check for web UI token from URL parameter
-      const webUiToken = process.env.WEB_UI_TOKEN || process.env.DISCORD_TOKEN;
-      if (webUiToken && token === webUiToken) {
-        console.log('Web UI token authentication successful');
-        req.user = { authorized: true };
-        next();
-        return;
-      }
-  
-      // Fallback to case-insensitive comparison as last resort
-      if (token.toLowerCase() === process.env.DISCORD_TOKEN.toLowerCase()) {
-        console.log('Case-insensitive token match successful');
-        req.user = { authorized: true };
-        next();
-        return;
-      }
+    // Development mode bypass (only in non-production)
+    if (process.env.NODE_ENV !== 'production' && token === 'dev-mode-token') {
+      console.log('Development mode authentication successful');
+      req.user = { authorized: true, devMode: true };
+      next();
+      return;
     }
     
     // Log the error but don't expose token details
-    console.error('Invalid authentication token detected');
+    console.error('Invalid session token detected');
     return res.status(403).json({ error: 'Invalid authentication token' });
   } catch (error) {
     console.error('Authentication error:', error);
@@ -210,43 +177,96 @@ app.post('/api/debug/token', (req, res) => {
   }
 });
 
-// Access key endpoint - exchange temporary access key for actual token
-app.get('/api/auth/exchange', (req, res) => {
+// Import session management utilities
+import { createSession, invalidateSession } from '../lib/session.js';
+
+// Login endpoint - create a new session
+app.post('/api/auth/login', (req, res) => {
   try {
-    const { access_key } = req.query;
+    const { password } = req.body;
     
-    // Check if the access key is valid
-    if (access_key && global.WEB_UI_ACCESS_KEY && access_key === global.WEB_UI_ACCESS_KEY) {
-      console.log('Valid access key received, exchanging for token');
-      // Return the actual Discord token
-      res.json({ 
-        token: process.env.DISCORD_TOKEN,
-        success: true
-      });
+    // Check if access key is provided (for CLI integration)
+    const accessKey = req.query.access_key;
+    if (accessKey && global.WEB_UI_ACCESS_KEY && accessKey === global.WEB_UI_ACCESS_KEY) {
+      console.log('Access key authentication successful, creating session');
+      const session = createSession();
       
       // Invalidate the access key after use (one-time use)
       global.WEB_UI_ACCESS_KEY = null;
-    } else {
-      console.log('Invalid access key received:', access_key);
-      res.status(403).json({ error: 'Invalid access key' });
+      
+      return res.json({
+        success: true,
+        token: session.token,
+        expiresAt: session.expiresAt
+      });
     }
+    
+    // Check admin password (fallback authentication)
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin';
+    if (password === adminPassword) {
+      console.log('Password authentication successful, creating session');
+      const session = createSession();
+      
+      return res.json({
+        success: true,
+        token: session.token,
+        expiresAt: session.expiresAt
+      });
+    }
+    
+    // Development mode bypass
+    if (process.env.NODE_ENV !== 'production' && password === 'dev') {
+      console.log('Development mode authentication successful');
+      const session = createSession();
+      
+      return res.json({
+        success: true,
+        token: session.token,
+        expiresAt: session.expiresAt,
+        message: 'WARNING: Development mode authentication'
+      });
+    }
+    
+    console.log('Invalid login attempt');
+    res.status(401).json({ error: 'Invalid credentials' });
   } catch (error) {
-    console.error('Access key exchange error:', error);
+    console.error('Login error:', error);
     res.status(500).json({ error: 'Authentication failed' });
   }
 });
 
-// Add a simple auth bypass endpoint for development/testing
-app.get('/api/auth/bypass', (req, res) => {
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('Auth bypass requested');
-    res.json({ 
-      token: process.env.DISCORD_TOKEN,
-      success: true,
-      message: 'WARNING: This is a development bypass. Do not use in production.'
-    });
-  } else {
-    res.status(403).json({ error: 'Auth bypass not available in production mode' });
+// Logout endpoint - invalidate session
+app.post('/api/auth/logout', (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (token) {
+      invalidateSession(token);
+    }
+    
+    res.json({ success: true, message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
+// Session validation endpoint
+app.get('/api/auth/validate', (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ valid: false });
+    }
+    
+    const isValid = validateSession(token);
+    res.json({ valid: isValid });
+  } catch (error) {
+    console.error('Session validation error:', error);
+    res.status(500).json({ error: 'Validation failed' });
   }
 });
 
@@ -643,58 +663,24 @@ io.use((socket, next) => {
       return next(new Error('Authentication error: No token provided'));
     }
     
-    // Check if Discord token is configured
-    if (!process.env.DISCORD_TOKEN) {
-      console.error('Socket.IO: DISCORD_TOKEN not configured');
-      return next(new Error('Server configuration error: Discord token not set'));
-    }
-    
-    // Direct comparison with Discord token
-    // Remove any Bearer prefix if present and clean thoroughly
-    const cleanToken = token.trim().replace(/^Bearer\s+/i, '').replace(/\s+/g, '');
-    const cleanEnvToken = process.env.DISCORD_TOKEN.trim().replace(/\s+/g, '');
-    
-    // More detailed debug logging
-    console.log(`Socket auth attempt - Token length: ${cleanToken.length}, Env token length: ${cleanEnvToken.length}`);
-    console.log(`Socket auth token first 5 chars: ${cleanToken.substring(0, 5)}, Env token first 5 chars: ${cleanEnvToken.substring(0, 5)}`);
-    console.log(`Socket auth token last 5 chars: ${cleanToken.slice(-5)}, Env token last 5 chars: ${cleanEnvToken.slice(-5)}`);
-    
-    // BYPASS: Always authenticate if the first 5 characters match
-    // This is a temporary solution to fix the authentication issue
-    if (cleanToken.substring(0, 5) === cleanEnvToken.substring(0, 5)) {
-      console.log('Socket.IO: Authentication successful: First 5 characters match');
+    // Validate session token
+    if (validateSession(token)) {
+      console.log('Socket.IO: Session token authentication successful');
       socket.user = { authorized: true };
       next();
       return;
     }
-
-    // Simple direct comparison without any token cleaning
-    if (token === process.env.DISCORD_TOKEN) {
-      socket.user = { authorized: true };
-      console.log('Socket.IO: Authentication successful (direct match)');
+    
+    // Development mode bypass
+    if (process.env.NODE_ENV !== 'production' && token === 'dev-mode-token') {
+      console.log('Socket.IO: Development mode authentication successful');
+      socket.user = { authorized: true, devMode: true };
       next();
       return;
     }
-
-    // Check for web UI token from URL parameter
-    const webUiToken = process.env.WEB_UI_TOKEN || process.env.DISCORD_TOKEN;
-    if (webUiToken && token === webUiToken) {
-      console.log('Socket.IO: Web UI token authentication successful');
-      socket.user = { authorized: true };
-      next();
-      return;
-    }
-
-    // Fallback to case-insensitive comparison as last resort
-    if (token.toLowerCase() === process.env.DISCORD_TOKEN.toLowerCase()) {
-      console.log('Socket.IO: Case-insensitive token match successful');
-      socket.user = { authorized: true };
-      console.log('Socket.IO: Authentication successful');
-      next();
-    } else {
-      console.error('Socket.IO: Invalid authentication token');
-      next(new Error('Invalid authentication token'));
-    }
+    
+    console.error('Socket.IO: Invalid authentication token');
+    next(new Error('Invalid authentication token'));
   } catch (error) {
     console.error('Socket.IO authentication error:', error);
     next(new Error(`Authentication error: ${error.message}`));

@@ -272,6 +272,7 @@ class CommandHandler {
       });
       
       this.consoleUI.addLog(chalk.green('Opening web UI in browser...'));
+      this.consoleUI.addLog(chalk.yellow('The browser will automatically log you in using a secure one-time access key.'));
     } catch (error) {
       this.consoleUI.addLog(chalk.red(`Error opening web UI: ${error.message}`));
     }

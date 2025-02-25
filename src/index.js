@@ -17,79 +17,29 @@ import './public/styles.css';
 
 const queryClient = new QueryClient();
 
-// SECTION: Token Extraction
-// Extract token or access key from URL if present (for CLI integration)
-const extractTokenFromUrl = async () => {
+// SECTION: Access Key Extraction
+// Extract access key from URL if present (for CLI integration)
+const extractAccessKeyFromUrl = () => {
   const urlParams = new URLSearchParams(window.location.search);
-  const token = urlParams.get('token');
   const accessKey = urlParams.get('access_key');
   
-  if (token) {
-    // Store token exactly as provided without any modification
-    localStorage.setItem('discord_bot_token_original', token);
-    localStorage.setItem('discord_bot_token', token);
+  if (accessKey) {
+    // Store access key temporarily
+    localStorage.setItem('access_key', accessKey);
     
-    // Remove token from URL without refreshing
+    // Remove access key from URL without refreshing
     const newUrl = window.location.pathname;
     window.history.replaceState({}, document.title, newUrl);
     
-    console.log('Token extracted from URL and stored:', token.substring(0, 5) + '...');
+    console.log('Access key extracted from URL and stored temporarily');
     return true;
-  }
-  
-  if (accessKey) {
-    try {
-      console.log('Access key found in URL, attempting to exchange for token');
-      // Exchange the access key for the actual token
-      const response = await fetch(`/api/auth/exchange?access_key=${accessKey}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to exchange access key for token');
-      }
-      
-      const data = await response.json();
-      
-      if (data.success && data.token) {
-        // Store the token received from the server
-        localStorage.setItem('discord_bot_token_original', data.token);
-        localStorage.setItem('discord_bot_token', data.token);
-        
-        // Remove access key from URL without refreshing
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
-        
-        console.log('Access key exchanged for token successfully');
-        return true;
-      }
-    } catch (error) {
-      console.error('Error exchanging access key for token:', error);
-      
-      // Try development bypass as fallback
-      try {
-        console.log('Attempting development auth bypass');
-        const bypassResponse = await fetch('/api/auth/bypass');
-        if (bypassResponse.ok) {
-          const bypassData = await bypassResponse.json();
-          if (bypassData.success && bypassData.token) {
-            localStorage.setItem('discord_bot_token_original', bypassData.token);
-            localStorage.setItem('discord_bot_token', bypassData.token);
-            console.log('Development auth bypass successful');
-            return true;
-          }
-        }
-      } catch (bypassError) {
-        console.error('Development bypass failed:', bypassError);
-      }
-    }
   }
   
   return false;
 };
 
-// Extract token on page load (async)
-(async function() {
-  await extractTokenFromUrl();
-})();
+// Extract access key on page load
+extractAccessKeyFromUrl();
 
 // SECTION: DOM Element Selection
 // Selecting the root DOM element where the React application is going to be rendered using 'getElementById'.
