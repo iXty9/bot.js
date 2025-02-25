@@ -29,14 +29,15 @@ export const createSession = () => {
   console.log(`Creating new session with ID: ${sessionId}`);
   console.log(`Using JWT_SECRET length: ${JWT_SECRET.length} characters`);
   console.log(`JWT library version: ${jwt.version || 'unknown'}`);
+  console.log(`Using algorithm: HS256`);
   
   // Create JWT token
   const token = jwt.sign(
     { sessionId },
     JWT_SECRET,
     { 
-      expiresIn: '24h'
-      // Don't specify algorithm - use default (HS256)
+      expiresIn: '24h',
+      algorithm: 'HS256'  // Explicitly set algorithm
     }
   );
   
@@ -61,7 +62,7 @@ export const validateSession = (token) => {
     }
 
     // Verify JWT signature and expiration
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     
     if (!decoded || !decoded.sessionId) {
       console.log('Invalid token format: missing sessionId');
@@ -104,7 +105,7 @@ export const validateSession = (token) => {
  */
 export const invalidateSession = (token) => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     activeSessions.delete(decoded.sessionId);
     return true;
   } catch (error) {
