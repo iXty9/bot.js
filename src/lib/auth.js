@@ -7,7 +7,8 @@
 export const storeToken = (token) => {
   if (!token) return;
   // Ensure we're storing a clean token with no whitespace or invisible characters
-  const cleanToken = token.trim().replace(/\s+/g, '');
+  // Normalize to lowercase to ensure consistent comparison
+  const cleanToken = token.trim().replace(/\s+/g, '').toLowerCase();
   localStorage.setItem('discord_bot_token', cleanToken);
   console.log('Token stored:', cleanToken.substring(0, 5) + '...', 'last 5 chars:', cleanToken.slice(-5));
 };
@@ -19,7 +20,8 @@ export const storeToken = (token) => {
 export const getToken = () => {
   const token = localStorage.getItem('discord_bot_token');
   // Ensure token is clean when retrieved
-  return token ? token.trim().replace(/\s+/g, '') : null;
+  // Normalize to lowercase to ensure consistent comparison
+  return token ? token.trim().replace(/\s+/g, '').toLowerCase() : null;
 };
 
 /**

@@ -31,7 +31,8 @@ export const initializeSocket = (token) => {
   }
   
   // Clean the token thoroughly and normalize case
-  authToken = authToken.trim().replace(/^Bearer\s+/i, '').replace(/\s+/g, '');
+  // Ensure consistent lowercase format for comparison
+  authToken = authToken.trim().replace(/^Bearer\s+/i, '').replace(/\s+/g, '').toLowerCase();
   
   console.log('Initializing socket connection...');
   console.log(`Socket token length: ${authToken.length}, first 5 chars: ${authToken.substring(0, 5)}, last 5 chars: ${authToken.slice(-5)}`);

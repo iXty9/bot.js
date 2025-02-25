@@ -68,8 +68,14 @@ function authenticateToken(req, res, next) {
       console.log(`Auth token first 5 chars: ${cleanToken.substring(0, 5)}, Env token first 5 chars: ${cleanEnvToken.substring(0, 5)}`);
       console.log(`Auth token last 5 chars: ${cleanToken.slice(-5)}, Env token last 5 chars: ${cleanEnvToken.slice(-5)}`);
         
-      // Compare cleaned tokens directly (case-insensitive)
-      if (cleanToken.toLowerCase() === cleanEnvToken.toLowerCase()) {
+      // Normalize tokens completely before comparison
+      // Remove all whitespace, make lowercase, and trim any invisible characters
+      const normalizedToken = cleanToken.toLowerCase().replace(/\s+/g, '').trim();
+      const normalizedEnvToken = cleanEnvToken.toLowerCase().replace(/\s+/g, '').trim();
+      
+      console.log(`Normalized token length: ${normalizedToken.length}, Normalized env token length: ${normalizedEnvToken.length}`);
+      
+      if (normalizedToken === normalizedEnvToken) {
         req.user = { authorized: true };
         next();
         return;
@@ -151,8 +157,20 @@ app.post('/api/debug/token', (req, res) => {
     // Compare with environment token (safely)
     if (process.env.DISCORD_TOKEN) {
       const envToken = process.env.DISCORD_TOKEN.trim();
-      tokenInfo.matchesEnvToken = token.trim() === envToken;
+      
+      // Clean both tokens for comparison
+      const cleanToken = token.trim().replace(/\s+/g, '').toLowerCase();
+      const cleanEnvToken = envToken.trim().replace(/\s+/g, '').toLowerCase();
+      
+      tokenInfo.matchesEnvToken = cleanToken === cleanEnvToken;
       tokenInfo.lengthDifference = token.length - envToken.length;
+      tokenInfo.cleanLengthDifference = cleanToken.length - cleanEnvToken.length;
+      
+      // Character code analysis for first 5 and last 5 chars
+      tokenInfo.firstFiveCharCodes = Array.from(cleanToken.substring(0, 5)).map(c => c.charCodeAt(0));
+      tokenInfo.lastFiveCharCodes = Array.from(cleanToken.slice(-5)).map(c => c.charCodeAt(0));
+      tokenInfo.envFirstFiveCharCodes = Array.from(cleanEnvToken.substring(0, 5)).map(c => c.charCodeAt(0));
+      tokenInfo.envLastFiveCharCodes = Array.from(cleanEnvToken.slice(-5)).map(c => c.charCodeAt(0));
     }
     
     res.json(tokenInfo);
@@ -562,8 +580,14 @@ io.use((socket, next) => {
     console.log(`Socket auth token first 5 chars: ${cleanToken.substring(0, 5)}, Env token first 5 chars: ${cleanEnvToken.substring(0, 5)}`);
     console.log(`Socket auth token last 5 chars: ${cleanToken.slice(-5)}, Env token last 5 chars: ${cleanEnvToken.slice(-5)}`);
     
-    // Compare cleaned tokens directly (case-insensitive)
-    if (cleanToken.toLowerCase() === cleanEnvToken.toLowerCase()) {
+    // Normalize tokens completely before comparison
+    // Remove all whitespace, make lowercase, and trim any invisible characters
+    const normalizedToken = cleanToken.toLowerCase().replace(/\s+/g, '').trim();
+    const normalizedEnvToken = cleanEnvToken.toLowerCase().replace(/\s+/g, '').trim();
+    
+    console.log(`Socket normalized token length: ${normalizedToken.length}, Normalized env token length: ${normalizedEnvToken.length}`);
+    
+    if (normalizedToken === normalizedEnvToken) {
       socket.user = { authorized: true };
       console.log('Socket.IO: Authentication successful');
       next();
