@@ -59,15 +59,23 @@ function authenticateToken(req, res, next) {
 
     // Compare directly with Discord token
     // Use a constant-time comparison to prevent timing attacks
-    if (token && process.env.DISCORD_TOKEN && 
-        Buffer.from(token.trim()).toString() === Buffer.from(process.env.DISCORD_TOKEN.trim()).toString()) {
-      req.user = { authorized: true };
-      next();
-    } else {
-      // Log the error but don't expose token details
-      console.error('Invalid authentication token detected');
-      return res.status(403).json({ error: 'Invalid authentication token' });
+    if (token && process.env.DISCORD_TOKEN) {
+      const cleanToken = token.trim();
+      const cleanEnvToken = process.env.DISCORD_TOKEN.trim();
+      
+      // Debug log (don't log full tokens in production)
+      console.log(`Auth attempt - Token length: ${cleanToken.length}, Env token length: ${cleanEnvToken.length}`);
+      
+      if (Buffer.from(cleanToken).toString() === Buffer.from(cleanEnvToken).toString()) {
+        req.user = { authorized: true };
+        next();
+        return;
+      }
     }
+    
+    // Log the error but don't expose token details
+    console.error('Invalid authentication token detected');
+    return res.status(403).json({ error: 'Invalid authentication token' });
   } catch (error) {
     console.error('Authentication error:', error);
     return res.status(500).json({ error: 'Authentication failed' });
@@ -104,12 +112,51 @@ export const getBotManager = () => botManager;
 
 // Health check endpoint (no auth required)
 app.get('/api/health', (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const hasAuthHeader = !!authHeader;
+  
   res.json({ 
     status: 'ok',
     message: 'API server is running',
     timestamp: new Date().toISOString(),
-    auth: !!process.env.DISCORD_TOKEN
+    auth: !!process.env.DISCORD_TOKEN,
+    authHeaderPresent: hasAuthHeader,
+    botInitialized: !!botManager,
+    botReady: botManager ? botManager.client.isReady() : false,
+    nodeVersion: process.version,
+    uptime: process.uptime()
   });
+});
+
+// Debug endpoint for token format (no auth required)
+app.post('/api/debug/token', (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+    
+    // Don't log the actual token
+    const tokenInfo = {
+      length: token.length,
+      hasWhitespace: /\s/.test(token),
+      startsWithBot: token.startsWith('Bot '),
+      startsWithBearer: token.startsWith('Bearer '),
+      format: token.includes('.') ? 'Appears to be JWT format' : 'Not in JWT format'
+    };
+    
+    // Compare with environment token (safely)
+    if (process.env.DISCORD_TOKEN) {
+      const envToken = process.env.DISCORD_TOKEN.trim();
+      tokenInfo.matchesEnvToken = token.trim() === envToken;
+      tokenInfo.lengthDifference = token.length - envToken.length;
+    }
+    
+    res.json(tokenInfo);
+  } catch (error) {
+    console.error('Token debug error:', error);
+    res.status(500).json({ error: 'Failed to analyze token' });
+  }
 });
 
 // API routes
@@ -457,20 +504,33 @@ io.use((socket, next) => {
   try {
     const token = socket.handshake.auth.token;
     if (!token) {
+      console.log('Socket.IO: No token provided');
       return next(new Error('Authentication error: No token provided'));
     }
     
+    // Check if Discord token is configured
+    if (!process.env.DISCORD_TOKEN) {
+      console.error('Socket.IO: DISCORD_TOKEN not configured');
+      return next(new Error('Server configuration error: Discord token not set'));
+    }
+    
     // Direct comparison with Discord token
-    // Use a constant-time comparison to prevent timing attacks
-    if (token && process.env.DISCORD_TOKEN && 
-        Buffer.from(token.trim()).toString() === Buffer.from(process.env.DISCORD_TOKEN.trim()).toString()) {
+    const cleanToken = token.trim();
+    const cleanEnvToken = process.env.DISCORD_TOKEN.trim();
+    
+    // Debug log (don't log full tokens in production)
+    console.log(`Socket auth attempt - Token length: ${cleanToken.length}, Env token length: ${cleanEnvToken.length}`);
+    
+    if (Buffer.from(cleanToken).toString() === Buffer.from(cleanEnvToken).toString()) {
       socket.user = { authorized: true };
+      console.log('Socket.IO: Authentication successful');
       next();
     } else {
       console.error('Socket.IO: Invalid authentication token');
       next(new Error('Invalid authentication token'));
     }
   } catch (error) {
+    console.error('Socket.IO authentication error:', error);
     next(new Error(`Authentication error: ${error.message}`));
   }
 });

@@ -30,9 +30,46 @@
         <h2>Environment Check</h2>
         <button id="envCheck">Check Environment</button>
         <div id="envResult" class="result"></div>
+        <h2>Token Debugging</h2>
+        <p>This will help diagnose token format issues:</p>
+        <button id="debugToken">Debug Token Format</button>
+        <div id="tokenDebugResult" class="result"></div>
     </div>
 
     <script>
+        // Token debugging function
+        document.getElementById('debugToken').addEventListener('click', () => {
+            try {
+                const token = document.getElementById('tokenInput').value;
+                if (!token) {
+                    document.getElementById('tokenDebugResult').innerText = 'Please enter a token first';
+                    return;
+                }
+                
+                const tokenInfo = {
+                    length: token.length,
+                    hasWhitespace: /\s/.test(token),
+                    startsWithBot: token.startsWith('Bot '),
+                    startsWithBearer: token.startsWith('Bearer '),
+                    format: token.includes('.') ? 'Appears to be JWT format' : 'Not in JWT format',
+                    firstFiveChars: token.substring(0, 5),
+                    lastFiveChars: token.substring(token.length - 5)
+                };
+                
+                // Create a properly formatted token for testing
+                const cleanToken = token.trim().replace(/^(Bot|Bearer)\s+/i, '');
+                const properBearerFormat = `Bearer ${cleanToken}`;
+                
+                document.getElementById('tokenDebugResult').innerText = 
+                    `Token Analysis:\n${JSON.stringify(tokenInfo, null, 2)}\n\n` +
+                    `Recommended format for testing:\n${properBearerFormat}`;
+                
+                // Update the token input with the properly formatted token
+                document.getElementById('tokenInput').value = cleanToken;
+            } catch (error) {
+                document.getElementById('tokenDebugResult').innerText = `Error analyzing token: ${error.message}`;
+            }
+        });
         document.getElementById('healthCheck').addEventListener('click', async () => {
             try {
                 const response = await fetch('/api/health');
@@ -46,48 +83,72 @@
         document.getElementById('testAuth').addEventListener('click', async () => {
             try {
                 const token = document.getElementById('tokenInput').value;
+                document.getElementById('authResult').innerText = 'Testing authentication...';
+                
                 const response = await fetch('/api/status', {
+                    method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin'
                 });
                 
-                if (response.ok) {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
                     const data = await response.json();
-                    document.getElementById('authResult').innerText = `Authentication successful!\n${JSON.stringify(data, null, 2)}`;
+                    if (response.ok) {
+                        document.getElementById('authResult').innerText = `Authentication successful!\n${JSON.stringify(data, null, 2)}`;
+                    } else {
+                        document.getElementById('authResult').innerText = `Authentication failed: ${data.error || 'Unknown error'}`;
+                    }
                 } else {
-                    const error = await response.json();
-                    document.getElementById('authResult').innerText = `Authentication failed: ${error.error}`;
+                    const text = await response.text();
+                    document.getElementById('authResult').innerText = `Received non-JSON response: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`;
                 }
             } catch (error) {
-                document.getElementById('authResult').innerText = `Error: ${error.message}`;
+                document.getElementById('authResult').innerText = `Error: ${error.message}\nMake sure the API server is running and accessible.`;
+                console.error('Authentication test error:', error);
             }
         });
 
         document.getElementById('envCheck').addEventListener('click', async () => {
             try {
                 const token = document.getElementById('tokenInput').value;
+                document.getElementById('envResult').innerText = 'Checking environment...';
+                
                 const response = await fetch('/api/env', {
+                    method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin'
                 });
                 
-                if (response.ok) {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
                     const data = await response.json();
-                    // Mask the token for security
-                    if (data.DISCORD_TOKEN) {
-                        data.DISCORD_TOKEN = data.DISCORD_TOKEN.substring(0, 5) + '...' + 
-                                            (data.DISCORD_TOKEN.length > 10 ? 
-                                             data.DISCORD_TOKEN.substring(data.DISCORD_TOKEN.length - 5) : '');
+                    if (response.ok) {
+                        // Mask the token for security
+                        if (data.DISCORD_TOKEN) {
+                            data.DISCORD_TOKEN = data.DISCORD_TOKEN.substring(0, 5) + '...' + 
+                                                (data.DISCORD_TOKEN.length > 10 ? 
+                                                 data.DISCORD_TOKEN.substring(data.DISCORD_TOKEN.length - 5) : '');
+                        }
+                        document.getElementById('envResult').innerText = JSON.stringify(data, null, 2);
+                    } else {
+                        document.getElementById('envResult').innerText = `Failed: ${data.error || 'Unknown error'}`;
                     }
-                    document.getElementById('envResult').innerText = JSON.stringify(data, null, 2);
                 } else {
-                    const error = await response.json();
-                    document.getElementById('envResult').innerText = `Failed: ${error.error}`;
+                    const text = await response.text();
+                    document.getElementById('envResult').innerText = `Received non-JSON response: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`;
                 }
             } catch (error) {
-                document.getElementById('envResult').innerText = `Error: ${error.message}`;
+                document.getElementById('envResult').innerText = `Error: ${error.message}\nMake sure the API server is running and accessible.`;
+                console.error('Environment check error:', error);
             }
         });
     </script>
