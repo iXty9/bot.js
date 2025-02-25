@@ -30,7 +30,7 @@ export const initializeSocket = (token) => {
     return null;
   }
   
-  // Clean the token thoroughly
+  // Clean the token thoroughly and normalize case
   authToken = authToken.trim().replace(/^Bearer\s+/i, '').replace(/\s+/g, '');
   
   console.log('Initializing socket connection...');

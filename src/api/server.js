@@ -68,8 +68,8 @@ function authenticateToken(req, res, next) {
       console.log(`Auth token first 5 chars: ${cleanToken.substring(0, 5)}, Env token first 5 chars: ${cleanEnvToken.substring(0, 5)}`);
       console.log(`Auth token last 5 chars: ${cleanToken.slice(-5)}, Env token last 5 chars: ${cleanEnvToken.slice(-5)}`);
         
-      // Compare cleaned tokens directly
-      if (cleanToken === cleanEnvToken) {
+      // Compare cleaned tokens directly (case-insensitive)
+      if (cleanToken.toLowerCase() === cleanEnvToken.toLowerCase()) {
         req.user = { authorized: true };
         next();
         return;
@@ -562,8 +562,8 @@ io.use((socket, next) => {
     console.log(`Socket auth token first 5 chars: ${cleanToken.substring(0, 5)}, Env token first 5 chars: ${cleanEnvToken.substring(0, 5)}`);
     console.log(`Socket auth token last 5 chars: ${cleanToken.slice(-5)}, Env token last 5 chars: ${cleanEnvToken.slice(-5)}`);
     
-    // Compare cleaned tokens directly
-    if (cleanToken === cleanEnvToken) {
+    // Compare cleaned tokens directly (case-insensitive)
+    if (cleanToken.toLowerCase() === cleanEnvToken.toLowerCase()) {
       socket.user = { authorized: true };
       console.log('Socket.IO: Authentication successful');
       next();
