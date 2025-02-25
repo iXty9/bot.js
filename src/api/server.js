@@ -65,6 +65,7 @@ function authenticateToken(req, res, next) {
       
       // Debug log (don't log full tokens in production)
       console.log(`Auth attempt - Token length: ${cleanToken.length}, Env token length: ${cleanEnvToken.length}`);
+      console.log(`Auth token first 5 chars: ${cleanToken.substring(0, 5)}, Env token first 5 chars: ${cleanEnvToken.substring(0, 5)}`);
       
       // Simple string comparison
       if (cleanToken === cleanEnvToken) {

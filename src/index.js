@@ -31,7 +31,7 @@ const extractTokenFromUrl = () => {
     const newUrl = window.location.pathname;
     window.history.replaceState({}, document.title, newUrl);
     
-    console.log('Token extracted from URL and stored');
+    console.log('Token extracted from URL and stored:', token.trim().substring(0, 5) + '...');
     return true;
   }
   return false;
