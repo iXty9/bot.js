@@ -18,10 +18,11 @@ import './public/styles.css';
 const queryClient = new QueryClient();
 
 // SECTION: Token Extraction
-// Extract token from URL if present (for CLI integration)
-const extractTokenFromUrl = () => {
+// Extract token or access key from URL if present (for CLI integration)
+const extractTokenFromUrl = async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get('token');
+  const accessKey = urlParams.get('access_key');
   
   if (token) {
     // Store token exactly as provided without any modification
@@ -35,11 +36,42 @@ const extractTokenFromUrl = () => {
     console.log('Token extracted from URL and stored:', token.substring(0, 5) + '...');
     return true;
   }
+  
+  if (accessKey) {
+    try {
+      // Exchange the access key for the actual token
+      const response = await fetch(`/api/auth/exchange?access_key=${accessKey}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to exchange access key for token');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && data.token) {
+        // Store the token received from the server
+        localStorage.setItem('discord_bot_token_original', data.token);
+        localStorage.setItem('discord_bot_token', data.token);
+        
+        // Remove access key from URL without refreshing
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+        
+        console.log('Access key exchanged for token successfully');
+        return true;
+      }
+    } catch (error) {
+      console.error('Error exchanging access key for token:', error);
+    }
+  }
+  
   return false;
 };
 
-// Extract token on page load
-extractTokenFromUrl();
+// Extract token on page load (async)
+(async function() {
+  await extractTokenFromUrl();
+})();
 
 // SECTION: DOM Element Selection
 // Selecting the root DOM element where the React application is going to be rendered using 'getElementById'.

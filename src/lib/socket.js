@@ -38,13 +38,22 @@ export const initializeSocket = (token) => {
   
   console.log('Initializing socket connection...');
   console.log(`Socket token length: ${authToken.length}, first 5 chars: ${authToken.substring(0, 5)}, last 5 chars: ${authToken.slice(-5)}`);
+  
+  // Check if we have an access key in localStorage (from URL exchange)
+  const accessKey = localStorage.getItem('access_key');
+  
   const socket = io('/', {
-    auth: { token: authToken },
+    auth: accessKey ? { access_key: accessKey } : { token: authToken },
     transports: ['websocket'],
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
     timeout: 5000
   });
+  
+  // Remove the access key after use
+  if (accessKey) {
+    localStorage.removeItem('access_key');
+  }
 
   socket.on('connect', () => {
     console.log('Socket connected');

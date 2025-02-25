@@ -43,6 +43,15 @@ app.use(bodyParser.json());
 // Authentication middleware
 function authenticateToken(req, res, next) {
   try {
+    // Check for access key in query parameters (for initial auth only)
+    const accessKey = req.query.access_key;
+    if (accessKey && global.WEB_UI_ACCESS_KEY && accessKey === global.WEB_UI_ACCESS_KEY) {
+      console.log('Access key authentication successful');
+      req.user = { authorized: true };
+      next();
+      return;
+    }
+    
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     
@@ -189,6 +198,30 @@ app.post('/api/debug/token', (req, res) => {
   } catch (error) {
     console.error('Token debug error:', error);
     res.status(500).json({ error: 'Failed to analyze token' });
+  }
+});
+
+// Access key endpoint - exchange temporary access key for actual token
+app.get('/api/auth/exchange', (req, res) => {
+  try {
+    const { access_key } = req.query;
+    
+    // Check if the access key is valid
+    if (access_key && global.WEB_UI_ACCESS_KEY && access_key === global.WEB_UI_ACCESS_KEY) {
+      // Return the actual Discord token
+      res.json({ 
+        token: process.env.DISCORD_TOKEN,
+        success: true
+      });
+      
+      // Invalidate the access key after use (one-time use)
+      global.WEB_UI_ACCESS_KEY = null;
+    } else {
+      res.status(403).json({ error: 'Invalid access key' });
+    }
+  } catch (error) {
+    console.error('Access key exchange error:', error);
+    res.status(500).json({ error: 'Authentication failed' });
   }
 });
 
@@ -570,6 +603,15 @@ const io = new Server(server, {
 // Socket.IO authentication middleware
 io.use((socket, next) => {
   try {
+    // Check for access key in handshake auth
+    const accessKey = socket.handshake.auth.access_key;
+    if (accessKey && global.WEB_UI_ACCESS_KEY && accessKey === global.WEB_UI_ACCESS_KEY) {
+      console.log('Socket.IO: Access key authentication successful');
+      socket.user = { authorized: true };
+      next();
+      return;
+    }
+    
     const token = socket.handshake.auth.token;
     if (!token) {
       console.log('Socket.IO: No token provided');

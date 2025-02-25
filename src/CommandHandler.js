@@ -245,18 +245,17 @@ class CommandHandler {
 
   async openWebUI() {
     try {
-      // Use WEB_UI_TOKEN if available, otherwise use DISCORD_TOKEN
-      const token = process.env.WEB_UI_TOKEN || process.env.DISCORD_TOKEN;
+      // Generate a temporary access key that's valid for this session only
+      const tempKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      
+      // Store this key in a global variable that the server can access
+      global.WEB_UI_ACCESS_KEY = tempKey;
+      
       const port = process.env.API_PORT || '6987';
       const host = process.env.API_HOST || 'localhost';
       
-      if (!token) {
-        this.consoleUI.addLog(chalk.red('No Discord token available. Check your .env configuration.'));
-        return;
-      }
-      
-      // Create URL with token
-      const url = `http://${host}:${port}?token=${encodeURIComponent(token)}`;
+      // Create URL with the temporary key instead of the actual token
+      const url = `http://${host}:${port}?access_key=${encodeURIComponent(tempKey)}`;
       
       // Open URL in default browser
       const { exec } = require('child_process');
