@@ -26,12 +26,20 @@ export const createSession = () => {
   // Store session
   activeSessions.set(sessionId, sessionInfo);
   
+  console.log(`Creating new session with ID: ${sessionId}`);
+  console.log(`Using JWT_SECRET length: ${JWT_SECRET.length} characters`);
+  
   // Create JWT token
   const token = jwt.sign(
     { sessionId },
     JWT_SECRET,
-    { expiresIn: '24h' }
+    { 
+      expiresIn: '24h',
+      algorithm: 'HS256' 
+    }
   );
+  
+  console.log(`Session token created, expires in 24 hours`);
   
   return {
     token,
@@ -46,17 +54,29 @@ export const createSession = () => {
  */
 export const validateSession = (token) => {
   try {
+    if (!token) {
+      console.log('No token provided for validation');
+      return false;
+    }
+
     // Verify JWT signature and expiration
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+    
+    if (!decoded || !decoded.sessionId) {
+      console.log('Invalid token format: missing sessionId');
+      return false;
+    }
     
     // Check if session exists in our store
     const session = activeSessions.get(decoded.sessionId);
     if (!session) {
+      console.log('Session not found in active sessions');
       return false;
     }
     
     // Check if session has expired
     if (session.expiresAt < Date.now()) {
+      console.log('Session has expired');
       activeSessions.delete(decoded.sessionId);
       return false;
     }
@@ -68,6 +88,11 @@ export const validateSession = (token) => {
     return true;
   } catch (error) {
     console.error('Session validation error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      console.error('JWT validation failed:', error.message);
+    } else if (error.name === 'TokenExpiredError') {
+      console.error('Token has expired');
+    }
     return false;
   }
 };
@@ -78,7 +103,7 @@ export const validateSession = (token) => {
  */
 export const invalidateSession = (token) => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     activeSessions.delete(decoded.sessionId);
     return true;
   } catch (error) {
