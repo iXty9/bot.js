@@ -6,9 +6,10 @@
  */
 export const storeToken = (token) => {
   if (!token) return;
-  // Ensure we're storing a clean token
-  localStorage.setItem('discord_bot_token', token.trim());
-  console.log('Token stored:', token.trim().substring(0, 5) + '...');
+  // Ensure we're storing a clean token with no whitespace
+  const cleanToken = token.trim().replace(/\s+/g, '');
+  localStorage.setItem('discord_bot_token', cleanToken);
+  console.log('Token stored:', cleanToken.substring(0, 5) + '...');
 };
 
 /**
@@ -17,7 +18,8 @@ export const storeToken = (token) => {
  */
 export const getToken = () => {
   const token = localStorage.getItem('discord_bot_token');
-  return token ? token.trim() : null;
+  // Ensure token is clean when retrieved
+  return token ? token.trim().replace(/\s+/g, '') : null;
 };
 
 /**
