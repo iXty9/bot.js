@@ -30,11 +30,11 @@ export const initializeSocket = (token) => {
     return null;
   }
   
-  // Remove Bearer prefix if present
-  authToken = authToken.replace(/^Bearer\s+/i, '');
+  // Clean the token thoroughly
+  authToken = authToken.trim().replace(/^Bearer\s+/i, '').replace(/\s+/g, '');
   
   console.log('Initializing socket connection...');
-  console.log(`Socket token length: ${authToken.length}, first 5 chars: ${authToken.substring(0, 5)}`);
+  console.log(`Socket token length: ${authToken.length}, first 5 chars: ${authToken.substring(0, 5)}, last 5 chars: ${authToken.slice(-5)}`);
   const socket = io('/', {
     auth: { token: authToken },
     transports: ['websocket'],
