@@ -227,6 +227,16 @@ const BotManager = () => {
   useEffect(() => {
     setSelectedThread(null);
   }, [selectedChannel]);
+  
+  // Debug function to log channels data
+  useEffect(() => {
+    if (channels && channels.length > 0) {
+      console.log('Channels loaded:', channels.length);
+      console.log('First channel:', channels[0]);
+    } else {
+      console.log('No channels loaded or channels is empty');
+    }
+  }, [channels]);
 
   const validateStatus = (status) => {
     const validStatuses = ['online', 'idle', 'dnd', 'invisible'];
@@ -265,8 +275,13 @@ const BotManager = () => {
 
   const queryClient = useQueryClient();
   const { mutate: sendMessage, isLoading: isSending } = useSendMessage();
-  const { data: channels = [], isLoading: isLoadingChannels } = useChannels();
+  const { data: channels = [], isLoading: isLoadingChannels, refetch: refetchChannels } = useChannels();
   const { data: messages = [], isLoading: isLoadingMessages } = useMessageHistory(selectedChannel?.id);
+  
+  // Fetch channels on component mount
+  useEffect(() => {
+    refetchChannels();
+  }, [refetchChannels]);
   const { error, handleError } = useError();
   const [editingMessage, setEditingMessage] = useState(null);
   const [envVars, setEnvVars] = useState({
@@ -551,15 +566,22 @@ const BotManager = () => {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
+              <div className="flex justify-between items-center mb-4">
+                <Button onClick={() => refetchChannels()} disabled={isLoadingChannels}>
+                  {isLoadingChannels ? 'Loading...' : 'Refresh Channels'}
+                </Button>
+              </div>
               <div className="grid grid-cols-2 gap-10 mb-4">
                 <Select
                   value={selectedChannel?.id || ""}
                   onValueChange={(value) => {
+                      console.log('Channel selected:', value);
                       const channel = channels?.find(c => c.id === value);
+                      console.log('Found channel:', channel);
                       setSelectedChannel(channel || null);
                       setSelectedThread(null); // Reset thread when channel changes
                     }}
-                    disabled={isLoadingChannels}
+                    disabled={isLoadingChannels || !channels || channels.length === 0}
                   >
                     <SelectTrigger
                       className="w-full"

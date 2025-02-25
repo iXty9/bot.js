@@ -59,13 +59,14 @@ function authenticateToken(req, res, next) {
 
     // Compare directly with Discord token
     if (token && process.env.DISCORD_TOKEN) {
-      const cleanToken = token.trim();
+      // Remove any Bearer prefix if present
+      const cleanToken = token.trim().replace(/^Bearer\s+/i, '');
       const cleanEnvToken = process.env.DISCORD_TOKEN.trim();
       
       // Debug log (don't log full tokens in production)
       console.log(`Auth attempt - Token length: ${cleanToken.length}, Env token length: ${cleanEnvToken.length}`);
       
-      // Simple string comparison instead of Buffer comparison
+      // Simple string comparison
       if (cleanToken === cleanEnvToken) {
         req.user = { authorized: true };
         next();
@@ -515,13 +516,15 @@ io.use((socket, next) => {
     }
     
     // Direct comparison with Discord token
-    const cleanToken = token.trim();
+    // Remove any Bearer prefix if present
+    const cleanToken = token.trim().replace(/^Bearer\s+/i, '');
     const cleanEnvToken = process.env.DISCORD_TOKEN.trim();
     
     // Debug log (don't log full tokens in production)
     console.log(`Socket auth attempt - Token length: ${cleanToken.length}, Env token length: ${cleanEnvToken.length}`);
+    console.log(`Socket auth token first 5 chars: ${cleanToken.substring(0, 5)}, Env token first 5 chars: ${cleanEnvToken.substring(0, 5)}`);
     
-    // Simple string comparison instead of Buffer comparison
+    // Simple string comparison
     if (cleanToken === cleanEnvToken) {
       socket.user = { authorized: true };
       console.log('Socket.IO: Authentication successful');

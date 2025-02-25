@@ -15,7 +15,8 @@ export const storeToken = (token) => {
  * @returns {string|null} The stored token or null if not found
  */
 export const getToken = () => {
-  return localStorage.getItem('discord_bot_token');
+  const token = localStorage.getItem('discord_bot_token');
+  return token ? token.trim() : null;
 };
 
 /**
@@ -40,6 +41,10 @@ export const hasToken = () => {
  */
 export const getAuthHeaders = () => {
   const token = getToken();
+  // Only include Authorization header if token exists
+  if (!token) {
+    return { 'Content-Type': 'application/json' };
+  }
   return {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
