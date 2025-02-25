@@ -25,11 +25,10 @@ const extractTokenFromUrl = () => {
   
   if (token) {
     // Store token and remove it from URL for security
-    storeToken(token);
+    storeToken(token.trim());
     
     // Remove token from URL without refreshing
-    const newUrl = window.location.pathname + 
-                  (urlParams.size > 1 ? '?' + urlParams.toString() : '');
+    const newUrl = window.location.pathname;
     window.history.replaceState({}, document.title, newUrl);
     
     console.log('Token extracted from URL and stored');

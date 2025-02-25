@@ -6,7 +6,8 @@
  */
 export const storeToken = (token) => {
   if (!token) return;
-  localStorage.setItem('discord_bot_token', token);
+  // Ensure we're storing a clean token
+  localStorage.setItem('discord_bot_token', token.trim());
 };
 
 /**

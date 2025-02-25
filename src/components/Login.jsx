@@ -33,10 +33,13 @@ export default function Login({ onLogin }) {
     setError('');
     
     try {
+      // Clean the token and ensure it's properly formatted
+      const cleanToken = tokenToUse.trim();
+      
       // Test the token with a simple API call
       const response = await fetch('/api/status', {
         headers: {
-          'Authorization': `Bearer ${tokenToUse}`,
+          'Authorization': `Bearer ${cleanToken}`,
           'Content-Type': 'application/json'
         }
       });
