@@ -39,6 +39,7 @@ const extractTokenFromUrl = async () => {
   
   if (accessKey) {
     try {
+      console.log('Access key found in URL, attempting to exchange for token');
       // Exchange the access key for the actual token
       const response = await fetch(`/api/auth/exchange?access_key=${accessKey}`);
       
@@ -62,6 +63,23 @@ const extractTokenFromUrl = async () => {
       }
     } catch (error) {
       console.error('Error exchanging access key for token:', error);
+      
+      // Try development bypass as fallback
+      try {
+        console.log('Attempting development auth bypass');
+        const bypassResponse = await fetch('/api/auth/bypass');
+        if (bypassResponse.ok) {
+          const bypassData = await bypassResponse.json();
+          if (bypassData.success && bypassData.token) {
+            localStorage.setItem('discord_bot_token_original', bypassData.token);
+            localStorage.setItem('discord_bot_token', bypassData.token);
+            console.log('Development auth bypass successful');
+            return true;
+          }
+        }
+      } catch (bypassError) {
+        console.error('Development bypass failed:', bypassError);
+      }
     }
   }
   
