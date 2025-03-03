@@ -47,11 +47,10 @@ extractAccessKeyFromUrl();
 
 const container = document.getElementById('root');
 
-// VALIDATION: Root Element Check
-// Ensures that a container element with the id 'root' exists before proceeding to render the application.
-// Logs an error message if the element is not found.
-
-if (container) {
+if (!container) {
+  console.error('Root element not found');
+  return;
+}
   // SECTION: Rendering the Application
   // Creates a React root for managing updates to the container and renders the application components.
   // Use the React.StrictMode to help identify potential problems in the application.

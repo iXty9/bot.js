@@ -1224,11 +1224,11 @@ app.use((req, res, next) => {
 });
 
 
-// Route to start/stop the server
-// Create HTTP server
 const server = http.createServer(app);
+server.listen(PORT, HOST, () => {
+  console.log(`Server is running on http://${HOST}:${PORT}`);
+});
 
-// Initialize Socket.IO
 const io = new Server(server, {
   cors: {
     origin: "*",
