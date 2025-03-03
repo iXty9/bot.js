@@ -464,11 +464,37 @@ app.post('/api/commands', authenticateToken, async (req, res) => {
 
 app.get('/api/channels', authenticateToken, async (req, res) => {
   try {
+    if (!botManager) {
+      return res.status(500).json({ 
+        error: 'Bot manager not initialized',
+        channels: []
+      });
+    }
+    
+    console.log('Fetching channels list...');
     const channels = await botManager.listChannels();
-    res.json(channels);
+    
+    console.log(`Found ${channels.length} channels`);
+    
+    // Add current channel indicator
+    if (botManager.currentChannelId) {
+      channels.forEach(channel => {
+        channel.isActive = channel.id === botManager.currentChannelId;
+      });
+    }
+    
+    res.json({
+      success: true,
+      channels,
+      currentChannelId: botManager.currentChannelId || null
+    });
   } catch (error) {
     console.error('Error listing channels:', error);
-    res.status(500).json({ error: 'Failed to list channels' });
+    res.status(500).json({ 
+      success: false,
+      error: error.message || 'Failed to list channels',
+      channels: []
+    });
   }
 });
 
@@ -557,32 +583,96 @@ app.post('/api/send', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Message and channelId are required' });
     }
 
+    if (!botManager) {
+      return res.status(500).json({ error: 'Bot manager not initialized' });
+    }
+
+    console.log('Sending message:', { 
+      messageLength: message.length,
+      channelId,
+      threadId: threadId || 'none'
+    });
+
     const result = await botManager.sendMessage(message, channelId, threadId);
-    res.json({ message: result });
+    res.json({ 
+      success: true, 
+      message: 'Message sent successfully',
+      result
+    });
   } catch (error) {
     console.error('Error sending message:', error);
-    res.status(500).json({ error: error.message || 'Failed to send message' });
+    res.status(500).json({ 
+      success: false,
+      error: error.message || 'Failed to send message' 
+    });
   }
 });
 
 app.post('/api/channel', authenticateToken, async (req, res) => {
   try {
     const { channelId } = req.body;
-    await botManager.setActiveChannel(channelId);
-    res.json({ message: 'Channel set successfully' });
+    
+    if (!channelId) {
+      return res.status(400).json({ error: 'Channel ID is required' });
+    }
+    
+    if (!botManager) {
+      return res.status(500).json({ error: 'Bot manager not initialized' });
+    }
+    
+    const result = await botManager.setActiveChannel(channelId);
+    console.log('Channel set successfully:', channelId);
+    res.json({ success: true, message: result });
   } catch (error) {
     console.error('Error setting active channel:', error);
-    res.status(500).json({ error: 'Failed to set active channel' });
+    res.status(500).json({ error: error.message || 'Failed to set active channel' });
   }
 });
 
 app.get('/api/stats', authenticateToken, async (req, res) => {
   try {
+    if (!botManager) {
+      return res.status(500).json({ 
+        error: 'Bot manager not initialized',
+        botStatus: 'unavailable'
+      });
+    }
+    
     const stats = botManager.getUsageStats();
+    
+    // Add additional debug info
+    stats.botInitialized = !!botManager;
+    stats.clientReady = botManager.client && botManager.client.isReady();
+    stats.currentChannelId = botManager.currentChannelId || null;
+    
     res.json(stats);
   } catch (error) {
     console.error('Error retrieving statistics:', error);
     res.status(500).json({ error: 'Failed to retrieve statistics' });
+  }
+});
+
+// Add a debug endpoint to check bot status
+app.get('/api/debug/bot', authenticateToken, async (req, res) => {
+  try {
+    const botStatus = {
+      initialized: !!botManager,
+      clientReady: botManager && botManager.client && botManager.client.isReady(),
+      currentChannelId: botManager && botManager.currentChannelId,
+      uptime: process.uptime(),
+      nodeVersion: process.version,
+      memoryUsage: process.memoryUsage(),
+      env: {
+        API_PORT: process.env.API_PORT,
+        API_HOST: process.env.API_HOST,
+        NODE_ENV: process.env.NODE_ENV
+      }
+    };
+    
+    res.json(botStatus);
+  } catch (error) {
+    console.error('Error retrieving bot status:', error);
+    res.status(500).json({ error: 'Failed to retrieve bot status' });
   }
 });
 

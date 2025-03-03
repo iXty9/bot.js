@@ -403,6 +403,27 @@ class BotManager extends EventEmitter {
       throw new Error(errorMsg);
     }
   }
+  
+  /**
+   * Sets the active channel for the bot
+   * @param {string} channelId - The ID of the channel to set as active
+   * @returns {Promise<string>} Success message
+   */
+  async setActiveChannel(channelId) {
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel) {
+        throw new Error(`Channel with ID "${channelId}" not found`);
+      }
+      
+      this.currentChannelId = channelId;
+      this.log(`Active channel set to: ${channel.name}`);
+      return `Active channel set to: ${channel.name}`;
+    } catch (error) {
+      this.log(`Error setting active channel: ${error.message}`);
+      throw new Error(`Failed to set active channel: ${error.message}`);
+    }
+  }
 }
 
 // EXPORT: BotManager
