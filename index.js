@@ -79,6 +79,22 @@ client.once('ready', async () => {
   consoleUI.addLog(`Logged in as ${client.user.tag}!`);
   consoleUI.addLog('Type "/help" for a list of commands.');
   
+  // Log guild and channel information for debugging
+  console.log(`Bot is in ${client.guilds.cache.size} guilds`);
+  for (const guild of client.guilds.cache.values()) {
+    console.log(`Guild: ${guild.name} (${guild.id})`);
+    console.log(`Channels in ${guild.name}: ${guild.channels.cache.size}`);
+    
+    // Log text channels
+    const textChannels = guild.channels.cache.filter(ch => 
+      ch.isTextBased && ch.isTextBased()
+    );
+    console.log(`Text channels in ${guild.name}: ${textChannels.size}`);
+    textChannels.forEach(ch => {
+      console.log(`- ${ch.name} (${ch.id}) - Type: ${ch.type}`);
+    });
+  }
+  
   await commandHandler.initialize(); // Initialize the current channel
   await registerSlashCommands(); // Register slash commands
   
@@ -129,6 +145,42 @@ process.on('unhandledRejection', (error) => {
 
 // Log the current working directory
 console.log('Current working directory:', process.cwd());
+
+// Add a debug endpoint
+app.get('/api/debug', async (req, res) => {
+  try {
+    const debugInfo = {
+      botReady: client.isReady(),
+      guilds: client.guilds.cache.size,
+      channels: [],
+      uptime: Math.floor(process.uptime()),
+      timestamp: Date.now()
+    };
+    
+    // Get channels from all guilds
+    for (const guild of client.guilds.cache.values()) {
+      try {
+        const guildChannels = Array.from(guild.channels.cache.values())
+          .filter(ch => ch.isTextBased && ch.isTextBased())
+          .map(ch => ({
+            id: ch.id,
+            name: ch.name,
+            type: ch.type,
+            guildName: guild.name
+          }));
+        
+        debugInfo.channels.push(...guildChannels);
+      } catch (error) {
+        console.error(`Error getting channels for guild ${guild.name}:`, error);
+      }
+    }
+    
+    res.json(debugInfo);
+  } catch (error) {
+    console.error('Debug endpoint error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Start the server
 const PORT = process.env.API_PORT || 6987;

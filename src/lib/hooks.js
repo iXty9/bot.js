@@ -99,15 +99,25 @@ export const useChannels = () => {
       }
       
       try {
-        const { data } = await axios.get(`${API_BASE}/channels`, {
+        // Use fetch instead of axios for more direct control
+        const response = await fetch(`${API_BASE}/channels`, {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         });
         
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        
         console.log(`Received channels response:`, {
           success: data.success,
-          channelCount: data.channels?.length || 0
+          channelCount: data.channels?.length || 0,
+          firstChannel: data.channels?.[0]?.name
         });
         
         if (!data.success) {
@@ -140,4 +150,41 @@ export const useError = () => {
   }, []);
 
   return { error, setError, handleError };
+};
+
+// Direct channel fetching function for debugging
+export const fetchChannelsDirectly = async () => {
+  try {
+    console.log('Directly fetching channels...');
+    const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
+    
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+    
+    const response = await fetch(`${API_BASE}/channels`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log('Direct channel fetch response:', data);
+    
+    if (data.success && data.channels) {
+      return data.channels;
+    } else {
+      console.error('API returned success=false or no channels:', data);
+      throw new Error(data.error || 'Failed to fetch channels');
+    }
+  } catch (error) {
+    console.error('Direct channel fetch error:', error);
+    throw error;
+  }
 };
