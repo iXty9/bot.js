@@ -59,7 +59,7 @@ export const initializeSocket = () => {
   const host = window.location.host;
   const url = window.location.origin;
   
-  console.log(`Connecting to Socket.IO server at ${url}`);
+  console.log(`Connecting to Socket.IO server at ${url} with token: ${auth.token}`);
   
   const socket = io(url, {
     auth,
