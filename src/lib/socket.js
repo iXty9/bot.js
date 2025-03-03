@@ -16,12 +16,13 @@ export const initializeSocket = () => {
     useSocketStore.getState().socket.disconnect();
   }
   
-  // Get session token from localStorage
+  // Get authentication credentials from localStorage
   const sessionToken = localStorage.getItem('session_token');
+  const apiKey = localStorage.getItem('api_key');
   
-  if (!sessionToken) {
-    console.error('No session token available for socket initialization');
-    useSocketStore.getState().setAuthError('No session token available');
+  if (!sessionToken && !apiKey) {
+    console.error('No authentication credentials available for socket initialization');
+    useSocketStore.getState().setAuthError('No authentication credentials available');
     return null;
   }
   
@@ -30,8 +31,18 @@ export const initializeSocket = () => {
   // Check if we have an access key in localStorage (from URL exchange)
   const accessKey = localStorage.getItem('access_key');
   
+  // Prepare auth object with available credentials
+  const auth = {};
+  if (accessKey) {
+    auth.access_key = accessKey;
+  } else if (apiKey) {
+    auth.api_key = apiKey;
+  } else if (sessionToken) {
+    auth.token = sessionToken;
+  }
+  
   const socket = io('/', {
-    auth: accessKey ? { access_key: accessKey } : { token: sessionToken },
+    auth,
     transports: ['websocket'],
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,

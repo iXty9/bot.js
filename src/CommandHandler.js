@@ -245,7 +245,16 @@ class CommandHandler {
 
   async openWebUI() {
     try {
-      // Generate a temporary access key that's valid for this session only
+      // Import the API key getter if available
+      let apiKey;
+      try {
+        const { getApiKey } = await import('../lib/simpleAuth.js');
+        apiKey = getApiKey();
+      } catch (error) {
+        console.log('Could not import API key, using temporary key instead');
+      }
+      
+      // Generate a temporary access key as fallback
       const tempKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       
       // Store this key in a global variable that the server can access
@@ -254,8 +263,8 @@ class CommandHandler {
       const port = process.env.API_PORT || '6987';
       const host = process.env.API_HOST || 'localhost';
       
-      // Create URL with the temporary key instead of the actual token
-      const url = `http://${host}:${port}?access_key=${encodeURIComponent(tempKey)}`;
+      // Create URL with the API key or temporary key
+      const url = `http://${host}:${port}?access_key=${encodeURIComponent(apiKey || tempKey)}`;
       
       // Open URL in default browser
       const { exec } = require('child_process');

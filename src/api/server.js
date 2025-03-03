@@ -40,48 +40,52 @@ app.set('trust proxy', true);
 app.use(cors());
 app.use(bodyParser.json());
 
-// Import session management utilities
-import { validateSession } from '../lib/session.js';
+// Import simple authentication utilities
+import { validateApiKey, validateSession } from '../lib/simpleAuth.js';
 
 // Authentication middleware
 function authenticateToken(req, res, next) {
   try {
-    // Check for access key in query parameters (for initial auth only)
+    // 1. Check for API key in header (preferred method)
+    const apiKey = req.headers['x-api-key'];
+    if (apiKey && validateApiKey(apiKey)) {
+      console.log('API key authentication successful');
+      req.user = { authorized: true };
+      next();
+      return;
+    }
+    
+    // 2. Check for access key in query parameters (for initial auth only)
     const accessKey = req.query.access_key;
-    if (accessKey && global.WEB_UI_ACCESS_KEY && accessKey === global.WEB_UI_ACCESS_KEY) {
+    if (accessKey && (accessKey === global.WEB_UI_ACCESS_KEY || validateApiKey(accessKey))) {
       console.log('Access key authentication successful');
       req.user = { authorized: true };
       next();
       return;
     }
     
+    // 3. Check for session token
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     
-    if (!token) {
-      // Silently return 401 without logging
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    // Validate session token
-    if (validateSession(token)) {
+    if (token && validateSession(token)) {
       console.log('Session token authentication successful');
       req.user = { authorized: true };
       next();
       return;
     }
     
-    // Development mode bypass (only in non-production)
-    if (process.env.NODE_ENV !== 'production' && token === 'dev-mode-token') {
+    // 4. Development mode bypass (only in non-production)
+    if (process.env.NODE_ENV !== 'production' && 
+        (token === 'dev-mode-token' || req.headers['x-dev-mode'] === 'true')) {
       console.log('Development mode authentication successful');
       req.user = { authorized: true, devMode: true };
       next();
       return;
     }
     
-    // Log the error but don't expose token details
-    console.error('Invalid session token detected');
-    return res.status(403).json({ error: 'Invalid authentication token' });
+    // Authentication failed
+    return res.status(401).json({ error: 'Authentication required' });
   } catch (error) {
     console.error('Authentication error:', error);
     return res.status(500).json({ error: 'Authentication failed' });
@@ -177,8 +181,8 @@ app.post('/api/debug/token', (req, res) => {
   }
 });
 
-// Import session management utilities
-import { createSession, invalidateSession } from '../lib/session.js';
+// Import simple authentication utilities
+import { createSession, invalidateSession, getApiKey } from '../lib/simpleAuth.js';
 
 // Login endpoint - create a new session
 app.post('/api/auth/login', (req, res) => {
@@ -187,16 +191,15 @@ app.post('/api/auth/login', (req, res) => {
     
     // Check if access key is provided (for CLI integration)
     const accessKey = req.query.access_key;
-    if (accessKey && global.WEB_UI_ACCESS_KEY && accessKey === global.WEB_UI_ACCESS_KEY) {
+    if (accessKey && (accessKey === global.WEB_UI_ACCESS_KEY || accessKey === getApiKey())) {
       console.log('Access key authentication successful, creating session');
       const session = createSession();
       
-      // Invalidate the access key after use (one-time use)
-      global.WEB_UI_ACCESS_KEY = null;
-      
+      // Return both session token and API key for future requests
       return res.json({
         success: true,
         token: session.token,
+        apiKey: getApiKey(),
         expiresAt: session.expiresAt
       });
     }
@@ -210,6 +213,7 @@ app.post('/api/auth/login', (req, res) => {
       return res.json({
         success: true,
         token: session.token,
+        apiKey: getApiKey(),
         expiresAt: session.expiresAt
       });
     }
@@ -222,6 +226,7 @@ app.post('/api/auth/login', (req, res) => {
       return res.json({
         success: true,
         token: session.token,
+        apiKey: getApiKey(),
         expiresAt: session.expiresAt,
         message: 'WARNING: Development mode authentication'
       });
@@ -255,15 +260,27 @@ app.post('/api/auth/logout', (req, res) => {
 // Session validation endpoint
 app.get('/api/auth/validate', (req, res) => {
   try {
+    // Check for API key first
+    const apiKey = req.headers['x-api-key'];
+    if (apiKey && validateApiKey(apiKey)) {
+      return res.json({ valid: true, method: 'api-key' });
+    }
+    
+    // Then check for session token
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     
-    if (!token) {
-      return res.status(401).json({ valid: false });
+    if (token && validateSession(token)) {
+      return res.json({ valid: true, method: 'session' });
     }
     
-    const isValid = validateSession(token);
-    res.json({ valid: isValid });
+    // Development mode bypass
+    if (process.env.NODE_ENV !== 'production' && 
+        (req.headers['x-dev-mode'] === 'true' || token === 'dev-mode-token')) {
+      return res.json({ valid: true, method: 'dev-mode' });
+    }
+    
+    return res.json({ valid: false });
   } catch (error) {
     console.error('Session validation error:', error);
     res.status(500).json({ error: 'Validation failed' });
@@ -648,23 +665,27 @@ const io = new Server(server, {
 // Socket.IO authentication middleware
 io.use((socket, next) => {
   try {
+    // Check for API key in handshake auth
+    const apiKey = socket.handshake.auth.api_key;
+    if (apiKey && validateApiKey(apiKey)) {
+      console.log('Socket.IO: API key authentication successful');
+      socket.user = { authorized: true };
+      next();
+      return;
+    }
+    
     // Check for access key in handshake auth
     const accessKey = socket.handshake.auth.access_key;
-    if (accessKey && global.WEB_UI_ACCESS_KEY && accessKey === global.WEB_UI_ACCESS_KEY) {
+    if (accessKey && (accessKey === global.WEB_UI_ACCESS_KEY || validateApiKey(accessKey))) {
       console.log('Socket.IO: Access key authentication successful');
       socket.user = { authorized: true };
       next();
       return;
     }
     
+    // Check for session token
     const token = socket.handshake.auth.token;
-    if (!token) {
-      console.log('Socket.IO: No token provided');
-      return next(new Error('Authentication error: No token provided'));
-    }
-    
-    // Validate session token
-    if (validateSession(token)) {
+    if (token && validateSession(token)) {
       console.log('Socket.IO: Session token authentication successful');
       socket.user = { authorized: true };
       next();
@@ -672,15 +693,16 @@ io.use((socket, next) => {
     }
     
     // Development mode bypass
-    if (process.env.NODE_ENV !== 'production' && token === 'dev-mode-token') {
+    if (process.env.NODE_ENV !== 'production' && 
+        (token === 'dev-mode-token' || socket.handshake.auth.dev_mode === 'true')) {
       console.log('Socket.IO: Development mode authentication successful');
       socket.user = { authorized: true, devMode: true };
       next();
       return;
     }
     
-    console.error('Socket.IO: Invalid authentication token');
-    next(new Error('Invalid authentication token'));
+    console.error('Socket.IO: No valid authentication provided');
+    next(new Error('Authentication required'));
   } catch (error) {
     console.error('Socket.IO authentication error:', error);
     next(new Error(`Authentication error: ${error.message}`));

@@ -1,0 +1,87 @@
+// Simple authentication utility
+import crypto from 'crypto';
+
+// Generate a random API key if not provided in environment
+const API_KEY = process.env.API_KEY || crypto.randomBytes(16).toString('hex');
+
+// Store active sessions with their expiration times
+const activeSessions = new Map();
+
+/**
+ * Validates an API key
+ * @param {string} key - The API key to validate
+ * @returns {boolean} True if valid
+ */
+export const validateApiKey = (key) => {
+  return key === API_KEY || key === global.WEB_UI_ACCESS_KEY;
+};
+
+/**
+ * Creates a new session
+ * @returns {Object} Session info with token
+ */
+export const createSession = () => {
+  const sessionId = crypto.randomBytes(16).toString('hex');
+  const expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
+  
+  const sessionInfo = {
+    id: sessionId,
+    createdAt: Date.now(),
+    expiresAt
+  };
+  
+  // Store session
+  activeSessions.set(sessionId, sessionInfo);
+  
+  console.log(`Created new session: ${sessionId}`);
+  
+  return {
+    token: sessionId,
+    expiresAt
+  };
+};
+
+/**
+ * Validates a session token
+ * @param {string} token - Session token
+ * @returns {boolean} True if valid
+ */
+export const validateSession = (token) => {
+  if (!token) return false;
+  
+  const session = activeSessions.get(token);
+  if (!session) return false;
+  
+  if (session.expiresAt < Date.now()) {
+    activeSessions.delete(token);
+    return false;
+  }
+  
+  return true;
+};
+
+/**
+ * Invalidates a session
+ * @param {string} token - Session token
+ */
+export const invalidateSession = (token) => {
+  activeSessions.delete(token);
+};
+
+/**
+ * Cleans up expired sessions
+ */
+export const cleanupSessions = () => {
+  const now = Date.now();
+  for (const [sessionId, session] of activeSessions.entries()) {
+    if (session.expiresAt < now) {
+      activeSessions.delete(sessionId);
+    }
+  }
+};
+
+// Set up periodic cleanup
+setInterval(cleanupSessions, 60 * 60 * 1000); // Every hour
+
+// Export the API key for CLI access
+export const getApiKey = () => API_KEY;

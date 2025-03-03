@@ -1,17 +1,25 @@
 // Authentication utilities for the web UI
 
 /**
- * Stores the session token in localStorage
+ * Stores the session token and API key in localStorage
  * @param {string} token - The session token
+ * @param {string} apiKey - The API key
  * @param {number} expiresAt - Expiration timestamp
  */
-export const storeToken = (token, expiresAt) => {
-  if (!token) return;
-  localStorage.setItem('session_token', token);
+export const storeToken = (token, apiKey, expiresAt) => {
+  if (token) {
+    localStorage.setItem('session_token', token);
+  }
+  
+  if (apiKey) {
+    localStorage.setItem('api_key', apiKey);
+  }
+  
   if (expiresAt) {
     localStorage.setItem('session_expires', expiresAt.toString());
   }
-  console.log('Session token stored, expires:', new Date(expiresAt).toLocaleString());
+  
+  console.log('Auth credentials stored, expires:', new Date(expiresAt).toLocaleString());
 };
 
 /**
@@ -23,19 +31,26 @@ export const getToken = () => {
 };
 
 /**
- * Clears the stored session token
+ * Clears all stored authentication credentials
  */
 export const clearToken = () => {
   localStorage.removeItem('session_token');
   localStorage.removeItem('session_expires');
+  localStorage.removeItem('api_key');
 };
 
 /**
- * Checks if a token is stored and not expired
- * @returns {boolean} True if a valid token exists
+ * Checks if authentication credentials are stored and not expired
+ * @returns {boolean} True if valid credentials exist
  */
 export const hasToken = () => {
   const token = getToken();
+  const apiKey = getApiKey();
+  
+  // If we have an API key, that's sufficient
+  if (apiKey) return true;
+  
+  // Otherwise check token validity
   if (!token) return false;
   
   const expiresAt = localStorage.getItem('session_expires');
@@ -48,21 +63,34 @@ export const hasToken = () => {
 };
 
 /**
- * Creates an Authorization header with the stored token
- * @returns {Object} Headers object with Authorization
+ * Gets the stored API key
+ * @returns {string|null} The API key or null
+ */
+export const getApiKey = () => {
+  return localStorage.getItem('api_key');
+};
+
+/**
+ * Creates headers with authentication
+ * @returns {Object} Headers object with authentication
  */
 export const getAuthHeaders = () => {
+  const apiKey = getApiKey();
   const token = getToken();
+  const headers = { 'Content-Type': 'application/json' };
   
-  // Only include Authorization header if token exists
-  if (!token) {
-    return { 'Content-Type': 'application/json' };
+  // Prefer API key if available
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
+    return headers;
   }
   
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  };
+  // Fall back to token if available
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
 };
 
 /**
@@ -91,8 +119,9 @@ export const login = async (password, accessKey) => {
   }
   
   const data = await response.json();
-  if (data.success && data.token) {
-    storeToken(data.token, data.expiresAt);
+  if (data.success) {
+    // Store both token and API key
+    storeToken(data.token, data.apiKey, data.expiresAt);
     return data;
   } else {
     throw new Error(data.error || 'Invalid login response');
