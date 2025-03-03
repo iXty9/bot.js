@@ -467,14 +467,63 @@ app.get('/api/channels', authenticateToken, async (req, res) => {
     if (!botManager) {
       return res.status(500).json({ 
         error: 'Bot manager not initialized',
-        channels: []
+        channels: [],
+        success: false
       });
     }
     
     console.log('Fetching channels list...');
-    const channels = await botManager.listChannels();
     
-    console.log(`Found ${channels.length} channels`);
+    // Check if client is ready
+    if (!botManager.client || !botManager.client.isReady()) {
+      return res.status(503).json({
+        error: 'Discord client is not ready',
+        channels: [],
+        success: false
+      });
+    }
+    
+    // Get channels directly from Discord client as a fallback
+    let channels = [];
+    try {
+      channels = await botManager.listChannels();
+      console.log(`Found ${channels.length} channels using botManager.listChannels()`);
+    } catch (listError) {
+      console.error('Error using botManager.listChannels():', listError);
+      
+      // Fallback: Get channels directly from Discord client
+      channels = [];
+      for (const guild of botManager.client.guilds.cache.values()) {
+        const guildChannels = await guild.channels.fetch();
+        for (const channel of guildChannels.values()) {
+          if (channel.type === 0 || channel.type === 15) { // Text or Forum channels
+            const channelInfo = {
+              id: channel.id,
+              name: channel.name,
+              guildName: guild.name,
+              guildId: guild.id,
+              type: channel.type === 15 ? 'forum' : 'text'
+            };
+            
+            if (channel.type === 15) {
+              try {
+                const threads = await channel.threads.fetch();
+                channelInfo.threads = threads.threads.map(thread => ({
+                  id: thread.id,
+                  name: thread.name
+                }));
+              } catch (threadError) {
+                console.error(`Error fetching threads for channel ${channel.name}:`, threadError);
+                channelInfo.threads = [];
+              }
+            }
+            
+            channels.push(channelInfo);
+          }
+        }
+      }
+      console.log(`Found ${channels.length} channels using fallback method`);
+    }
     
     // Add current channel indicator
     if (botManager.currentChannelId) {
@@ -579,25 +628,53 @@ app.post('/api/send', authenticateToken, async (req, res) => {
   try {
     const { message, channelId, threadId } = req.body;
     
-    if (!message || !channelId) {
-      return res.status(400).json({ error: 'Message and channelId are required' });
-    }
-
-    if (!botManager) {
-      return res.status(500).json({ error: 'Bot manager not initialized' });
-    }
-
-    console.log('Sending message:', { 
-      messageLength: message.length,
+    console.log('Received message request:', { 
+      messageLength: message ? message.length : 0,
       channelId,
       threadId: threadId || 'none'
     });
+    
+    if (!message || message.trim() === '') {
+      return res.status(400).json({ 
+        error: 'Message content is required',
+        success: false
+      });
+    }
 
-    const result = await botManager.sendMessage(message, channelId, threadId);
+    // Use current channel if not specified
+    let targetChannelId = channelId;
+    if (!targetChannelId && botManager && botManager.currentChannelId) {
+      targetChannelId = botManager.currentChannelId;
+      console.log(`Using current channel: ${targetChannelId}`);
+    }
+    
+    if (!targetChannelId) {
+      return res.status(400).json({ 
+        error: 'No channel specified and no current channel set',
+        success: false
+      });
+    }
+
+    if (!botManager) {
+      return res.status(500).json({ 
+        error: 'Bot manager not initialized',
+        success: false
+      });
+    }
+
+    console.log(`Sending message to channel ${targetChannelId}:`, { 
+      messagePreview: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+      threadId: threadId || 'none'
+    });
+
+    const result = await botManager.sendMessage(message, targetChannelId, threadId);
+    
     res.json({ 
       success: true, 
       message: 'Message sent successfully',
-      result
+      channelId: targetChannelId,
+      threadId: threadId || null,
+      messageId: result.id
     });
   } catch (error) {
     console.error('Error sending message:', error);
@@ -620,12 +697,42 @@ app.post('/api/channel', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Bot manager not initialized' });
     }
     
+    console.log(`Setting active channel: ${channelId}`);
+    
+    // First verify the channel exists
+    try {
+      const channel = await botManager.client.channels.fetch(channelId);
+      if (!channel) {
+        return res.status(404).json({ 
+          error: `Channel with ID ${channelId} not found`,
+          success: false
+        });
+      }
+      
+      console.log(`Found channel: ${channel.name} (${channel.type})`);
+    } catch (fetchError) {
+      console.error('Error fetching channel:', fetchError);
+      return res.status(404).json({ 
+        error: `Channel with ID ${channelId} not found: ${fetchError.message}`,
+        success: false
+      });
+    }
+    
+    // Now set it as active
     const result = await botManager.setActiveChannel(channelId);
     console.log('Channel set successfully:', channelId);
-    res.json({ success: true, message: result });
+    
+    res.json({ 
+      success: true, 
+      message: result,
+      channelId: channelId
+    });
   } catch (error) {
     console.error('Error setting active channel:', error);
-    res.status(500).json({ error: error.message || 'Failed to set active channel' });
+    res.status(500).json({ 
+      error: error.message || 'Failed to set active channel',
+      success: false
+    });
   }
 });
 
@@ -673,6 +780,49 @@ app.get('/api/debug/bot', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error retrieving bot status:', error);
     res.status(500).json({ error: 'Failed to retrieve bot status' });
+  }
+});
+
+// Add a debug endpoint to check channel selection
+app.get('/api/debug/channels', authenticateToken, async (req, res) => {
+  try {
+    if (!botManager) {
+      return res.status(500).json({ 
+        error: 'Bot manager not initialized',
+        debug: true
+      });
+    }
+    
+    // Get raw channels from Discord client
+    const rawChannels = [];
+    for (const guild of botManager.client.guilds.cache.values()) {
+      const guildChannels = Array.from(guild.channels.cache.values());
+      rawChannels.push(...guildChannels.map(ch => ({
+        id: ch.id,
+        name: ch.name,
+        type: ch.type,
+        guildId: guild.id,
+        guildName: guild.name
+      })));
+    }
+    
+    // Get channels from botManager method
+    const botManagerChannels = await botManager.listChannels();
+    
+    res.json({
+      success: true,
+      debug: true,
+      rawChannels,
+      botManagerChannels,
+      currentChannelId: botManager.currentChannelId || null,
+      clientReady: botManager.client.isReady()
+    });
+  } catch (error) {
+    console.error('Error in channel debug endpoint:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to get channel debug info',
+      debug: true
+    });
   }
 });
 

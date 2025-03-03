@@ -247,31 +247,53 @@ class BotManager extends EventEmitter {
 
   async sendMessage(message, channelId, threadId = null) {
     try {
-      const channel = await this.client.channels.fetch(channelId);
+      console.log(`Sending message to channel ${channelId}${threadId ? ` (thread: ${threadId})` : ''}`);
+      
+      if (!message || message.trim() === '') {
+        throw new Error('Message content cannot be empty');
+      }
+      
+      // Handle rate limits
       await this.handleRateLimit();
+      
+      // Fetch the channel
+      const channel = await this.client.channels.fetch(channelId);
       if (!channel) {
         throw new Error(`Channel with ID "${channelId}" not found`);
       }
-  
+      
+      console.log(`Found channel: ${channel.name} (${channel.type})`);
+      
+      // Determine target (channel or thread)
       let targetChannel = channel;
       if (threadId) {
+        console.log(`Looking for thread: ${threadId}`);
         const thread = await channel.threads.fetch(threadId);
         if (!thread) {
           throw new Error(`Thread with ID "${threadId}" not found in channel "${channel.name}"`);
         }
         targetChannel = thread;
+        console.log(`Found thread: ${thread.name}`);
       }
-  
-      if (!targetChannel) {
-        throw new Error('Target channel or thread not found');
-      }
-  
+      
+      // Send the message
+      console.log(`Sending message to ${targetChannel.name}`);
       const sentMessage = await targetChannel.send(message);
-      const info = `Message sent to ${channel.name}${threadId ?` (thread: ${targetChannel.name})` : ''}`;
+      
+      // Log success
+      const info = `Message sent to ${channel.name}${threadId ? ` (thread: ${targetChannel.name})` : ''}`;
       this.emitMessageSent(info);
+      
+      // Update current channel if not already set
+      if (!this.currentChannelId) {
+        this.currentChannelId = channelId;
+        this.log(`Set current channel to: ${channel.name}`);
+      }
+      
       return sentMessage;
     } catch (error) {
       this.log(`Error sending message: ${error.message}`);
+      console.error('Full error:', error);
       throw new Error(`Failed to send message: ${error.message}`);
     }
   }
@@ -342,32 +364,80 @@ class BotManager extends EventEmitter {
   // Fetches and returns a list of channels from all guilds the bot is part of, including text and forum types.
 
   async listChannels() {
-    const channels = [];
-    for (const guild of this.client.guilds.cache.values()) {
-      const guildChannels = await guild.channels.fetch();
-      for (const channel of guildChannels.values()) {
-        if (channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildForum) {
-          const channelInfo = {
-            id: channel.id,
-            name: channel.name,
-            guildName: guild.name,
-            guildId: guild.id,
-            type: channel.type === ChannelType.GuildForum ? 'forum' : 'text'
-          };
-  
-          if (channel.type === ChannelType.GuildForum) {
-            const threads = await channel.threads.fetch();
-            channelInfo.threads = threads.threads.map(thread => ({
-              id: thread.id,
-              name: thread.name
-            }));
+    try {
+      console.log('Listing channels from all guilds...');
+      const channels = [];
+      
+      // Check if client is ready
+      if (!this.client || !this.client.isReady()) {
+        console.error('Discord client is not ready');
+        return [];
+      }
+      
+      // Get guilds
+      const guilds = this.client.guilds.cache;
+      console.log(`Found ${guilds.size} guilds`);
+      
+      for (const guild of guilds.values()) {
+        console.log(`Processing guild: ${guild.name} (${guild.id})`);
+        
+        try {
+          // Fetch all channels in the guild
+          const guildChannels = await guild.channels.fetch();
+          console.log(`Found ${guildChannels.size} channels in guild ${guild.name}`);
+          
+          for (const channel of guildChannels.values()) {
+            // Check channel type - support both enum and numeric values
+            const isTextChannel = 
+              channel.type === ChannelType.GuildText || 
+              channel.type === 0;
+            
+            const isForumChannel = 
+              channel.type === ChannelType.GuildForum || 
+              channel.type === 15;
+            
+            if (isTextChannel || isForumChannel) {
+              console.log(`Processing channel: ${channel.name} (${channel.id}, type: ${channel.type})`);
+              
+              const channelInfo = {
+                id: channel.id,
+                name: channel.name,
+                guildName: guild.name,
+                guildId: guild.id,
+                type: isForumChannel ? 'forum' : 'text'
+              };
+              
+              // For forum channels, fetch threads
+              if (isForumChannel) {
+                try {
+                  const threads = await channel.threads.fetch();
+                  console.log(`Found ${threads.threads.size} threads in forum ${channel.name}`);
+                  
+                  channelInfo.threads = Array.from(threads.threads.values()).map(thread => ({
+                    id: thread.id,
+                    name: thread.name
+                  }));
+                } catch (threadError) {
+                  console.error(`Error fetching threads for channel ${channel.name}:`, threadError);
+                  channelInfo.threads = [];
+                }
+              }
+              
+              // Add to our list
+              channels.push(channelInfo);
+            }
           }
-  
-          channels.push(channelInfo);
+        } catch (guildError) {
+          console.error(`Error processing guild ${guild.name}:`, guildError);
         }
       }
+      
+      console.log(`Returning ${channels.length} channels total`);
+      return channels;
+    } catch (error) {
+      console.error('Error in listChannels:', error);
+      return [];
     }
-    return channels;
   }
   
   // FUNCTION: handleRateLimit
@@ -411,16 +481,39 @@ class BotManager extends EventEmitter {
    */
   async setActiveChannel(channelId) {
     try {
+      if (!channelId) {
+        throw new Error('Channel ID is required');
+      }
+      
+      console.log(`Attempting to set active channel: ${channelId}`);
+      
+      // Fetch the channel from Discord
       const channel = await this.client.channels.fetch(channelId);
+      
       if (!channel) {
         throw new Error(`Channel with ID "${channelId}" not found`);
       }
       
+      // Store the channel ID
       this.currentChannelId = channelId;
-      this.log(`Active channel set to: ${channel.name}`);
-      return `Active channel set to: ${channel.name}`;
+      
+      // Log the change
+      const channelInfo = `${channel.name} (${channel.type}) in ${channel.guild ? channel.guild.name : 'Unknown Guild'}`;
+      this.log(`Active channel set to: ${channelInfo}`);
+      
+      // Emit an event for the change
+      this.emit('channelChanged', {
+        id: channelId,
+        name: channel.name,
+        type: channel.type,
+        guildId: channel.guild ? channel.guild.id : null,
+        guildName: channel.guild ? channel.guild.name : null
+      });
+      
+      return `Active channel set to: ${channelInfo}`;
     } catch (error) {
       this.log(`Error setting active channel: ${error.message}`);
+      console.error('Full error:', error);
       throw new Error(`Failed to set active channel: ${error.message}`);
     }
   }
