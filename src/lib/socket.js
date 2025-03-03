@@ -54,6 +54,8 @@ export const initializeSocket = (token) => {
   if (discordToken) {
     // Use Discord token as a fallback
     auth.discord_token = discordToken;
+    // Also set as token for compatibility with server authentication
+    auth.token = discordToken;
     console.log('Using Discord token for auth');
   }
   

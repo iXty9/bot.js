@@ -410,7 +410,10 @@ const BotManager = () => {
     const storedToken = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
     if (storedToken) {
       console.log('Initializing socket with stored token');
-      const socket = initializeSocket(storedToken);
+      // Ensure token is properly formatted
+      const formattedToken = storedToken.trim();
+      localStorage.setItem('discord_token', formattedToken); // Save the cleaned token
+      const socket = initializeSocket(formattedToken);
       
       if (socket) {
         socket.on('message', (data) => {

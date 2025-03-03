@@ -1279,10 +1279,31 @@ io.use((socket, next) => {
       return;
     }
     
-    // Check for session token
+    // Check for session token or Discord token
     const token = socket.handshake.auth.token;
-    if (token && validateSession(token)) {
-      console.log('Socket.IO: Session token authentication successful');
+    const discordToken = socket.handshake.auth.discord_token;
+    
+    if (token) {
+      // First try to validate as a session token
+      if (validateSession(token)) {
+        console.log('Socket.IO: Session token authentication successful');
+        socket.user = { authorized: true };
+        next();
+        return;
+      }
+      
+      // If not a valid session token, check if it matches the Discord token
+      if (token === process.env.DISCORD_TOKEN) {
+        console.log('Socket.IO: Discord token authentication successful');
+        socket.user = { authorized: true };
+        next();
+        return;
+      }
+    }
+    
+    // Check for Discord token specifically
+    if (discordToken && discordToken === process.env.DISCORD_TOKEN) {
+      console.log('Socket.IO: Discord token authentication successful');
       socket.user = { authorized: true };
       next();
       return;
@@ -1314,7 +1335,14 @@ io.use((socket, next) => {
       return;
     }
     
-    console.error('Socket.IO: No valid authentication provided');
+    // Add more detailed debug info
+    console.error('Socket.IO: No valid authentication provided', {
+      tokenLength: token ? token.length : 0,
+      discordTokenLength: discordToken ? discordToken.length : 0,
+      envTokenLength: process.env.DISCORD_TOKEN ? process.env.DISCORD_TOKEN.length : 0,
+      tokenFirstChars: token ? token.substring(0, 3) + '...' : 'none',
+      discordTokenFirstChars: discordToken ? discordToken.substring(0, 3) + '...' : 'none'
+    });
     next(new Error('Authentication required'));
   } catch (error) {
     console.error('Socket.IO authentication error:', error);
