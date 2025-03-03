@@ -1245,7 +1245,7 @@ app.use((req, res, next) => {
   // Set CSP headers to allow Google Fonts and other necessary resources
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; connect-src 'self' ws: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
+    "default-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; media-src 'self' data:; connect-src 'self' ws: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
   );
   next();
 });
