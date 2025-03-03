@@ -55,19 +55,20 @@ export const initializeSocket = () => {
   console.log('Added dev mode flag for socket auth');
   
   // Get the server URL from the current window location
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.host;
-  const url = `${window.location.protocol}//${host}`;
+  const url = window.location.origin;
   
   console.log(`Connecting to Socket.IO server at ${url}`);
   
   const socket = io(url, {
     auth,
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'], // Start with polling first, then upgrade
     reconnectionAttempts: 10,
     reconnectionDelay: 1000,
-    timeout: 10000,
-    path: '/socket.io/'
+    timeout: 20000,
+    path: '/socket.io/',
+    forceNew: true,
+    autoConnect: true
   });
   
   // Remove the access key after use
@@ -101,17 +102,36 @@ export const initializeSocket = () => {
       useSocketStore.getState().setAuthError(error.message);
     }
     
-    // Try to reconnect with polling if websocket fails
-    if (socket.io.opts.transports[0] === 'websocket') {
-      console.log('Falling back to polling transport');
-      socket.io.opts.transports = ['polling', 'websocket'];
-      setTimeout(() => socket.connect(), 1000);
-    }
+    // Always try to reconnect with polling first
+    console.log('Reconnecting with polling transport...');
+    socket.io.opts.transports = ['polling', 'websocket'];
+    
+    // Force reconnect after a short delay
+    setTimeout(() => {
+      if (!socket.connected) {
+        console.log('Attempting to reconnect socket...');
+        socket.connect();
+      }
+    }, 2000);
   });
   
   // Add ping/pong for connection health check
-  socket.on('ping', () => {
-    socket.emit('pong');
+  socket.on('ping', (data) => {
+    try {
+      socket.emit('pong', { timestamp: Date.now(), received: data });
+    } catch (err) {
+      console.error('Error in ping/pong:', err);
+    }
+  });
+  
+  // Handle transport errors
+  socket.io.engine.on('error', (err) => {
+    console.error('Transport error:', err);
+  });
+  
+  // Handle upgrade success
+  socket.io.engine.on('upgrade', () => {
+    console.log('Socket transport upgraded successfully');
   });
 
   useSocketStore.getState().setSocket(socket);

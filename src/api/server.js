@@ -1011,6 +1011,25 @@ app.post('/api/debug/token-check', (req, res) => {
   }
 });
 
+// Add a debug endpoint to check socket connectivity
+app.get('/api/debug/socket', (req, res) => {
+  try {
+    const socketStatus = {
+      server: 'running',
+      connectedClients: io.engine.clientsCount,
+      rooms: Object.keys(io.sockets.adapter.rooms || {}),
+      uptime: process.uptime(),
+      transports: io.engine.transports,
+      socketIoVersion: require('socket.io/package.json').version
+    };
+    
+    res.json(socketStatus);
+  } catch (error) {
+    console.error('Socket debug error:', error);
+    res.status(500).json({ error: 'Failed to get socket debug info' });
+  }
+});
+
 // Add a debug endpoint to check authentication
 app.get('/api/debug/auth', (req, res) => {
   try {
@@ -1202,11 +1221,16 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST"],
+    credentials: true
   },
-  transports: ['websocket', 'polling'],
+  transports: ['polling', 'websocket'], // Start with polling for better compatibility
   allowEIO3: true,
-  path: '/socket.io/'
+  path: '/socket.io/',
+  pingTimeout: 30000,
+  pingInterval: 10000,
+  upgradeTimeout: 30000,
+  maxHttpBufferSize: 1e8
 });
 
 // Socket.IO authentication middleware
@@ -1289,7 +1313,8 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   console.log('Client connected', {
     id: socket.id,
-    transport: socket.conn.transport.name
+    transport: socket.conn.transport.name,
+    remoteAddress: socket.handshake.address
   });
   
   // Send initial connection success event
@@ -1297,24 +1322,33 @@ io.on('connection', (socket) => {
     connected: true,
     socketId: socket.id,
     transport: socket.conn.transport.name,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    server: 'Discord Bot Manager'
   });
   
-  // Set up ping/pong for connection health check
+  // Set up ping/pong for connection health check with shorter interval
   const pingInterval = setInterval(() => {
     if (socket.connected) {
-      socket.emit('ping', { timestamp: Date.now() });
+      try {
+        socket.emit('ping', { timestamp: Date.now() });
+      } catch (err) {
+        console.error('Error sending ping:', err);
+      }
     }
-  }, 30000);
+  }, 15000); // Reduced to 15 seconds
   
   socket.on('pong', (data) => {
-    socket.lastPong = Date.now();
-    // Echo back to client for connection verification
-    socket.emit('pong_received', { 
-      received: true,
-      timestamp: Date.now(),
-      roundTripTime: data && data.timestamp ? Date.now() - data.timestamp : null
-    });
+    try {
+      socket.lastPong = Date.now();
+      // Echo back to client for connection verification
+      socket.emit('pong_received', { 
+        received: true,
+        timestamp: Date.now(),
+        roundTripTime: data && data.timestamp ? Date.now() - data.timestamp : null
+      });
+    } catch (err) {
+      console.error('Error handling pong:', err);
+    }
   });
   
   // Handle transport change
@@ -1323,10 +1357,26 @@ io.on('connection', (socket) => {
     socket.emit('transport_change', { transport: transport.name });
   });
   
+  // Handle errors
+  socket.on('error', (error) => {
+    console.error(`Socket error for client ${socket.id}:`, error);
+  });
+  
+  socket.conn.on('error', (error) => {
+    console.error(`Connection error for client ${socket.id}:`, error);
+  });
+  
   socket.on('disconnect', (reason) => {
     clearInterval(pingInterval);
     console.log(`Client disconnected: ${reason}`, { id: socket.id });
   });
+  
+  // Send immediate ping to verify connection
+  setTimeout(() => {
+    if (socket.connected) {
+      socket.emit('ping', { timestamp: Date.now(), initial: true });
+    }
+  }, 1000);
 
   // Handle command events from client
   socket.on('command', async (data) => {
