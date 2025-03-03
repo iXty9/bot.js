@@ -66,7 +66,7 @@ export const initializeSocket = () => {
     transports: ['polling', 'websocket'], // Start with polling first, then upgrade
     reconnectionAttempts: 10,
     reconnectionDelay: 1000,
-    timeout: 20000,
+    timeout: 30000, // Increase timeout to 30 seconds
     path: '/socket.io/',
     forceNew: true,
     autoConnect: true
