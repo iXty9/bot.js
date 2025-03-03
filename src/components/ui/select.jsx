@@ -3,9 +3,13 @@ import * as SelectPrimitive from "@radix-ui/react-select"
 import { Check, ChevronDown } from "lucide-react"
 import { cn } from "../../lib/utils"
 
-const Select = React.forwardRef(({ defaultValue = '', ...props }, ref) => (
+const Select = React.forwardRef(({ defaultValue = '', options = [], ...props }, ref) => (
   <SelectPrimitive.Root defaultValue={defaultValue || undefined} ref={ref} {...props}>
-    {props.children}
+    {options.map((option, index) => (
+      <SelectItem key={index} value={option.value}>
+        {option.label}
+      </SelectItem>
+    ))}
   </SelectPrimitive.Root>
 ))
 const SelectGroup = SelectPrimitive.Group

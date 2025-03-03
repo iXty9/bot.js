@@ -13,15 +13,12 @@ class CommandHandler {
 
   async initialize() {
     try {
-      try {
-        const channels = await this.botManager.listChannels();
-        this.currentChannel = channels.find(ch => ch.name === 'general') || channels[0];
-        this.updateStatusBar();
-      } catch (error) {
-        this.consoleUI.addLog(chalk.red('Error initializing channels: ' + error.message));
-      }
+      const channels = await this.botManager.listChannels();
+      this.currentChannel = channels.find(ch => ch.name === 'general') || channels[0];
+      this.consoleUI.updateStatusBar(this.getStatusBarContent());
+      this.consoleUI.addLog(chalk.green('Channels initialized successfully.'));
     } catch (error) {
-      this.consoleUI.addLog('Error initializing channels: ' + error.message);
+      this.consoleUI.addLog(chalk.red('Error initializing channels: ' + error.message));
     }
     this.awaitingChannelSelection = false;
   }
