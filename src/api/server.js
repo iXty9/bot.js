@@ -23,6 +23,12 @@ requiredEnvVars.forEach((varName) => {
   }
 });
 
+// Set default JWT_SECRET if not provided
+if (!process.env.JWT_SECRET) {
+  console.log('No JWT_SECRET found in environment, using a default secret');
+  process.env.JWT_SECRET = 'default-jwt-secret-for-development-only';
+}
+
 if (process.env.DISCORD_TOKEN === 'your-discord-bot-token-here') {
   console.error('Error: Please configure a valid DISCORD_TOKEN in .env file');
   // Instead of exiting, set a flag to indicate the token needs to be updated
@@ -340,7 +346,7 @@ app.get('/api/env', authenticateToken, (req, res) => {
       BOT_NAME: process.env.BOT_NAME || '',
       // Never send sensitive tokens to the client
       DISCORD_TOKEN_SET: !!process.env.DISCORD_TOKEN,
-      JWT_SECRET_SET: !!process.env.JWT_SECRET,
+      JWT_SECRET_SET: true, // Always true since we set a default if not provided
       WEBHOOK_URL_SET: !!process.env.WEBHOOK_URL,
       // Add a server timestamp for validation
       SERVER_TIME: Date.now()

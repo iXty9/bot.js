@@ -1,8 +1,17 @@
 // Simple authentication utility
 import crypto from 'crypto';
 
+// Create a JWT secret if one doesn't exist
+if (!process.env.JWT_SECRET) {
+  console.log('Using default JWT secret for development');
+  process.env.JWT_SECRET = 'default-jwt-secret-for-development-only';
+}
+
 // Generate a random API key if not provided in environment
 const API_KEY = process.env.API_KEY || crypto.randomBytes(16).toString('hex');
+
+// Export the JWT secret for use in other modules
+export const JWT_SECRET = process.env.JWT_SECRET;
 
 // Store active sessions with their expiration times
 const activeSessions = new Map();
