@@ -80,7 +80,7 @@ function authenticateToken(req, res, next) {
     const token = authHeader && authHeader.split(' ')[1];
     
     if (authHeader) {
-      console.log('Auth header found:', authHeader.substring(0, 20) + '...');
+      console.log('Auth header found (not logging content)');
       
       // Handle both "Bearer" and direct token formats
       let sessionToken;

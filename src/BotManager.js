@@ -304,7 +304,7 @@ class BotManager extends EventEmitter {
         throw new Error(`Channel with ID "${targetChannelId}" not found`);
       }
       
-      console.log(`Found channel: ${channel.name} (${channel.type})`);
+      console.log(`Found channel: ${channel.name} (type: ${channel.type})`);
       
       // Determine target (channel or thread)
       let targetChannel = channel;

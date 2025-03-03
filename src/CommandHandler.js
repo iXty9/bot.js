@@ -263,8 +263,9 @@ class CommandHandler {
       const port = process.env.API_PORT || '6987';
       const host = process.env.API_HOST || 'localhost';
       
-      // Create URL with the API key or temporary key
-      const url = `http://${host}:${port}?access_key=${encodeURIComponent(apiKey || tempKey)}`;
+      // Create URL with the temporary key only, don't expose in logs
+      const url = `http://${host}:${port}?access_key=${encodeURIComponent(tempKey)}`;
+      console.log(`Web UI URL prepared (access key length: ${tempKey.length})`);
       
       // Open URL in default browser
       const { exec } = require('child_process');

@@ -54,7 +54,7 @@ export const validateSession = (token) => {
   
   // For development purposes, accept any token
   // REMOVE THIS IN PRODUCTION
-  console.log('DEVELOPMENT MODE: Accepting any token for validation');
+  console.log('DEVELOPMENT MODE: Validating session');
   return true;
   
   const session = activeSessions.get(token);

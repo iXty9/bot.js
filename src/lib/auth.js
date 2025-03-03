@@ -19,7 +19,7 @@ export const storeToken = (token, apiKey, expiresAt) => {
     localStorage.setItem('session_expires', expiresAt.toString());
   }
   
-  console.log('Auth credentials stored, expires:', new Date(expiresAt).toLocaleString());
+  console.log('Auth credentials stored, expires at:', new Date(expiresAt).toISOString());
 };
 
 /**
@@ -98,8 +98,8 @@ export const getAuthHeaders = () => {
     console.log('Added access key to headers');
   }
   
-  // Only log header names, not values
-  console.log('Auth headers (keys only):', Object.keys(headers));
+  // Don't log auth headers at all
+  console.log('Auth headers prepared');
   
   return headers;
 };
@@ -138,7 +138,7 @@ export const login = async (password, accessKey) => {
     }
     
     const data = await response.json();
-    console.log('Login response:', { success: data.success, hasToken: !!data.token, hasApiKey: !!data.apiKey, timestamp: Date.now() });
+    console.log('Login response:', { success: data.success, timestamp: Date.now() });
     
     if (data.success) {
       // Store both token and API key
