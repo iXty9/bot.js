@@ -41,12 +41,20 @@ export const initializeSocket = () => {
     auth.token = sessionToken;
   }
   
-  const socket = io('/', {
+  // Get the server URL from the current window location
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host;
+  const url = `${window.location.protocol}//${host}`;
+  
+  console.log(`Connecting to Socket.IO server at ${url}`);
+  
+  const socket = io(url, {
     auth,
-    transports: ['websocket'],
-    reconnectionAttempts: 5,
+    transports: ['websocket', 'polling'],
+    reconnectionAttempts: 10,
     reconnectionDelay: 1000,
-    timeout: 5000
+    timeout: 10000,
+    path: '/socket.io/'
   });
   
   // Remove the access key after use
@@ -74,6 +82,23 @@ export const initializeSocket = () => {
   socket.on('connect_error', (error) => {
     console.error('Socket connection error:', error);
     useSocketStore.getState().setConnected(false);
+    
+    // Set auth error if it's an authentication issue
+    if (error.message.includes('Authentication') || error.message.includes('auth')) {
+      useSocketStore.getState().setAuthError(error.message);
+    }
+    
+    // Try to reconnect with polling if websocket fails
+    if (socket.io.opts.transports[0] === 'websocket') {
+      console.log('Falling back to polling transport');
+      socket.io.opts.transports = ['polling', 'websocket'];
+      setTimeout(() => socket.connect(), 1000);
+    }
+  });
+  
+  // Add ping/pong for connection health check
+  socket.on('ping', () => {
+    socket.emit('pong');
   });
 
   useSocketStore.getState().setSocket(socket);

@@ -46,20 +46,31 @@ import { validateApiKey, validateSession } from '../lib/simpleAuth.js';
 // Authentication middleware
 function authenticateToken(req, res, next) {
   try {
+    // Log request details for debugging (safely)
+    const requestInfo = {
+      path: req.path,
+      method: req.method,
+      hasApiKey: !!req.headers['x-api-key'],
+      hasAccessKey: !!req.query.access_key || !!req.headers['x-access-key'],
+      hasAuthHeader: !!req.headers['authorization'],
+      ip: req.ip
+    };
+    console.log('Auth request:', requestInfo);
+    
     // 1. Check for API key in header (preferred method)
     const apiKey = req.headers['x-api-key'];
     if (apiKey && validateApiKey(apiKey)) {
       console.log('API key authentication successful');
-      req.user = { authorized: true };
+      req.user = { authorized: true, method: 'api-key' };
       next();
       return;
     }
     
-    // 2. Check for access key in query parameters (for initial auth only)
-    const accessKey = req.query.access_key;
+    // 2. Check for access key in query parameters or header (for initial auth)
+    const accessKey = req.query.access_key || req.headers['x-access-key'];
     if (accessKey && (accessKey === global.WEB_UI_ACCESS_KEY || validateApiKey(accessKey))) {
       console.log('Access key authentication successful');
-      req.user = { authorized: true };
+      req.user = { authorized: true, method: 'access-key' };
       next();
       return;
     }
@@ -70,7 +81,7 @@ function authenticateToken(req, res, next) {
     
     if (token && validateSession(token)) {
       console.log('Session token authentication successful');
-      req.user = { authorized: true };
+      req.user = { authorized: true, method: 'session-token' };
       next();
       return;
     }
@@ -79,16 +90,33 @@ function authenticateToken(req, res, next) {
     if (process.env.NODE_ENV !== 'production' && 
         (token === 'dev-mode-token' || req.headers['x-dev-mode'] === 'true')) {
       console.log('Development mode authentication successful');
-      req.user = { authorized: true, devMode: true };
+      req.user = { authorized: true, devMode: true, method: 'dev-mode' };
+      next();
+      return;
+    }
+    
+    // 5. Allow all requests in development mode if enabled
+    if (process.env.NODE_ENV !== 'production' && process.env.ALLOW_UNAUTHENTICATED === 'true') {
+      console.log('Development mode - allowing unauthenticated request');
+      req.user = { authorized: true, devMode: true, method: 'dev-bypass' };
       next();
       return;
     }
     
     // Authentication failed
-    return res.status(401).json({ error: 'Authentication required' });
+    console.log('Authentication failed for request');
+    return res.status(401).json({ 
+      error: 'Authentication required',
+      message: 'Please provide valid authentication credentials',
+      success: false
+    });
   } catch (error) {
     console.error('Authentication error:', error);
-    return res.status(500).json({ error: 'Authentication failed' });
+    return res.status(500).json({ 
+      error: 'Authentication failed',
+      message: error.message,
+      success: false
+    });
   }
 }
 
@@ -928,6 +956,60 @@ app.get('/api/debug/bot', authenticateToken, async (req, res) => {
   }
 });
 
+// Add a debug endpoint to check authentication
+app.get('/api/debug/auth', (req, res) => {
+  try {
+    // Extract auth info from request (safely)
+    const authInfo = {
+      headers: {
+        hasAuthorization: !!req.headers['authorization'],
+        hasApiKey: !!req.headers['x-api-key'],
+        hasAccessKey: !!req.headers['x-access-key'],
+        contentType: req.headers['content-type'],
+        allHeaders: Object.keys(req.headers)
+      },
+      query: {
+        hasAccessKey: !!req.query.access_key,
+        allParams: Object.keys(req.query)
+      },
+      cookies: req.cookies ? Object.keys(req.cookies) : [],
+      ip: req.ip,
+      path: req.path,
+      method: req.method
+    };
+    
+    // Check API key
+    const apiKey = req.headers['x-api-key'];
+    const apiKeyValid = apiKey && validateApiKey(apiKey);
+    
+    // Check access key
+    const accessKey = req.headers['x-access-key'] || req.query.access_key;
+    const accessKeyValid = accessKey && (accessKey === global.WEB_UI_ACCESS_KEY || validateApiKey(accessKey));
+    
+    // Check token
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    const tokenValid = token && validateSession(token);
+    
+    res.json({
+      authInfo,
+      validation: {
+        apiKeyValid,
+        accessKeyValid,
+        tokenValid,
+        anyValid: apiKeyValid || accessKeyValid || tokenValid
+      },
+      globalAccessKeyExists: !!global.WEB_UI_ACCESS_KEY,
+      env: {
+        nodeEnv: process.env.NODE_ENV
+      }
+    });
+  } catch (error) {
+    console.error('Auth debug error:', error);
+    res.status(500).json({ error: 'Failed to debug auth' });
+  }
+});
+
 // Add a debug endpoint to check channel selection
 app.get('/api/debug/channels', authenticateToken, async (req, res) => {
   try {
@@ -1056,12 +1138,27 @@ const io = new Server(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
-  }
+  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
+  path: '/socket.io/'
 });
 
 // Socket.IO authentication middleware
 io.use((socket, next) => {
   try {
+    console.log('Socket.IO: New connection attempt');
+    
+    // Log auth data for debugging (safely)
+    const authData = {
+      hasApiKey: !!socket.handshake.auth.api_key,
+      hasAccessKey: !!socket.handshake.auth.access_key,
+      hasToken: !!socket.handshake.auth.token,
+      headers: Object.keys(socket.handshake.headers),
+      query: Object.keys(socket.handshake.query)
+    };
+    console.log('Socket.IO: Auth data:', authData);
+    
     // Check for API key in handshake auth
     const apiKey = socket.handshake.auth.api_key;
     if (apiKey && validateApiKey(apiKey)) {
@@ -1089,10 +1186,27 @@ io.use((socket, next) => {
       return;
     }
     
+    // Check for access key in query parameters (for initial connection)
+    const queryAccessKey = socket.handshake.query.access_key;
+    if (queryAccessKey && (queryAccessKey === global.WEB_UI_ACCESS_KEY || validateApiKey(queryAccessKey))) {
+      console.log('Socket.IO: Query access key authentication successful');
+      socket.user = { authorized: true };
+      next();
+      return;
+    }
+    
     // Development mode bypass
     if (process.env.NODE_ENV !== 'production' && 
         (token === 'dev-mode-token' || socket.handshake.auth.dev_mode === 'true')) {
       console.log('Socket.IO: Development mode authentication successful');
+      socket.user = { authorized: true, devMode: true };
+      next();
+      return;
+    }
+    
+    // Allow connections during development without auth
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Socket.IO: Development mode - allowing connection without auth');
       socket.user = { authorized: true, devMode: true };
       next();
       return;
@@ -1108,22 +1222,45 @@ io.use((socket, next) => {
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log('Client connected');
+  console.log('Client connected', {
+    id: socket.id,
+    transport: socket.conn.transport.name
+  });
   
+  // Send initial connection success event
+  socket.emit('connection_status', { 
+    connected: true,
+    socketId: socket.id,
+    transport: socket.conn.transport.name,
+    timestamp: Date.now()
+  });
+  
+  // Set up ping/pong for connection health check
   const pingInterval = setInterval(() => {
-    socket.emit('ping');
+    if (socket.connected) {
+      socket.emit('ping', { timestamp: Date.now() });
+    }
   }, 30000);
   
-  socket.on('pong', () => {
+  socket.on('pong', (data) => {
     socket.lastPong = Date.now();
+    // Echo back to client for connection verification
+    socket.emit('pong_received', { 
+      received: true,
+      timestamp: Date.now(),
+      roundTripTime: data && data.timestamp ? Date.now() - data.timestamp : null
+    });
+  });
+  
+  // Handle transport change
+  socket.conn.on('upgrade', (transport) => {
+    console.log(`Client ${socket.id} transport upgraded to ${transport.name}`);
+    socket.emit('transport_change', { transport: transport.name });
   });
   
   socket.on('disconnect', (reason) => {
     clearInterval(pingInterval);
-    console.log(`Client disconnected: ${reason}`);
-    if (reason === 'transport close') {
-      socket.connect();
-    }
+    console.log(`Client disconnected: ${reason}`, { id: socket.id });
   });
 
   // Handle command events from client

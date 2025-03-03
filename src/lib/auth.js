@@ -79,15 +79,19 @@ export const getAuthHeaders = () => {
   const token = getToken();
   const headers = { 'Content-Type': 'application/json' };
   
-  // Prefer API key if available
+  // Include both authentication methods if available
   if (apiKey) {
     headers['X-API-Key'] = apiKey;
-    return headers;
   }
   
-  // Fall back to token if available
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  // Add access key if it exists (for initial auth)
+  const accessKey = localStorage.getItem('access_key');
+  if (accessKey) {
+    headers['X-Access-Key'] = accessKey;
   }
   
   return headers;
@@ -101,30 +105,54 @@ export const getAuthHeaders = () => {
  */
 export const login = async (password, accessKey) => {
   let url = '/api/auth/login';
-  const options = {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password })
-  };
+  const headers = { 'Content-Type': 'application/json' };
   
-  // Add access key to URL if provided
+  // Add access key to header if provided
   if (accessKey) {
+    headers['X-Access-Key'] = accessKey;
     url += `?access_key=${encodeURIComponent(accessKey)}`;
   }
   
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || 'Login failed');
-  }
+  const options = {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ password })
+  };
   
-  const data = await response.json();
-  if (data.success) {
-    // Store both token and API key
-    storeToken(data.token, data.apiKey, data.expiresAt);
-    return data;
-  } else {
-    throw new Error(data.error || 'Invalid login response');
+  console.log('Login request:', { url, hasAccessKey: !!accessKey });
+  
+  try {
+    const response = await fetch(url, options);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Login failed:', response.status, errorText);
+      throw new Error(errorText || `Login failed with status ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Login response:', { success: data.success, hasToken: !!data.token, hasApiKey: !!data.apiKey });
+    
+    if (data.success) {
+      // Store both token and API key
+      storeToken(data.token, data.apiKey, data.expiresAt);
+      
+      // Also store access key temporarily if it was used
+      if (accessKey) {
+        localStorage.setItem('access_key', accessKey);
+        // Remove it after 1 minute
+        setTimeout(() => {
+          localStorage.removeItem('access_key');
+        }, 60000);
+      }
+      
+      return data;
+    } else {
+      throw new Error(data.error || 'Invalid login response');
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    throw error;
   }
 };
 
