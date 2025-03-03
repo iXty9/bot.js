@@ -124,10 +124,17 @@ export const useChannels = () => {
           throw new Error(data.error || 'Failed to fetch channels');
         }
         
-        return data.channels || [];
+        // Ensure we always return an array
+        const channelsArray = Array.isArray(data.channels) ? data.channels : [];
+        
+        // Log the actual channels for debugging
+        console.log('Channels array:', channelsArray);
+        
+        return channelsArray;
       } catch (error) {
         console.error('Error fetching channels:', error);
-        throw error;
+        // Return empty array on error instead of throwing
+        return [];
       }
     },
     staleTime: 60000,

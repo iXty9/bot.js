@@ -234,7 +234,11 @@ const BotManager = () => {
       console.log('Channels loaded:', channels.length);
       console.log('First channel:', channels[0]);
     } else {
-      console.log('No channels loaded or channels is empty');
+      console.log('No channels loaded or channels is empty', channels);
+      // Check if channels is an object instead of an array
+      if (channels && typeof channels === 'object' && !Array.isArray(channels)) {
+        console.log('Channels is an object, not an array:', Object.keys(channels));
+      }
     }
   }, [channels]);
   
@@ -682,6 +686,41 @@ const BotManager = () => {
                   <Button onClick={checkTokenStatus} variant="outline">
                     Check Token
                   </Button>
+                  <Button 
+                    onClick={async () => {
+                      try {
+                        setOutput('Checking channels API directly...');
+                        const token = localStorage.getItem('discord_token');
+                        const response = await fetch('/api/channels', {
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                          }
+                        });
+                        
+                        if (!response.ok) {
+                          throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        console.log('Direct API response:', data);
+                        
+                        if (data.success && Array.isArray(data.channels)) {
+                          setOutput(`Found ${data.channels.length} channels via API`);
+                          // Force update the channels in state
+                          queryClient.setQueryData(['channels'], data.channels);
+                        } else {
+                          setLocalError('API returned success but no channels array');
+                        }
+                      } catch (error) {
+                        console.error('Direct API check error:', error);
+                        setLocalError(`API check failed: ${error.message}`);
+                      }
+                    }}
+                    variant="outline"
+                  >
+                    Check API
+                  </Button>
                 </div>
                 <div>
                   {Array.isArray(channels) ? 
@@ -724,11 +763,17 @@ const BotManager = () => {
                       <SelectValue placeholder="Select a channel..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.isArray(channels) && channels.map(channel => (
-                        <SelectItem key={channel.id} value={channel.id}>
-                          {channel.name} ({channel.guildName})
-                        </SelectItem>
-                      ))}
+                      {Array.isArray(channels) && channels.length > 0 ? (
+                        channels.map(channel => (
+                          <SelectItem key={channel.id} value={channel.id}>
+                            {channel.name} ({channel.guildName})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-2 text-center text-muted-foreground">
+                          No channels available
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                 <Select

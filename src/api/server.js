@@ -661,9 +661,23 @@ app.get('/api/channels', authenticateToken, async (req, res) => {
     // Log the channels we're returning
     console.log(`Returning ${channels.length} channels to client`);
     
+    // Ensure channels is always an array
+    const channelsArray = Array.isArray(channels) ? channels : [];
+    
+    // Add more detailed logging
+    console.log('Channels being sent to client:', {
+      count: channelsArray.length,
+      isArray: Array.isArray(channelsArray),
+      firstChannel: channelsArray.length > 0 ? {
+        id: channelsArray[0].id,
+        name: channelsArray[0].name,
+        guildName: channelsArray[0].guildName
+      } : null
+    });
+    
     res.json({
       success: true,
-      channels,
+      channels: channelsArray,
       currentChannelId: botManager.currentChannelId || null
     });
   } catch (error) {
