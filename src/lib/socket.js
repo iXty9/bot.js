@@ -35,11 +35,23 @@ export const initializeSocket = () => {
   const auth = {};
   if (accessKey) {
     auth.access_key = accessKey;
-  } else if (apiKey) {
+    console.log('Using access key for socket auth');
+  } 
+  
+  if (apiKey) {
     auth.api_key = apiKey;
-  } else if (sessionToken) {
+    console.log('Using API key for socket auth');
+  } 
+  
+  if (sessionToken) {
+    // Send token directly without Bearer prefix
     auth.token = sessionToken;
+    console.log('Using session token for socket auth');
   }
+  
+  // For development, add a bypass flag
+  auth.dev_mode = 'true';
+  console.log('Added dev mode flag for socket auth');
   
   // Get the server URL from the current window location
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';

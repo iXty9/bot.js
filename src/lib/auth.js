@@ -82,17 +82,24 @@ export const getAuthHeaders = () => {
   // Include both authentication methods if available
   if (apiKey) {
     headers['X-API-Key'] = apiKey;
+    console.log('Added API key to headers');
   }
   
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    // Send token directly without Bearer prefix for compatibility
+    headers['Authorization'] = token;
+    console.log('Added token to headers');
   }
   
   // Add access key if it exists (for initial auth)
   const accessKey = localStorage.getItem('access_key');
   if (accessKey) {
     headers['X-Access-Key'] = accessKey;
+    console.log('Added access key to headers');
   }
+  
+  // For debugging
+  console.log('Auth headers:', Object.keys(headers));
   
   return headers;
 };
