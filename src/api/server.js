@@ -164,7 +164,9 @@ function initializeBotManager(client) {
 // Export for use in index.js
 export { 
   initializeBotManager,
-  app
+  app,
+  server,
+  io
 };
 
 export const getBotManager = () => botManager;
@@ -1228,7 +1230,10 @@ const io = new Server(server, {
   pingTimeout: 30000,
   pingInterval: 10000,
   upgradeTimeout: 30000,
-  maxHttpBufferSize: 1e8
+  maxHttpBufferSize: 1e8,
+  // Add these options to fix WebSocket issues
+  perMessageDeflate: false,
+  wsEngine: 'ws'
 });
 
 // Socket.IO authentication middleware
@@ -1367,6 +1372,26 @@ io.on('connection', (socket) => {
   socket.on('disconnect', (reason) => {
     clearInterval(pingInterval);
     console.log(`Client disconnected: ${reason}`, { id: socket.id });
+  });
+  
+  // Add reconnection event handlers
+  socket.on('reconnect', (attemptNumber) => {
+    console.log(`Client ${socket.id} reconnected after ${attemptNumber} attempts`);
+    socket.emit('connection_status', { 
+      connected: true,
+      socketId: socket.id,
+      transport: socket.conn.transport.name,
+      timestamp: Date.now(),
+      reconnected: true
+    });
+  });
+  
+  socket.on('reconnect_attempt', (attemptNumber) => {
+    console.log(`Client attempting to reconnect (attempt ${attemptNumber})`);
+  });
+  
+  socket.on('reconnect_error', (error) => {
+    console.error(`Reconnection error for client:`, error);
   });
   
   // Send immediate ping to verify connection

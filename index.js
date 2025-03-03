@@ -1,7 +1,7 @@
 // Load environment variables from the .env file.
 import 'dotenv/config';
 import { Client, GatewayIntentBits, REST, Routes } from 'discord.js';
-import { initializeBotManager, app } from './src/api/server.js';
+import { initializeBotManager, app, server, io } from './src/api/server.js';
 import readline from 'readline';
 import BotManager from './src/BotManager.js';
 import ConsoleUI from './src/ConsoleUI.js';
@@ -136,17 +136,18 @@ const HOST = process.env.API_HOST || '0.0.0.0';
 
 console.log(`Configured API server to run on http://${HOST}:${PORT}`);
 
-let server;
+// Start the server using the imported server instance
 const startServer = () => {
   return new Promise((resolve, reject) => {
     try {
-      server = app.listen(PORT, HOST, (error) => {
+      server.listen(PORT, HOST, (error) => {
         if (error) {
           console.error('Failed to start server:', error);
           reject(error);
           return;
         }
         console.log(`API server successfully running on http://${HOST}:${PORT}`);
+        console.log(`WebSocket server is available at ws://${HOST}:${PORT}`);
         resolve(server);
       });
 
