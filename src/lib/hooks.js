@@ -18,7 +18,7 @@ export const useMessageHistory = (channelId, threadId) => {
         
       console.log(`Fetching messages from: ${url}`);
       
-      const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
+      const token = localStorage.getItem('discord_token');
       if (!token) {
         console.error('No authentication token available for message history');
         throw new Error('No authentication token available');
@@ -50,7 +50,7 @@ export const useSendMessage = () => {
 
   return useMutation({
     mutationFn: async ({ message, channelId, threadId }) => {
-      const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
+      const token = localStorage.getItem('discord_token');
       if (!token) {
         console.error('No authentication token available for sending message');
         throw new Error('No authentication token available');
@@ -91,7 +91,7 @@ export const useChannels = () => {
     queryKey: ['channels'],
     queryFn: async () => {
       console.log('Fetching channels from API...');
-      const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
+      const token = localStorage.getItem('discord_token');
       
       if (!token) {
         console.error('No authentication token available for channels');
@@ -156,7 +156,7 @@ export const useError = () => {
 export const fetchChannelsDirectly = async () => {
   try {
     console.log('Directly fetching channels...');
-    const token = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
+    const token = localStorage.getItem('discord_token');
     
     if (!token) {
       throw new Error('No authentication token found');

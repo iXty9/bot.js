@@ -238,6 +238,38 @@ const BotManager = () => {
     }
   }, [channels]);
   
+  // Debug function to check token status
+  const checkTokenStatus = async () => {
+    try {
+      setLocalError('');
+      setOutput('Checking token status...');
+      
+      const response = await fetch('/api/debug/token-status', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('discord_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Token status:', data);
+      
+      if (data.envTokenSet) {
+        setOutput(`Token is properly set on server (length: ${data.envTokenLength})`);
+      } else {
+        setLocalError('Discord token is not set on the server!');
+        setOutput('Please check your .env file and restart the server');
+      }
+    } catch (error) {
+      console.error('Token status check error:', error);
+      setLocalError(`Token check failed: ${error.message}`);
+    }
+  };
+  
   // Ensure we have the channels data
   useEffect(() => {
     if (!isLoadingChannels && (!channels || channels.length === 0)) {
@@ -407,44 +439,68 @@ const BotManager = () => {
     }
     
     // Initialize WebSocket connection
-    const storedToken = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
-    if (storedToken) {
-      console.log('Initializing socket with stored token');
-      // Ensure token is properly formatted
-      const formattedToken = storedToken.trim();
-      localStorage.setItem('discord_token', formattedToken); // Save the cleaned token
-      const socket = initializeSocket(formattedToken);
-      
-      if (socket) {
-        socket.on('message', (data) => {
-          console.log('Received message from socket:', data);
-          setLogs((prev) => [data, ...prev].slice(0, 50));
-        });
-        
-        socket.on('status', (data) => {
-          console.log('Received status update:', data);
-          setStatus(data.status);
-        });
-        
-        // Listen for channel updates
-        socket.on('channels', (data) => {
-          console.log('Received channels update:', data);
-          if (data.channels && data.channels.length > 0) {
-            // Trigger a refetch of channels
-            refetchChannels();
+    // Don't use localStorage token directly - we'll fetch it from the server
+    const fetchServerToken = async () => {
+      try {
+        const response = await fetch('/api/env', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('discord_token') || ''}`,
+            'Accept': 'application/json'
           }
         });
         
-        return () => {
-          console.log('Disconnecting socket');
-          socket.disconnect();
-        };
-      } else {
-        console.error('Failed to initialize socket');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Using server-provided token status');
+          // Initialize socket with the token from localStorage, but only if it's valid
+          const storedToken = localStorage.getItem('discord_token');
+          if (storedToken && data.DISCORD_TOKEN_SET) {
+            console.log('Initializing socket with stored token');
+            const formattedToken = storedToken.trim();
+            localStorage.setItem('discord_token', formattedToken); // Save the cleaned token
+            const socket = initializeSocket(formattedToken);
+            
+            if (socket) {
+              socket.on('message', (data) => {
+                console.log('Received message from socket:', data);
+                setLogs((prev) => [data, ...prev].slice(0, 50));
+              });
+              
+              socket.on('status', (data) => {
+                console.log('Received status update:', data);
+                setStatus(data.status);
+              });
+              
+              // Listen for channel updates
+              socket.on('channels', (data) => {
+                console.log('Received channels update:', data);
+                if (data.channels && data.channels.length > 0) {
+                  // Trigger a refetch of channels
+                  refetchChannels();
+                }
+              });
+              
+              return () => {
+                console.log('Disconnecting socket');
+                socket.disconnect();
+              };
+            }
+          } else {
+            console.error('No valid token available for socket initialization');
+            setLocalError('Authentication failed. Please check your Discord token.');
+          }
+        } else {
+          console.error('Failed to validate token with server');
+          setLocalError('Failed to authenticate with server');
+        }
+      } catch (error) {
+        console.error('Error initializing socket:', error);
+        setLocalError('Connection error: ' + error.message);
       }
-    } else {
-      console.error('No token available for socket initialization');
-    }
+    };
+    
+    fetchServerToken();
+      
   }, [refetchChannels]);
 
   // Loading state handled by parent Suspense
@@ -619,9 +675,19 @@ const BotManager = () => {
                 </Alert>
               )}
               <div className="flex justify-between items-center mb-4">
-                <Button onClick={() => refetchChannels()} disabled={isLoadingChannels}>
-                  {isLoadingChannels ? 'Loading...' : 'Refresh Channels'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={() => refetchChannels()} disabled={isLoadingChannels}>
+                    {isLoadingChannels ? 'Loading...' : 'Refresh Channels'}
+                  </Button>
+                  <Button onClick={checkTokenStatus} variant="outline">
+                    Check Token
+                  </Button>
+                </div>
+                <div>
+                  {Array.isArray(channels) ? 
+                    `${channels.length} channels available` : 
+                    'No channels loaded'}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-10 mb-4">
                 <Select

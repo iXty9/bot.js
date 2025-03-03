@@ -57,6 +57,9 @@ function authenticateToken(req, res, next) {
     };
     console.log('Auth request:', requestInfo);
     
+    // Check if this is a token validation request
+    const isValidationRequest = req.path === '/api/auth/validate';
+    
     // 1. Check for API key in header (preferred method)
     const apiKey = req.headers['x-api-key'];
     if (apiKey && validateApiKey(apiKey)) {
@@ -119,10 +122,12 @@ function authenticateToken(req, res, next) {
     
     // 6. For development purposes, temporarily allow all requests
     // REMOVE THIS IN PRODUCTION
-    console.log('DEVELOPMENT MODE: Allowing request without authentication');
-    req.user = { authorized: true, devMode: true, method: 'temp-bypass' };
-    next();
-    return;
+    if (req.path !== '/api/env' || isValidationRequest) {
+      console.log('DEVELOPMENT MODE: Allowing request without authentication');
+      req.user = { authorized: true, devMode: true, method: 'temp-bypass' };
+      next();
+      return;
+    }
     
     // Authentication failed
     console.log('Authentication failed for request');
@@ -336,8 +341,19 @@ app.get('/api/env', authenticateToken, (req, res) => {
       // Never send sensitive tokens to the client
       DISCORD_TOKEN_SET: !!process.env.DISCORD_TOKEN,
       JWT_SECRET_SET: !!process.env.JWT_SECRET,
-      WEBHOOK_URL_SET: !!process.env.WEBHOOK_URL
+      WEBHOOK_URL_SET: !!process.env.WEBHOOK_URL,
+      // Add a server timestamp for validation
+      SERVER_TIME: Date.now()
     };
+    
+    // Log that we're sending env vars (without the actual values)
+    console.log('Sending environment variables to client:', 
+      Object.keys(envVars).reduce((acc, key) => {
+        acc[key] = typeof envVars[key] === 'boolean' ? envVars[key] : '[REDACTED]';
+        return acc;
+      }, {})
+    );
+    
     res.json(envVars);
   } catch (error) {
     console.error('Error retrieving environment variables:', error);
@@ -1038,6 +1054,24 @@ app.get('/api/debug/socket', (req, res) => {
   } catch (error) {
     console.error('Socket debug error:', error);
     res.status(500).json({ error: 'Failed to get socket debug info' });
+  }
+});
+
+// Add a debug endpoint to check token status
+app.get('/api/debug/token-status', authenticateToken, (req, res) => {
+  try {
+    // Check if the Discord token is set in the environment
+    const tokenStatus = {
+      envTokenSet: !!process.env.DISCORD_TOKEN,
+      envTokenLength: process.env.DISCORD_TOKEN ? process.env.DISCORD_TOKEN.length : 0,
+      // Don't include any actual token values
+      timestamp: Date.now()
+    };
+    
+    res.json(tokenStatus);
+  } catch (error) {
+    console.error('Token status debug error:', error);
+    res.status(500).json({ error: 'Failed to check token status' });
   }
 });
 
