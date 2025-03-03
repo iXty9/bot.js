@@ -1232,8 +1232,7 @@ const io = new Server(server, {
   upgradeTimeout: 30000,
   maxHttpBufferSize: 1e8,
   // Add these options to fix WebSocket issues
-  perMessageDeflate: false,
-  wsEngine: 'ws'
+  perMessageDeflate: false
 });
 
 // Socket.IO authentication middleware
