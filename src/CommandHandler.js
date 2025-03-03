@@ -254,8 +254,9 @@ class CommandHandler {
         console.log('Could not import API key, using temporary key instead');
       }
       
-      // Generate a temporary access key as fallback
-      const tempKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      // Generate a temporary access key with crypto for better randomness
+      const crypto = await import('crypto');
+      const tempKey = crypto.randomBytes(16).toString('hex');
       
       // Store this key in a global variable that the server can access
       global.WEB_UI_ACCESS_KEY = tempKey;
