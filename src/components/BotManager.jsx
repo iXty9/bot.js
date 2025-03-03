@@ -237,6 +237,24 @@ const BotManager = () => {
       console.log('No channels loaded or channels is empty');
     }
   }, [channels]);
+  
+  // Ensure we have the channels data
+  useEffect(() => {
+    if (!isLoadingChannels && (!channels || channels.length === 0)) {
+      console.log('No channels found, attempting to refetch...');
+      refetchChannels()
+        .then(result => {
+          console.log('Refetch channels result:', result);
+          if (result.error) {
+            setLocalError(`Failed to load channels: ${result.error.message}`);
+          }
+        })
+        .catch(err => {
+          console.error('Error refetching channels:', err);
+          setLocalError(`Failed to load channels: ${err.message}`);
+        });
+    }
+  }, [isLoadingChannels, channels, refetchChannels]);
 
   const validateStatus = (status) => {
     const validStatuses = ['online', 'idle', 'dnd', 'invisible'];
@@ -275,12 +293,24 @@ const BotManager = () => {
 
   const queryClient = useQueryClient();
   const { mutate: sendMessage, isLoading: isSending } = useSendMessage();
-  const { data: channels = [], isLoading: isLoadingChannels, refetch: refetchChannels } = useChannels();
-  const { data: messages = [], isLoading: isLoadingMessages } = useMessageHistory(selectedChannel?.id);
+  const { data: channels = [], isLoading: isLoadingChannels, refetch: refetchChannels, error: channelsError } = useChannels();
+  const { data: messages = [], isLoading: isLoadingMessages } = useMessageHistory(selectedChannel?.id, selectedThread?.id);
   
   // Fetch channels on component mount
   useEffect(() => {
-    refetchChannels();
+    console.log('Fetching channels on mount...');
+    refetchChannels()
+      .then(result => {
+        console.log('Channels fetch result:', result);
+        if (result.error) {
+          console.error('Error fetching channels:', result.error);
+          setLocalError(`Failed to load channels: ${result.error.message}`);
+        }
+      })
+      .catch(err => {
+        console.error('Exception fetching channels:', err);
+        setLocalError(`Failed to load channels: ${err.message}`);
+      });
   }, [refetchChannels]);
   const { error, handleError } = useError();
   const [editingMessage, setEditingMessage] = useState(null);
@@ -379,21 +409,40 @@ const BotManager = () => {
     // Initialize WebSocket connection
     const storedToken = localStorage.getItem('discord_token') || process.env.DISCORD_TOKEN;
     if (storedToken) {
+      console.log('Initializing socket with stored token');
       const socket = initializeSocket(storedToken);
       
-      socket.on('message', (data) => {
-        setLogs((prev) => [data, ...prev].slice(0, 50));
-      });
-      
-      socket.on('status', (data) => {
-        setStatus(data.status);
-      });
-      
-      return () => {
-        socket.disconnect();
-      };
+      if (socket) {
+        socket.on('message', (data) => {
+          console.log('Received message from socket:', data);
+          setLogs((prev) => [data, ...prev].slice(0, 50));
+        });
+        
+        socket.on('status', (data) => {
+          console.log('Received status update:', data);
+          setStatus(data.status);
+        });
+        
+        // Listen for channel updates
+        socket.on('channels', (data) => {
+          console.log('Received channels update:', data);
+          if (data.channels && data.channels.length > 0) {
+            // Trigger a refetch of channels
+            refetchChannels();
+          }
+        });
+        
+        return () => {
+          console.log('Disconnecting socket');
+          socket.disconnect();
+        };
+      } else {
+        console.error('Failed to initialize socket');
+      }
+    } else {
+      console.error('No token available for socket initialization');
     }
-  }, []);
+  }, [refetchChannels]);
 
   // Loading state handled by parent Suspense
 

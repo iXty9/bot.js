@@ -590,32 +590,40 @@ app.get('/api/channels', authenticateToken, async (req, res) => {
       // Fallback: Get channels directly from Discord client
       channels = [];
       for (const guild of botManager.client.guilds.cache.values()) {
-        const guildChannels = await guild.channels.fetch();
-        for (const channel of guildChannels.values()) {
-          if (channel.type === 0 || channel.type === 15) { // Text or Forum channels
-            const channelInfo = {
-              id: channel.id,
-              name: channel.name,
-              guildName: guild.name,
-              guildId: guild.id,
-              type: channel.type === 15 ? 'forum' : 'text'
-            };
-            
-            if (channel.type === 15) {
-              try {
-                const threads = await channel.threads.fetch();
-                channelInfo.threads = threads.threads.map(thread => ({
-                  id: thread.id,
-                  name: thread.name
-                }));
-              } catch (threadError) {
-                console.error(`Error fetching threads for channel ${channel.name}:`, threadError);
-                channelInfo.threads = [];
+        try {
+          const guildChannels = await guild.channels.fetch();
+          for (const channel of guildChannels.values()) {
+            // Check for text or forum channels (0 = text, 15 = forum)
+            // Also check for string types for compatibility with different Discord.js versions
+            if (channel.type === 0 || channel.type === 15 || 
+                channel.type === 'GUILD_TEXT' || channel.type === 'GUILD_FORUM' ||
+                channel.type === 'text' || channel.type === 'forum') {
+              const channelInfo = {
+                id: channel.id,
+                name: channel.name,
+                guildName: guild.name,
+                guildId: guild.id,
+                type: (channel.type === 15 || channel.type === 'GUILD_FORUM' || channel.type === 'forum') ? 'forum' : 'text'
+              };
+              
+              if (channel.type === 15 || channel.type === 'GUILD_FORUM' || channel.type === 'forum') {
+                try {
+                  const threads = await channel.threads.fetch();
+                  channelInfo.threads = Array.from(threads.threads.values()).map(thread => ({
+                    id: thread.id,
+                    name: thread.name
+                  }));
+                } catch (threadError) {
+                  console.error(`Error fetching threads for channel ${channel.name}:`, threadError);
+                  channelInfo.threads = [];
+                }
               }
+              
+              channels.push(channelInfo);
             }
-            
-            channels.push(channelInfo);
           }
+        } catch (guildError) {
+          console.error(`Error fetching channels for guild ${guild.name}:`, guildError);
         }
       }
       console.log(`Found ${channels.length} channels using fallback method`);
@@ -627,6 +635,9 @@ app.get('/api/channels', authenticateToken, async (req, res) => {
         channel.isActive = channel.id === botManager.currentChannelId;
       });
     }
+    
+    // Log the channels we're returning
+    console.log(`Returning ${channels.length} channels to client`);
     
     res.json({
       success: true,

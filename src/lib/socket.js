@@ -10,17 +10,18 @@ const useSocketStore = create((set) => ({
   setAuthError: (error) => set({ authError: error }),
 }));
 
-export const initializeSocket = () => {
+export const initializeSocket = (token) => {
   // Clean up any existing socket connection
   if (useSocketStore.getState().socket) {
     useSocketStore.getState().socket.disconnect();
   }
   
   // Get authentication credentials from localStorage
+  const discordToken = token || localStorage.getItem('discord_token');
   const sessionToken = localStorage.getItem('session_token');
   const apiKey = localStorage.getItem('api_key');
   
-  if (!sessionToken && !apiKey) {
+  if (!discordToken && !sessionToken && !apiKey) {
     console.error('No authentication credentials available for socket initialization');
     useSocketStore.getState().setAuthError('No authentication credentials available');
     return null;
@@ -47,8 +48,13 @@ export const initializeSocket = () => {
   if (sessionToken) {
     // Send token directly without Bearer prefix
     auth.token = sessionToken;
-    // Don't log or mention token at all
-    console.log('Auth credentials ready');
+    console.log('Using session token for auth');
+  }
+  
+  if (discordToken) {
+    // Use Discord token as a fallback
+    auth.discord_token = discordToken;
+    console.log('Using Discord token for auth');
   }
   
   // For development, add a bypass flag
@@ -56,10 +62,9 @@ export const initializeSocket = () => {
   console.log('Added dev mode flag for socket auth');
   
   // Get the server URL from the current window location
-  const host = window.location.host;
   const url = window.location.origin;
   
-  console.log(`Connecting to Socket.IO server at ${url} with token: ${auth.token}`);
+  console.log(`Connecting to Socket.IO server at ${url}`);
   
   const socket = io(url, {
     auth,
