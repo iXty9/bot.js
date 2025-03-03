@@ -187,15 +187,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Debug endpoint for token format (no auth required)
-app.post('/api/debug/token', (req, res) => {
+// Debug endpoint for token format (requires authentication)
+app.post('/api/debug/token', authenticateToken, (req, res) => {
   try {
     const { token } = req.body;
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
     }
     
-    // Don't log the actual token
+    // Don't log or return the actual token
     const tokenInfo = {
       length: token.length,
       hasWhitespace: /\s/.test(token),
@@ -204,24 +204,10 @@ app.post('/api/debug/token', (req, res) => {
       format: token.includes('.') ? 'Appears to be JWT format' : 'Not in JWT format'
     };
     
-    // Compare with environment token (safely)
-    if (process.env.DISCORD_TOKEN) {
-      const envToken = process.env.DISCORD_TOKEN.trim();
-      
-      // Clean both tokens for comparison
-      const cleanToken = token.trim().replace(/\s+/g, '').toLowerCase();
-      const cleanEnvToken = envToken.trim().replace(/\s+/g, '').toLowerCase();
-      
-      tokenInfo.matchesEnvToken = cleanToken === cleanEnvToken;
-      tokenInfo.lengthDifference = token.length - envToken.length;
-      tokenInfo.cleanLengthDifference = cleanToken.length - cleanEnvToken.length;
-      
-      // Character code analysis for first 5 and last 5 chars
-      tokenInfo.firstFiveCharCodes = Array.from(cleanToken.substring(0, 5)).map(c => c.charCodeAt(0));
-      tokenInfo.lastFiveCharCodes = Array.from(cleanToken.slice(-5)).map(c => c.charCodeAt(0));
-      tokenInfo.envFirstFiveCharCodes = Array.from(cleanEnvToken.substring(0, 5)).map(c => c.charCodeAt(0));
-      tokenInfo.envLastFiveCharCodes = Array.from(cleanEnvToken.slice(-5)).map(c => c.charCodeAt(0));
-    }
+    // Don't compare with Discord token for security
+    // Only check if it's a session token
+    const isSessionToken = validateSession(token);
+    tokenInfo.isValidSessionToken = isSessionToken;
     
     res.json(tokenInfo);
   } catch (error) {
@@ -345,9 +331,10 @@ app.get('/api/env', authenticateToken, (req, res) => {
       API_PORT: process.env.API_PORT || '6987',
       API_HOST: process.env.API_HOST || '0.0.0.0',
       BOT_NAME: process.env.BOT_NAME || '',
-      DISCORD_TOKEN: process.env.DISCORD_TOKEN || '',
-      JWT_SECRET: process.env.JWT_SECRET || '',
-      WEBHOOK_URL: process.env.WEBHOOK_URL || ''
+      // Never send sensitive tokens to the client
+      DISCORD_TOKEN_SET: !!process.env.DISCORD_TOKEN,
+      JWT_SECRET_SET: !!process.env.JWT_SECRET,
+      WEBHOOK_URL_SET: !!process.env.WEBHOOK_URL
     };
     res.json(envVars);
   } catch (error) {
@@ -360,6 +347,17 @@ app.post('/api/env', authenticateToken, async (req, res) => {
   try {
     const updates = req.body;
     const envPath = path.join(__dirname, '../../.env');
+    
+    // Prevent updating sensitive variables from the client
+    const protectedVars = ['DISCORD_TOKEN', 'JWT_SECRET'];
+    for (const key of protectedVars) {
+      if (updates[key]) {
+        return res.status(403).json({ 
+          error: `Cannot update protected environment variable: ${key}`,
+          message: 'For security reasons, sensitive tokens cannot be updated via the API'
+        });
+      }
+    }
     
     // Read existing .env file or create from defaults if it doesn't exist
     let envContent = '';
@@ -395,7 +393,10 @@ app.post('/api/env', authenticateToken, async (req, res) => {
     // Reload environment variables
     dotenv.config({ path: envPath });
 
-    res.json({ message: 'Environment variables updated successfully' });
+    res.json({ 
+      message: 'Environment variables updated successfully',
+      updated: Object.keys(updates)
+    });
   } catch (error) {
     console.error('Error updating environment variables:', error);
     res.status(500).json({ error: 'Failed to update environment variables' });
@@ -962,11 +963,18 @@ app.get('/api/debug/bot', authenticateToken, async (req, res) => {
       currentChannelId: botManager && botManager.currentChannelId,
       uptime: process.uptime(),
       nodeVersion: process.version,
-      memoryUsage: process.memoryUsage(),
+      memoryUsage: {
+        rss: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB',
+        heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + 'MB',
+        heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB'
+      },
       env: {
         API_PORT: process.env.API_PORT,
         API_HOST: process.env.API_HOST,
-        NODE_ENV: process.env.NODE_ENV
+        NODE_ENV: process.env.NODE_ENV,
+        // Only indicate if tokens are set, not their values
+        DISCORD_TOKEN_SET: !!process.env.DISCORD_TOKEN,
+        WEBHOOK_URL_SET: !!process.env.WEBHOOK_URL
       }
     };
     

@@ -26,7 +26,7 @@ export const initializeSocket = () => {
     return null;
   }
   
-  console.log('Initializing socket connection...');
+  console.log('Initializing socket connection... (auth credentials available)');
   
   // Check if we have an access key in localStorage (from URL exchange)
   const accessKey = localStorage.getItem('access_key');
@@ -46,6 +46,7 @@ export const initializeSocket = () => {
   if (sessionToken) {
     // Send token directly without Bearer prefix
     auth.token = sessionToken;
+    // Don't log sensitive token information
     console.log('Using session token for socket auth');
   }
   
