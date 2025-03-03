@@ -17,6 +17,9 @@ class CommandHandler {
       this.currentChannel = channels.find(ch => ch.name === 'general') || channels[0];
       this.consoleUI.updateStatusBar(this.getStatusBarContent());
       this.consoleUI.addLog(chalk.green('Channels initialized successfully.'));
+      
+      // Pass channels to the UI component that uses the Select component
+      this.consoleUI.updateChannelList(channels);
     } catch (error) {
       this.consoleUI.addLog(chalk.red('Error initializing channels: ' + error.message));
     }

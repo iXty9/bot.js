@@ -4,7 +4,7 @@ import { Check, ChevronDown } from "lucide-react"
 import { cn } from "../../lib/utils"
 
 const Select = React.forwardRef(({ defaultValue = '', options = [], ...props }, ref) => (
-  <SelectPrimitive.Root defaultValue={defaultValue || undefined} ref={ref} {...props}>
+  <SelectPrimitive.Root defaultValue={defaultValue || undefined} {...props}>
     {options.map((option, index) => (
       <SelectItem key={index} value={option.value}>
         {option.label}
