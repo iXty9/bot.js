@@ -33,7 +33,7 @@ export const createSession = () => {
   // Store session
   activeSessions.set(sessionId, sessionInfo);
   
-  console.log(`Created new session: ${sessionId}`);
+  console.log(`Created new session (ID length: ${sessionId.length} chars)`);
   
   return {
     token: sessionId,
@@ -59,7 +59,7 @@ export const validateSession = (token) => {
   
   const session = activeSessions.get(token);
   if (!session) {
-    console.log(`validateSession: Session not found for token: ${token.substring(0, 10)}...`);
+    console.log(`validateSession: Session not found for provided token`);
     return false;
   }
   

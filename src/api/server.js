@@ -96,7 +96,7 @@ function authenticateToken(req, res, next) {
         next();
         return;
       } else {
-        console.log('Invalid session token:', sessionToken ? sessionToken.substring(0, 10) + '...' : 'none');
+        console.log('Invalid session token provided');
       }
     }
     
@@ -997,11 +997,9 @@ app.post('/api/debug/token-check', (req, res) => {
     // Check if token is in activeSessions
     const isInSessions = validateSession(token);
     
-    // Return token info
+    // Return token info without revealing token content
     res.json({
       tokenLength: token.length,
-      tokenPrefix: token.substring(0, 10) + '...',
-      tokenSuffix: '...' + token.substring(token.length - 10),
       isInSessions,
       sessionCount: activeSessions.size
     });

@@ -98,8 +98,8 @@ export const getAuthHeaders = () => {
     console.log('Added access key to headers');
   }
   
-  // For debugging
-  console.log('Auth headers:', Object.keys(headers));
+  // Only log header names, not values
+  console.log('Auth headers (keys only):', Object.keys(headers));
   
   return headers;
 };
@@ -138,7 +138,7 @@ export const login = async (password, accessKey) => {
     }
     
     const data = await response.json();
-    console.log('Login response:', { success: data.success, hasToken: !!data.token, hasApiKey: !!data.apiKey });
+    console.log('Login response:', { success: data.success, hasToken: !!data.token, hasApiKey: !!data.apiKey, timestamp: Date.now() });
     
     if (data.success) {
       // Store both token and API key

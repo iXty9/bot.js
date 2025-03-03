@@ -26,8 +26,8 @@ export const createSession = () => {
   // Store session
   activeSessions.set(sessionId, sessionInfo);
   
-  console.log(`Creating new session with ID: ${sessionId}`);
-  console.log(`Using JWT_SECRET length: ${JWT_SECRET.length} characters`);
+  console.log(`Creating new session (ID length: ${sessionId.length} chars)`);
+  console.log(`Using JWT_SECRET (length: ${JWT_SECRET.length} characters)`);
   console.log(`JWT library version: ${jwt.version || 'unknown'}`);
   console.log(`Using algorithm: HS256`);
   

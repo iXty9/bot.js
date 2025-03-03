@@ -26,7 +26,8 @@ export const initializeSocket = () => {
     return null;
   }
   
-  console.log('Initializing socket connection... (auth credentials available)');
+  // Don't log sensitive information
+  console.log('Initializing socket connection...');
   
   // Check if we have an access key in localStorage (from URL exchange)
   const accessKey = localStorage.getItem('access_key');
