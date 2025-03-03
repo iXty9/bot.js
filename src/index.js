@@ -67,11 +67,6 @@ if (!container) {
       </ErrorBoundary>
     </React.StrictMode>
   );
-} else {
-  // UI FEEDBACK: Error Log
-  // Logs an error to the console if the root element is not found, indicating that the application might not render correctly.
-
-  console.error('Root element not found');
 }
 
 // SECURITY: Error Boundary
