@@ -50,7 +50,6 @@ const container = document.getElementById('root');
 if (!container) {
   console.error('Root element not found');
   return;
-}
   // SECTION: Rendering the Application
   // Creates a React root for managing updates to the container and renders the application components.
   // Use the React.StrictMode to help identify potential problems in the application.
