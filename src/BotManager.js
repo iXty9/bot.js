@@ -27,6 +27,8 @@ class BotManager extends EventEmitter {
     this.webhookUrl = webhookUrl;
     this.logs = []; // Use array for ordered logs
     this.maxLogs = 50;
+    this.currentChannelId = null;
+    this.currentThreadId = null;
 
     // Set up a timer for log cleanup every hour
     setInterval(() => {
@@ -53,6 +55,18 @@ class BotManager extends EventEmitter {
       this.stats.messagesSent++;
       this.stats.lastActivity = Date.now();
       this.log(`Sent: ${info}`);
+    });
+    
+    // Event listener for channel changes
+    this.on('channelChanged', (channelInfo) => {
+      // Reset thread when channel changes
+      this.currentThreadId = null;
+      this.log(`Channel changed to: ${channelInfo.name}`);
+    });
+    
+    // Event listener for thread changes
+    this.on('threadChanged', (threadInfo) => {
+      this.log(`Thread changed to: ${threadInfo.name}`);
     });
   }
 
@@ -185,6 +199,8 @@ class BotManager extends EventEmitter {
 
   refreshLogs() {
     try {
+      console.log('Refreshing logs from file...');
+      
       // Clear in-memory logs
       this.logs = [];
       
@@ -195,18 +211,36 @@ class BotManager extends EventEmitter {
           // Parse file logs into the same format as in-memory logs
           this.logs = logContent.split('\n')
             .filter(line => line.trim())
-            .map(line => ({
-              log: line,
-              timestamp: new Date(line.split(' - ')[0]).getTime() || Date.now()
-            }))
+            .map(line => {
+              try {
+                const parts = line.split(' - ');
+                const timestamp = parts.length > 0 ? new Date(parts[0]).getTime() : Date.now();
+                return {
+                  log: line,
+                  timestamp: isNaN(timestamp) ? Date.now() : timestamp
+                };
+              } catch (e) {
+                return {
+                  log: line,
+                  timestamp: Date.now()
+                };
+              }
+            })
             .sort((a, b) => b.timestamp - a.timestamp)
             .slice(0, this.maxLogs);
         }
       }
       
+      console.log(`Refreshed ${this.logs.length} logs`);
+      
+      // Add a log entry about the refresh
+      this.log('Logs refreshed from file');
+      
       return this.logs;
     } catch (error) {
       console.error('Error refreshing logs:', error);
+      // Add a log entry about the error
+      this.log(`Error refreshing logs: ${error.message}`);
       return [];
     }
   }
@@ -247,7 +281,15 @@ class BotManager extends EventEmitter {
 
   async sendMessage(message, channelId, threadId = null) {
     try {
-      console.log(`Sending message to channel ${channelId}${threadId ? ` (thread: ${threadId})` : ''}`);
+      // Use current channel/thread if not specified
+      const targetChannelId = channelId || this.currentChannelId;
+      const targetThreadId = threadId || this.currentThreadId;
+      
+      if (!targetChannelId) {
+        throw new Error('No channel specified and no current channel set');
+      }
+      
+      console.log(`Sending message to channel ${targetChannelId}${targetThreadId ? ` (thread: ${targetThreadId})` : ''}`);
       
       if (!message || message.trim() === '') {
         throw new Error('Message content cannot be empty');
@@ -257,20 +299,20 @@ class BotManager extends EventEmitter {
       await this.handleRateLimit();
       
       // Fetch the channel
-      const channel = await this.client.channels.fetch(channelId);
+      const channel = await this.client.channels.fetch(targetChannelId);
       if (!channel) {
-        throw new Error(`Channel with ID "${channelId}" not found`);
+        throw new Error(`Channel with ID "${targetChannelId}" not found`);
       }
       
       console.log(`Found channel: ${channel.name} (${channel.type})`);
       
       // Determine target (channel or thread)
       let targetChannel = channel;
-      if (threadId) {
-        console.log(`Looking for thread: ${threadId}`);
-        const thread = await channel.threads.fetch(threadId);
+      if (targetThreadId) {
+        console.log(`Looking for thread: ${targetThreadId}`);
+        const thread = await channel.threads.fetch(targetThreadId);
         if (!thread) {
-          throw new Error(`Thread with ID "${threadId}" not found in channel "${channel.name}"`);
+          throw new Error(`Thread with ID "${targetThreadId}" not found in channel "${channel.name}"`);
         }
         targetChannel = thread;
         console.log(`Found thread: ${thread.name}`);
@@ -281,13 +323,18 @@ class BotManager extends EventEmitter {
       const sentMessage = await targetChannel.send(message);
       
       // Log success
-      const info = `Message sent to ${channel.name}${threadId ? ` (thread: ${targetChannel.name})` : ''}`;
+      const info = `Message sent to ${channel.name}${targetThreadId ? ` (thread: ${targetChannel.name})` : ''}`;
       this.emitMessageSent(info);
       
-      // Update current channel if not already set
+      // Update current channel and thread if not already set
       if (!this.currentChannelId) {
-        this.currentChannelId = channelId;
+        this.currentChannelId = targetChannelId;
         this.log(`Set current channel to: ${channel.name}`);
+      }
+      
+      if (targetThreadId && !this.currentThreadId) {
+        this.currentThreadId = targetThreadId;
+        this.log(`Set current thread to: ${targetChannel.name}`);
       }
       
       return sentMessage;
@@ -487,28 +534,32 @@ class BotManager extends EventEmitter {
       
       console.log(`Attempting to set active channel: ${channelId}`);
       
-      // Fetch the channel from Discord
-      const channel = await this.client.channels.fetch(channelId);
-      
-      if (!channel) {
-        throw new Error(`Channel with ID "${channelId}" not found`);
-      }
-      
-      // Store the channel ID
+      // Store the channel ID immediately
       this.currentChannelId = channelId;
       
-      // Log the change
-      const channelInfo = `${channel.name} (${channel.type}) in ${channel.guild ? channel.guild.name : 'Unknown Guild'}`;
-      this.log(`Active channel set to: ${channelInfo}`);
+      // Try to fetch the channel details, but don't fail if we can't
+      let channelInfo = `Channel ID: ${channelId}`;
+      try {
+        const channel = await this.client.channels.fetch(channelId);
+        if (channel) {
+          channelInfo = `${channel.name} (${channel.type}) in ${channel.guild ? channel.guild.name : 'Unknown Guild'}`;
+          
+          // Emit an event for the change
+          this.emit('channelChanged', {
+            id: channelId,
+            name: channel.name,
+            type: channel.type,
+            guildId: channel.guild ? channel.guild.id : null,
+            guildName: channel.guild ? channel.guild.name : null
+          });
+        }
+      } catch (fetchError) {
+        console.warn(`Could not fetch channel details: ${fetchError.message}`);
+        // Continue anyway since we already set the ID
+      }
       
-      // Emit an event for the change
-      this.emit('channelChanged', {
-        id: channelId,
-        name: channel.name,
-        type: channel.type,
-        guildId: channel.guild ? channel.guild.id : null,
-        guildName: channel.guild ? channel.guild.name : null
-      });
+      // Log the change
+      this.log(`Active channel set to: ${channelInfo}`);
       
       return `Active channel set to: ${channelInfo}`;
     } catch (error) {
