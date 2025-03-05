@@ -172,37 +172,36 @@ if (!isBrowserCompatible) {
   // You could show a warning to the user here
 }
 
-// SECTION: DOM Element Selection
-// Selecting the root DOM element where the React application is going to be rendered using 'getElementById'.
-// Ensures that the 'app' element is present in the DOM before proceeding.
+// SECTION: DOM Element Selection and Rendering
+// Ensure the DOM is fully loaded before attempting to render the React application
+// This prevents "Root element not found" errors that can occur if the script runs before the DOM is ready
 
-const container = document.getElementById('app');
+// Function to initialize the React application
+const initializeApp = () => {
+  // Selecting the root DOM element where the React application is going to be rendered
+  const container = document.getElementById('app');
 
-if (!container) {
-  console.error('App element not found. Application cannot start.');
-  // Add a visible error message to the page
-  document.body.innerHTML = `
-    <div style="color: red; font-family: sans-serif; text-align: center; margin-top: 50px;">
-      <h1>Application Error</h1>
-      <p>Could not find the element with id="app" to mount the application.</p>
-      <p>Please make sure the HTML contains an element with id="app".</p>
-    </div>
-  `;
-  return;
-}
+  if (!container) {
+    console.error('App element not found. Application cannot start.');
+    // Add a visible error message to the page
+    document.body.innerHTML = `
+      <div style="color: red; font-family: sans-serif; text-align: center; margin-top: 50px;">
+        <h1>Application Error</h1>
+        <p>Could not find the element with id="app" to mount the application.</p>
+        <p>Please make sure the HTML contains an element with id="app".</p>
+      </div>
+    `;
+    return;
+  }
 
-// SECTION: Rendering the Application
-// Creates a React root for managing updates to the container and renders the application components.
-// Use StrictMode to help identify potential problems in the application.
-// Wrap BotManager with ErrorBoundary to catch JavaScript errors and display user-friendly error messages.
-// QueryClientProvider is used to provide the query client instance to the BotManager component for managing data fetching and caching.
+  console.log('Found app element, initializing React application');
 
-// Clear any existing content and add a loading indicator
-container.innerHTML = '';
+  // Clear any existing content
+  container.innerHTML = '';
 
-// Create the root and render the app immediately
-const root = createRoot(container);
-root.render(
+  // Create the root and render the app
+  const root = createRoot(container);
+  root.render(
   <StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -210,10 +209,19 @@ root.render(
       </QueryClientProvider>
     </ErrorBoundary>
   </StrictMode>
-);
+  );
 
-// Log successful render
-console.log('React application rendered successfully');
+  // Log successful render
+  console.log('React application rendered successfully');
+};
+
+// Wait for DOM to be fully loaded before initializing the app
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  // DOM already loaded, initialize immediately
+  initializeApp();
+}
 
 // SECURITY: Error Boundary
 // ErrorBoundary is employed to catch and handle JavaScript errors in the component tree gracefully. It prevents the entire React component
