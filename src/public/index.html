@@ -221,6 +221,28 @@
 </head>
 <body>
     <div id="root" style="width: 100%; height: 100vh; overflow: auto;"></div>
+    
+    <!-- Simple Channel Selector -->
+    <div id="simple-channel-selector" style="position: fixed; top: 20px; right: 20px; width: 300px; background-color: hsl(var(--card)); border-radius: 0.5rem; padding: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); z-index: 1000;">
+        <h3 style="margin-top: 0; margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600;">Simple Channel Selector</h3>
+        
+        <div style="margin-bottom: 1rem;">
+            <label for="simple-channel-dropdown" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Select Channel:</label>
+            <select id="simple-channel-dropdown" style="width: 100%;">
+                <option value="">Loading channels...</option>
+            </select>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+            <label for="simple-message-input" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Message:</label>
+            <textarea id="simple-message-input" placeholder="Type your message here..."></textarea>
+        </div>
+        
+        <button id="simple-send-button" disabled>Send Message</button>
+        
+        <div id="simple-status" style="margin-top: 1rem; font-size: 0.875rem;"></div>
+    </div>
+    
     <noscript>
         <div style="text-align: center; padding: 2rem;">
             <h1>JavaScript Required</h1>
@@ -278,6 +300,177 @@
             // Apply to any existing selects
             const existingSelects = document.querySelectorAll('select');
             existingSelects.forEach(ensureSelectVisible);
+        });
+
+        // Simple Channel Selector Implementation
+        document.addEventListener('DOMContentLoaded', function() {
+            const channelDropdown = document.getElementById('simple-channel-dropdown');
+            const messageInput = document.getElementById('simple-message-input');
+            const sendButton = document.getElementById('simple-send-button');
+            const statusElement = document.getElementById('simple-status');
+            
+            let selectedChannelId = null;
+            let apiKey = localStorage.getItem('api_key') || '';
+            
+            // Function to update status
+            function updateStatus(message, isError = false) {
+                statusElement.textContent = message;
+                statusElement.style.color = isError ? 'hsl(var(--destructive))' : 'hsl(var(--foreground))';
+            }
+            
+            // Function to fetch channels
+            async function fetchChannels() {
+                try {
+                    updateStatus('Fetching channels...');
+                    
+                    const response = await fetch('/api/channels', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch channels: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    const channels = await response.json();
+                    
+                    // Clear loading option
+                    channelDropdown.innerHTML = '';
+                    
+                    // Add default option
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = '-- Select a channel --';
+                    channelDropdown.appendChild(defaultOption);
+                    
+                    // Add channel options
+                    channels.forEach(channel => {
+                        const option = document.createElement('option');
+                        option.value = channel.id;
+                        option.textContent = `${channel.name} (${channel.guildName}) - ${channel.type}`;
+                        channelDropdown.appendChild(option);
+                    });
+                    
+                    updateStatus(`Loaded ${channels.length} channels`);
+                } catch (error) {
+                    console.error('Error fetching channels:', error);
+                    updateStatus(`Error: ${error.message}`, true);
+                }
+            }
+            
+            // Function to send message
+            async function sendMessage() {
+                if (!selectedChannelId) {
+                    updateStatus('Please select a channel first', true);
+                    return;
+                }
+                
+                const message = messageInput.value.trim();
+                if (!message) {
+                    updateStatus('Please enter a message', true);
+                    return;
+                }
+                
+                try {
+                    updateStatus('Sending message...');
+                    sendButton.disabled = true;
+                    
+                    const response = await fetch('/api/send', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            channelId: selectedChannelId,
+                            message: message
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Failed to send message: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    const result = await response.json();
+                    updateStatus('Message sent successfully!');
+                    messageInput.value = '';
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    updateStatus(`Error: ${error.message}`, true);
+                } finally {
+                    sendButton.disabled = false;
+                }
+            }
+            
+            // Event listeners
+            channelDropdown.addEventListener('change', function() {
+                selectedChannelId = this.value;
+                sendButton.disabled = !selectedChannelId;
+                
+                if (selectedChannelId) {
+                    updateStatus(`Selected channel: ${this.options[this.selectedIndex].text}`);
+                } else {
+                    updateStatus('No channel selected');
+                }
+            });
+            
+            sendButton.addEventListener('click', sendMessage);
+            
+            messageInput.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    sendMessage();
+                }
+            });
+            
+            // Initialize
+            fetchChannels();
+            
+            // Add refresh button
+            const refreshButton = document.createElement('button');
+            refreshButton.textContent = 'Refresh Channels';
+            refreshButton.style.marginTop = '0.5rem';
+            refreshButton.style.marginRight = '0.5rem';
+            refreshButton.style.padding = '0.5rem 0.75rem';
+            refreshButton.style.fontSize = '0.875rem';
+            
+            refreshButton.addEventListener('click', fetchChannels);
+            
+            // Add toggle button to show/hide the selector
+            const toggleButton = document.createElement('button');
+            toggleButton.textContent = 'Hide Selector';
+            toggleButton.style.marginTop = '0.5rem';
+            toggleButton.style.padding = '0.5rem 0.75rem';
+            toggleButton.style.fontSize = '0.875rem';
+            
+            const selectorDiv = document.getElementById('simple-channel-selector');
+            let isVisible = true;
+            
+            toggleButton.addEventListener('click', function() {
+                if (isVisible) {
+                    selectorDiv.style.height = '40px';
+                    selectorDiv.style.overflow = 'hidden';
+                    this.textContent = 'Show Selector';
+                } else {
+                    selectorDiv.style.height = 'auto';
+                    selectorDiv.style.overflow = 'visible';
+                    this.textContent = 'Hide Selector';
+                }
+                isVisible = !isVisible;
+            });
+            
+            // Add buttons to the selector
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.display = 'flex';
+            buttonContainer.style.justifyContent = 'space-between';
+            
+            buttonContainer.appendChild(refreshButton);
+            buttonContainer.appendChild(toggleButton);
+            
+            statusElement.parentNode.insertBefore(buttonContainer, statusElement);
         });
     </script>
 </body>
