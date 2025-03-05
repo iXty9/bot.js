@@ -34,7 +34,13 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import BotManager from './components/BotManager.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import { setupMockApi } from './mockApi.js';
 import './public/styles.css';
+
+// Setup mock API for development
+if (process.env.NODE_ENV === 'development') {
+  setupMockApi();
+}
 
 // SECTION: Initialize Query Client
 // This initializes a new instance of QueryClient which will be used to handle asynchronous data-fetching operations and manage cache.
@@ -191,35 +197,23 @@ if (!container) {
 // Wrap BotManager with ErrorBoundary to catch JavaScript errors and display user-friendly error messages.
 // QueryClientProvider is used to provide the query client instance to the BotManager component for managing data fetching and caching.
 
-// Add a loading indicator before rendering the app
-container.innerHTML = `
-  <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-    <div style="text-align: center;">
-      <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 2s linear infinite; margin: 0 auto;"></div>
-      <p style="margin-top: 20px;">Loading application...</p>
-    </div>
-  </div>
-  <style>
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  </style>
-`;
+// Clear any existing content and add a loading indicator
+container.innerHTML = '';
 
-// Render the app after a short delay to show the loading indicator
-setTimeout(() => {
-  const root = createRoot(container);
-  root.render(
-    <StrictMode>
-      <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <BotManager />
-        </QueryClientProvider>
-      </ErrorBoundary>
-    </StrictMode>
-  );
-}, 500);
+// Create the root and render the app immediately
+const root = createRoot(container);
+root.render(
+  <StrictMode>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BotManager />
+      </QueryClientProvider>
+    </ErrorBoundary>
+  </StrictMode>
+);
+
+// Log successful render
+console.log('React application rendered successfully');
 
 // SECURITY: Error Boundary
 // ErrorBoundary is employed to catch and handle JavaScript errors in the component tree gracefully. It prevents the entire React component

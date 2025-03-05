@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { QueryClientProvider, QueryClient, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSocket, initializeSocket } from '../lib/socket';
 import { useMessageHistory, useSendMessage, useChannels, useError } from '../lib/hooks';
 import { Send, Trash2, Command, RefreshCw } from 'lucide-react';
@@ -7,6 +7,7 @@ import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Alert, AlertDescription } from './ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { cn } from '../lib/utils';
 
 const BotManager = () => {
   const [message, setMessage] = useState('');

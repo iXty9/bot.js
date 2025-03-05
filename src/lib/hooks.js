@@ -2,46 +2,58 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useCallback } from 'react';
 import axios from 'axios';
 
+// Base URL for API requests
 const API_BASE = '/api';
 
 export const useMessageHistory = (channelId, threadId) => {
-  const queryClient = useQueryClient();
-
   return useQuery({
     queryKey: ['messages', channelId, threadId],
     queryFn: async () => {
       if (!channelId) return [];
       
-      const url = threadId 
-        ? `${API_BASE}/messages/${channelId}?threadId=${threadId}`
-        : `${API_BASE}/messages/${channelId}`;
-        
-      console.log(`Fetching messages from: ${url}`);
-      
-      const token = localStorage.getItem('discord_token');
-      if (!token) {
-        console.error('No authentication token available for message history');
-        throw new Error('No authentication token available');
-      }
-      
       try {
-        const { data } = await axios.get(url, {
+        const token = localStorage.getItem('discord_token');
+        if (!token) {
+          console.error('No authentication token available for message history');
+          return []; // Return empty array instead of throwing
+        }
+        
+        // Build the URL with proper parameters
+        let url = `${API_BASE}/messages`;
+        const params = new URLSearchParams();
+        params.append('channelId', channelId);
+        if (threadId) params.append('threadId', threadId);
+        url = `${url}?${params.toString()}`;
+        
+        console.log(`Fetching messages from: ${url}`);
+        
+        const response = await fetch(url, {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         });
         
+        if (!response.ok) {
+          console.error(`Error fetching messages: ${response.status} ${response.statusText}`);
+          return []; // Return empty array on error
+        }
+        
+        const data = await response.json();
         console.log(`Received ${data?.messages?.length || 0} messages`);
-        return data.messages || [];
+        
+        // Ensure we return an array even if the API response is unexpected
+        return Array.isArray(data.messages) ? data.messages : [];
       } catch (error) {
         console.error('Error fetching messages:', error);
-        throw error;
+        return []; // Return empty array on error
       }
     },
     enabled: !!channelId,
     staleTime: 30000,
     retry: 2,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    refetchInterval: 30000 // Refresh every 30 seconds
   });
 };
 
@@ -50,38 +62,46 @@ export const useSendMessage = () => {
 
   return useMutation({
     mutationFn: async ({ message, channelId, threadId }) => {
+      if (!message || !channelId) {
+        throw new Error('Message and channel ID are required');
+      }
+      
       const token = localStorage.getItem('discord_token');
       if (!token) {
-        console.error('No authentication token available for sending message');
         throw new Error('No authentication token available');
       }
       
       console.log(`Sending message to channel ${channelId}${threadId ? ` thread ${threadId}` : ''}`);
       
-      try {
-        const { data } = await axios.post(`${API_BASE}/send`, {
+      const response = await fetch(`${API_BASE}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
           message,
           channelId,
           threadId
-        }, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        return data;
-      } catch (error) {
-        console.error('Send message error:', error);
-        throw error;
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP error! status: ${response.status}`);
       }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to send message');
+      }
+      
+      return data;
     },
     onSuccess: (data, variables) => {
       console.log('Message sent successfully, invalidating queries');
       queryClient.invalidateQueries(['messages', variables.channelId, variables.threadId]);
-    },
-    onError: (error) => {
-      console.error('Send message error:', error);
-      throw error;
     }
   });
 };
@@ -91,15 +111,15 @@ export const useChannels = () => {
     queryKey: ['channels'],
     queryFn: async () => {
       console.log('Fetching channels from API...');
-      const token = localStorage.getItem('discord_token');
-      
-      if (!token) {
-        console.error('No authentication token available for channels');
-        throw new Error('No authentication token available');
-      }
       
       try {
-        // Use fetch instead of axios for more direct control
+        const token = localStorage.getItem('discord_token');
+        
+        if (!token) {
+          console.error('No authentication token available for channels');
+          return []; // Return empty array instead of throwing
+        }
+        
         const response = await fetch(`${API_BASE}/channels`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -108,39 +128,30 @@ export const useChannels = () => {
         });
         
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+          console.error(`HTTP error! status: ${response.status}`);
+          return []; // Return empty array on error
         }
         
         const data = await response.json();
         
-        console.log(`Received channels response:`, {
+        // Log the response for debugging
+        console.log('Channels response:', {
           success: data.success,
-          channelCount: data.channels?.length || 0,
-          firstChannel: data.channels?.[0]?.name
+          channelCount: data.channels?.length || 0
         });
         
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch channels');
-        }
-        
         // Ensure we always return an array
-        const channelsArray = Array.isArray(data.channels) ? data.channels : [];
-        
-        // Log the actual channels for debugging
-        console.log('Channels array:', channelsArray);
-        
-        return channelsArray;
+        return Array.isArray(data.channels) ? data.channels : [];
       } catch (error) {
         console.error('Error fetching channels:', error);
-        // Return empty array on error instead of throwing
-        return [];
+        return []; // Return empty array on error
       }
     },
     staleTime: 60000,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    refetchInterval: 300000 // Refresh every 5 minutes
   });
 };
 
