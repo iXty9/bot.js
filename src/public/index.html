@@ -323,6 +323,9 @@
                 try {
                     updateStatus('Fetching channels...');
                     
+                    // Log the API key (masked for security)
+                    console.log('Using API key:', apiKey ? '****' + apiKey.slice(-4) : 'none');
+                    
                     const response = await fetch('/api/channels', {
                         method: 'GET',
                         headers: {
@@ -331,11 +334,13 @@
                         }
                     });
                     
+                    console.log('Response status:', response.status);
+                    
                     if (!response.ok) {
                         throw new Error(`Failed to fetch channels: ${response.status} ${response.statusText}`);
                     }
                     
-                    const channels = await response.json();
+                    const data = await response.json();
                     
                     // Clear loading option
                     channelDropdown.innerHTML = '';
@@ -347,10 +352,21 @@
                     channelDropdown.appendChild(defaultOption);
                     
                     // Add channel options
+                    // Ensure we have an array of channels
+                    const channels = Array.isArray(data) ? data : 
+                                    (data.channels ? data.channels : []);
+                    
+                    console.log('Channels data:', channels);
+                    
+                    if (channels.length === 0) {
+                        updateStatus('No channels found', true);
+                        return;
+                    }
+                    
                     channels.forEach(channel => {
                         const option = document.createElement('option');
                         option.value = channel.id;
-                        option.textContent = `${channel.name} (${channel.guildName}) - ${channel.type}`;
+                        option.textContent = `${channel.name} (${channel.guildName || 'Unknown'}) - ${channel.type || 'text'}`;
                         channelDropdown.appendChild(option);
                     });
                     
@@ -428,6 +444,10 @@
             
             // Initialize
             fetchChannels();
+            
+            // Add debug info
+            console.log('Simple channel selector initialized');
+            console.log('API key present:', !!apiKey);
             
             // Add refresh button
             const refreshButton = document.createElement('button');
