@@ -239,6 +239,30 @@ const BotManager = () => {
         const defaultChannel = channels.find(ch => ch.name === 'general') || channels[0];
         console.log('Auto-selecting channel:', defaultChannel);
         setSelectedChannel(defaultChannel);
+        
+        // Set the active channel on the server
+        if (defaultChannel) {
+          fetch('/api/channel', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('discord_token')}`
+            },
+            body: JSON.stringify({ channelId: defaultChannel.id })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              console.log('Active channel set successfully:', data);
+              setOutput(`Channel set to ${defaultChannel.name}`);
+            } else {
+              console.error('Failed to set active channel:', data);
+            }
+          })
+          .catch(err => {
+            console.error('Error setting active channel:', err);
+          });
+        }
       }
     } else {
       console.log('No channels loaded or channels is empty', channels);
@@ -409,7 +433,10 @@ const BotManager = () => {
     }
   };
   const handleSendMessage = async () => {
-    if (!message.trim() || !selectedChannel) return;
+    if (!message.trim() || !selectedChannel) {
+      setLocalError('Please select a channel and enter a message');
+      return;
+    }
     
     const messageContent = message.trim();
     if (messageContent.length > 2000) {
@@ -418,24 +445,37 @@ const BotManager = () => {
     }
     
     try {
-      await sendMessage({
-        message: messageContent,
-        channelId: selectedChannel.id,
-        threadId: selectedThread?.id
-      }, {
-        onSuccess: () => {
-          setMessage('');
-          setOutput('Message sent successfully!');
-          // Refetch messages after sending
-          queryClient.invalidateQueries(['messages', selectedChannel.id]);
+      setLocalError('');
+      setOutput('Sending message...');
+      
+      // Direct API call instead of using the hook
+      const response = await fetch('/api/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('discord_token')}`
         },
-        onError: (error) => {
-          handleError(error);
-          setOutput('Failed to send message');
-        }
+        body: JSON.stringify({
+          message: messageContent,
+          channelId: selectedChannel.id,
+          threadId: selectedThread?.id
+        })
       });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setMessage('');
+        setOutput('Message sent successfully!');
+        // Refetch messages after sending
+        queryClient.invalidateQueries(['messages', selectedChannel.id]);
+      } else {
+        throw new Error(data.error || 'Failed to send message');
+      }
     } catch (error) {
+      console.error('Error sending message:', error);
       handleError(error);
+      setLocalError(`Failed to send message: ${error.message}`);
     }
   };
 
@@ -782,11 +822,14 @@ const BotManager = () => {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-10 mb-4">
-                <Select
-                  value={selectedChannel?.id || ""}
-                  onValueChange={(value) => {
-                      console.log('Channel selected:', value);
-                      const channel = channels?.find(c => c.id === value);
+                <div>
+                  <label htmlFor="channel-select" className="block mb-2 text-sm font-medium">Select Channel:</label>
+                  <select
+                    id="channel-select"
+                    value={selectedChannel?.id || ""}
+                    onChange={(e) => {
+                      console.log('Channel selected:', e.target.value);
+                      const channel = channels?.find(c => c.id === e.target.value);
                       console.log('Found channel:', channel);
                       setSelectedChannel(channel || null);
                       setSelectedThread(null); // Reset thread when channel changes
@@ -818,7 +861,36 @@ const BotManager = () => {
                       }
                     }}
                     disabled={isLoadingChannels || !channels || channels.length === 0}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 2.5rem 0.5rem 1rem',
+                      borderRadius: '0.75rem',
+                      background: 'hsl(var(--secondary))',
+                      border: '1px solid hsl(var(--border))',
+                      color: 'hsl(var(--foreground))',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      appearance: 'none',
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 0.5rem center',
+                      backgroundSize: '1rem',
+                    }}
                   >
+                    <option value="">Select a channel...</option>
+                    {Array.isArray(channels) && channels.length > 0 ? (
+                      channels.map(channel => (
+                        <option key={channel.id} value={channel.id}>
+                          {channel.name} ({channel.guildName})
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No channels available</option>
+                    )}
+                  </select>
+                </div>
                     <SelectTrigger
                       className="w-full"
                       style={{
@@ -855,57 +927,56 @@ const BotManager = () => {
                       )}
                     </SelectContent>
                   </Select>
-                <Select
+                <div>
+                  <label htmlFor="thread-select" className="block mb-2 text-sm font-medium">Select Thread (optional):</label>
+                  <select
+                    id="thread-select"
                     value={selectedThread?.id || "no_thread"}
-                    onValueChange={(value) => {
-                      if (value === "no_thread") {
+                    onChange={(e) => {
+                      if (e.target.value === "no_thread") {
                         setSelectedThread(null);
                         return;
                       }
-                      const thread = selectedChannel?.threads?.find(t => t.id === value);
+                      const thread = selectedChannel?.threads?.find(t => t.id === e.target.value);
                       setSelectedThread(thread || null);
                     }}
                     disabled={!selectedChannel}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 2.5rem 0.5rem 1rem',
+                      borderRadius: '0.75rem',
+                      background: 'hsl(var(--secondary))',
+                      border: '1px solid hsl(var(--border))',
+                      color: 'hsl(var(--foreground))',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      appearance: 'none',
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 0.5rem center',
+                      backgroundSize: '1rem',
+                    }}
                   >
-                    <SelectTrigger
-                      className="w-full"
-                      style={{
-                        padding: '0.5rem 2.5rem 0.5rem 1rem',
-                        borderRadius: '0.75rem',
-                        background: 'hsl(var(--secondary))',
-                        border: '1px solid hsl(var(--border))',
-                        color: 'hsl(var(--foreground))',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        appearance: 'none',
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-                        backgroundRepeat: 'no-repeat',
-                        backgroundPosition: 'right 0.5rem center',
-                        backgroundSize: '1rem',
-                      }}
-                    >
-                      <SelectValue placeholder="Select a thread..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="no_thread">No thread</SelectItem>
-                      {selectedChannel?.threads?.map(thread => (
-                        <SelectItem key={thread.id} value={thread.id}>
-                          {thread.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <option value="no_thread">No thread</option>
+                    {selectedChannel?.threads?.map(thread => (
+                      <option key={thread.id} value={thread.id}>
+                        {thread.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div style={{ marginTop: '1rem' }}>
-                <Textarea
+                <textarea
                   placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   disabled={!selectedChannel}
                   style={{
+                    width: '100%',
                     background: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '0.75rem',
@@ -920,7 +991,33 @@ const BotManager = () => {
                   }}
                 />
 
-                <div style={{ marginTop: '-1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                {localError && (
+                  <div style={{
+                    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                    color: 'rgb(220, 38, 38)',
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    marginTop: '0.5rem',
+                    marginBottom: '0.5rem'
+                  }}>
+                    {localError}
+                  </div>
+                )}
+              
+                {output && !localError && (
+                  <div style={{
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    color: 'rgb(34, 197, 94)',
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    marginTop: '0.5rem',
+                    marginBottom: '0.5rem'
+                  }}>
+                    {output}
+                  </div>
+                )}
+              
+                <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                   <button
                     style={{
                       ...styles.button,
@@ -933,28 +1030,42 @@ const BotManager = () => {
                     <Trash2 size={16} />
                     Clear
                   </button>
-                  <Button
+                  <button
                     style={{
                       ...styles.button,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '6px',
+                      backgroundColor: message.trim() && selectedChannel ? 'var(--primary)' : 'var(--muted)',
+                      color: 'white',
+                      cursor: message.trim() && selectedChannel ? 'pointer' : 'not-allowed',
+                      padding: '10px 20px',
+                      borderRadius: '0.5rem',
+                      border: 'none',
+                      fontWeight: 'bold'
                     }}
                     onClick={handleSendMessage}
-                    disabled={!message.trim() || isSending}
+                    disabled={!message.trim() || !selectedChannel || isSending}
                   >
-                      {isSending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <Send size={16} />
-                          Send Message
-                        </>
-                      )}
-                    </Button>
+                    {isSending ? (
+                      <>
+                        <div style={{
+                          width: '16px',
+                          height: '16px',
+                          border: '2px solid white',
+                          borderTopColor: 'transparent',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite'
+                        }}></div>
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send size={16} />
+                        Send Message
+                      </>
+                    )}
+                  </button>
                   </div>
                 </div>
               </div>
