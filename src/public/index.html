@@ -156,6 +156,37 @@
             color: hsl(var(--popover-foreground));
             padding: 0.5rem;
         }
+        
+        /* Ensure all select elements are visible */
+        select, .select, [role="combobox"], [role="listbox"] {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: static !important;
+            z-index: 1000 !important;
+            min-height: 38px !important;
+            background-color: hsl(var(--secondary)) !important;
+            color: hsl(var(--secondary-foreground)) !important;
+            border: 1px solid hsl(var(--border)) !important;
+            border-radius: 0.375rem !important;
+            padding: 0.5rem 0.75rem !important;
+            width: 100% !important;
+            font-family: inherit !important;
+            font-size: 1rem !important;
+            line-height: 1.5 !important;
+            transition: all 0.15s ease !important;
+            appearance: auto !important;
+            cursor: pointer !important;
+        }
+        
+        /* Ensure dropdown containers are visible */
+        .dropdown-container, .select-container, [class*="select-container"], [class*="dropdown-container"] {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: relative !important;
+            z-index: 999 !important;
+        }
         textarea:focus {
             outline: none;
             border-color: hsl(var(--primary));
@@ -276,21 +307,28 @@
             // Function to ensure select elements are visible
             function ensureSelectVisible(select) {
                 if (select) {
+                    console.log('Making select visible:', select.id || 'unnamed select');
                     select.style.display = 'block';
                     select.style.visibility = 'visible';
                     select.style.opacity = '1';
+                    select.style.position = 'static';
                     
                     // Ensure parent containers are also visible
                     let parent = select.parentElement;
                     while (parent && parent !== document.body) {
-                        if (getComputedStyle(parent).display === 'none') {
+                        const computedStyle = getComputedStyle(parent);
+                        if (computedStyle.display === 'none') {
+                            console.log('Making parent visible:', parent.id || 'unnamed parent');
                             parent.style.display = 'block';
                         }
-                        if (getComputedStyle(parent).visibility === 'hidden') {
+                        if (computedStyle.visibility === 'hidden') {
                             parent.style.visibility = 'visible';
                         }
-                        if (getComputedStyle(parent).opacity === '0') {
+                        if (computedStyle.opacity === '0') {
                             parent.style.opacity = '1';
+                        }
+                        if (computedStyle.position === 'absolute' || computedStyle.position === 'fixed') {
+                            console.log('Parent has position:', computedStyle.position);
                         }
                         parent = parent.parentElement;
                     }
@@ -299,7 +337,27 @@
             
             // Apply to any existing selects
             const existingSelects = document.querySelectorAll('select');
+            console.log('Found existing selects:', existingSelects.length);
             existingSelects.forEach(ensureSelectVisible);
+            
+            // Add a global helper to fix any select element
+            window.fixSelect = function(selector) {
+                const elements = document.querySelectorAll(selector);
+                console.log(`Fixing ${elements.length} elements matching "${selector}"`);
+                elements.forEach(ensureSelectVisible);
+            };
+            
+            // Check for selects periodically
+            setInterval(() => {
+                const allSelects = document.querySelectorAll('select');
+                allSelects.forEach(select => {
+                    const isVisible = select.offsetParent !== null;
+                    if (!isVisible) {
+                        console.log('Found hidden select:', select.id || 'unnamed select');
+                        ensureSelectVisible(select);
+                    }
+                });
+            }, 2000);
         });
 
         // Simple Channel Selector Implementation
@@ -491,6 +549,113 @@
             buttonContainer.appendChild(toggleButton);
             
             statusElement.parentNode.insertBefore(buttonContainer, statusElement);
+        });
+        
+        // Fix for the original channel dropdown
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait for React to render the UI
+            setTimeout(() => {
+                console.log('Attempting to fix original channel dropdown...');
+                
+                // Try to find the original channel dropdown
+                const originalDropdowns = Array.from(document.querySelectorAll('select')).filter(select => 
+                    !select.id.includes('simple') && 
+                    (select.id.includes('channel') || select.name?.includes('channel'))
+                );
+                
+                console.log('Found potential original dropdowns:', originalDropdowns.length);
+                
+                // Apply fixes to all potential channel dropdowns
+                originalDropdowns.forEach(dropdown => {
+                    console.log('Fixing dropdown:', dropdown.id || dropdown.name || 'unnamed dropdown');
+                    
+                    // Make sure it's visible
+                    dropdown.style.display = 'block';
+                    dropdown.style.visibility = 'visible';
+                    dropdown.style.opacity = '1';
+                    dropdown.style.position = 'static';
+                    dropdown.style.zIndex = '1000';
+                    
+                    // Make sure it's properly sized
+                    dropdown.style.width = '100%';
+                    dropdown.style.minWidth = '200px';
+                    
+                    // Make sure it's properly styled
+                    dropdown.style.backgroundColor = 'hsl(var(--secondary))';
+                    dropdown.style.color = 'hsl(var(--secondary-foreground))';
+                    dropdown.style.border = '1px solid hsl(var(--border))';
+                    dropdown.style.borderRadius = '0.375rem';
+                    dropdown.style.padding = '0.5rem 0.75rem';
+                    
+                    // Make sure it's properly positioned in the DOM
+                    const parent = dropdown.parentElement;
+                    if (parent) {
+                        parent.style.display = 'block';
+                        parent.style.visibility = 'visible';
+                        parent.style.opacity = '1';
+                        parent.style.position = 'relative';
+                    }
+                });
+                
+                // Look for any React components that might contain the channel dropdown
+                const reactComponents = document.querySelectorAll('[class*="channel"], [id*="channel"]');
+                console.log('Found potential React channel components:', reactComponents.length);
+                
+                reactComponents.forEach(component => {
+                    // Make the component visible
+                    component.style.display = 'block';
+                    component.style.visibility = 'visible';
+                    component.style.opacity = '1';
+                    
+                    // Look for select elements inside
+                    const selects = component.querySelectorAll('select');
+                    console.log(`Found ${selects.length} selects in component:`, component.id || component.className);
+                    
+                    selects.forEach(select => {
+                        select.style.display = 'block';
+                        select.style.visibility = 'visible';
+                        select.style.opacity = '1';
+                        select.style.zIndex = '1000';
+                    });
+                });
+                
+                // Create a direct fix button
+                const fixButton = document.createElement('button');
+                fixButton.textContent = 'Fix Original Dropdowns';
+                fixButton.style.position = 'fixed';
+                fixButton.style.bottom = '20px';
+                fixButton.style.right = '20px';
+                fixButton.style.zIndex = '9999';
+                
+                fixButton.addEventListener('click', () => {
+                    console.log('Manual fix triggered');
+                    
+                    // Find all selects again
+                    const allSelects = document.querySelectorAll('select');
+                    console.log('Found all selects:', allSelects.length);
+                    
+                    allSelects.forEach(select => {
+                        select.style.display = 'block';
+                        select.style.visibility = 'visible';
+                        select.style.opacity = '1';
+                        select.style.position = 'static';
+                        select.style.zIndex = '1000';
+                    });
+                    
+                    // Try to find any React dropdown components
+                    const possibleDropdowns = document.querySelectorAll('[role="combobox"], [role="listbox"], .dropdown, .select');
+                    console.log('Found possible dropdown components:', possibleDropdowns.length);
+                    
+                    possibleDropdowns.forEach(dropdown => {
+                        dropdown.style.display = 'block';
+                        dropdown.style.visibility = 'visible';
+                        dropdown.style.opacity = '1';
+                        dropdown.style.zIndex = '1000';
+                    });
+                });
+                
+                document.body.appendChild(fixButton);
+            }, 2000); // Wait 2 seconds for React to render
         });
     </script>
 </body>
