@@ -174,18 +174,18 @@ if (!isBrowserCompatible) {
 
 // SECTION: DOM Element Selection
 // Selecting the root DOM element where the React application is going to be rendered using 'getElementById'.
-// Ensures that the 'root' element is present in the DOM before proceeding.
+// Ensures that the 'app' element is present in the DOM before proceeding.
 
-const container = document.getElementById('root');
+const container = document.getElementById('app');
 
 if (!container) {
-  console.error('Root element not found. Application cannot start.');
+  console.error('App element not found. Application cannot start.');
   // Add a visible error message to the page
   document.body.innerHTML = `
     <div style="color: red; font-family: sans-serif; text-align: center; margin-top: 50px;">
       <h1>Application Error</h1>
-      <p>Could not find the root element to mount the application.</p>
-      <p>Please make sure the HTML contains an element with id="root".</p>
+      <p>Could not find the element with id="app" to mount the application.</p>
+      <p>Please make sure the HTML contains an element with id="app".</p>
     </div>
   `;
   return;
