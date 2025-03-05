@@ -19,7 +19,11 @@ class CommandHandler {
       this.consoleUI.addLog(chalk.green('Channels initialized successfully.'));
       
       // Pass channels to the UI component that uses the Select component
-      this.consoleUI.updateChannelList(channels);
+      // Assuming there's a method in consoleUI to update the channel list in the UI
+      this.consoleUI.updateChannelList(channels.map(channel => ({
+        value: channel.id,
+        label: `${channel.name} (${channel.guildName})`
+      })));
     } catch (error) {
       this.consoleUI.addLog(chalk.red('Error initializing channels: ' + error.message));
     }
