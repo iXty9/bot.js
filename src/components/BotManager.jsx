@@ -233,6 +233,13 @@ const BotManager = () => {
     if (channels && channels.length > 0) {
       console.log('Channels loaded:', channels.length);
       console.log('First channel:', channels[0]);
+      
+      // Auto-select first channel if none is selected
+      if (!selectedChannel && !isLoadingChannels) {
+        const defaultChannel = channels.find(ch => ch.name === 'general') || channels[0];
+        console.log('Auto-selecting channel:', defaultChannel);
+        setSelectedChannel(defaultChannel);
+      }
     } else {
       console.log('No channels loaded or channels is empty', channels);
       // Check if channels is an object instead of an array
@@ -240,7 +247,7 @@ const BotManager = () => {
         console.log('Channels is an object, not an array:', Object.keys(channels));
       }
     }
-  }, [channels]);
+  }, [channels, selectedChannel, isLoadingChannels]);
   
   // Debug function to check token status
   const checkTokenStatus = async () => {
@@ -689,6 +696,52 @@ const BotManager = () => {
                   <Button 
                     onClick={async () => {
                       try {
+                        setOutput('Checking active channel...');
+                        const token = localStorage.getItem('discord_token');
+                        const response = await fetch('/api/debug/active-channel', {
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                          }
+                        });
+                        
+                        if (!response.ok) {
+                          throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        console.log('Active channel check:', data);
+                        
+                        if (data.success) {
+                          if (data.activeChannelInfo) {
+                            setOutput(`Active channel: ${data.activeChannelInfo.name} (${data.activeChannelInfo.guildName})`);
+                            
+                            // Update selected channel if it doesn't match the active one
+                            if (!selectedChannel || selectedChannel.id !== data.activeChannelId) {
+                              const matchingChannel = channels.find(ch => ch.id === data.activeChannelId);
+                              if (matchingChannel) {
+                                console.log('Updating selected channel to match active channel:', matchingChannel);
+                                setSelectedChannel(matchingChannel);
+                              }
+                            }
+                          } else {
+                            setOutput('No active channel set');
+                          }
+                        } else {
+                          setLocalError('Failed to check active channel');
+                        }
+                      } catch (error) {
+                        console.error('Active channel check error:', error);
+                        setLocalError(`Check failed: ${error.message}`);
+                      }
+                    }}
+                    variant="outline"
+                  >
+                    Check Active Channel
+                  </Button>
+                  <Button 
+                    onClick={async () => {
+                      try {
                         setOutput('Checking channels API directly...');
                         const token = localStorage.getItem('discord_token');
                         const response = await fetch('/api/channels', {
@@ -737,6 +790,32 @@ const BotManager = () => {
                       console.log('Found channel:', channel);
                       setSelectedChannel(channel || null);
                       setSelectedThread(null); // Reset thread when channel changes
+                      
+                      // Set the active channel on the server
+                      if (channel) {
+                        fetch('/api/channel', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('discord_token')}`
+                          },
+                          body: JSON.stringify({ channelId: channel.id })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                          if (data.success) {
+                            console.log('Active channel set successfully:', data);
+                            setOutput(`Channel set to ${channel.name}`);
+                          } else {
+                            console.error('Failed to set active channel:', data);
+                            setLocalError(`Failed to set channel: ${data.error}`);
+                          }
+                        })
+                        .catch(err => {
+                          console.error('Error setting active channel:', err);
+                          setLocalError(`Error setting channel: ${err.message}`);
+                        });
+                      }
                     }}
                     disabled={isLoadingChannels || !channels || channels.length === 0}
                   >

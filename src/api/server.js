@@ -940,29 +940,37 @@ app.post('/api/channel', authenticateToken, async (req, res) => {
     const { channelId } = req.body;
     
     if (!channelId) {
-      return res.status(400).json({ error: 'Channel ID is required' });
+      return res.status(400).json({ error: 'Channel ID is required', success: false });
     }
     
     if (!botManager) {
-      return res.status(500).json({ error: 'Bot manager not initialized' });
+      return res.status(500).json({ error: 'Bot manager not initialized', success: false });
     }
     
     console.log(`Setting active channel: ${channelId}`);
     
-    // Set the channel directly without pre-verification
+    // Verify the channel exists first
     try {
+      const channel = await botManager.client.channels.fetch(channelId);
+      
+      if (!channel) {
+        return res.status(404).json({ 
+          error: `Channel with ID ${channelId} not found`,
+          success: false
+        });
+      }
+      
+      // Set the channel
       const result = await botManager.setActiveChannel(channelId);
       console.log('Channel set successfully:', channelId);
       
-      // Get the channel details to return to the client
-      const channel = await botManager.client.channels.fetch(channelId);
-      
       res.json({ 
         success: true, 
-        message: result,
+        message: result || `Active channel set to: ${channel.name}`,
         channelId: channelId,
-        channelName: channel ? channel.name : 'Unknown',
-        guildName: channel && channel.guild ? channel.guild.name : 'Unknown'
+        channelName: channel.name,
+        guildName: channel.guild ? channel.guild.name : 'Unknown',
+        channelType: channel.type
       });
     } catch (error) {
       console.error('Error setting active channel:', error);
@@ -1000,6 +1008,53 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error retrieving statistics:', error);
     res.status(500).json({ error: 'Failed to retrieve statistics' });
+  }
+});
+
+// Add a debug endpoint to check active channel
+app.get('/api/debug/active-channel', authenticateToken, async (req, res) => {
+  try {
+    if (!botManager) {
+      return res.status(500).json({ 
+        error: 'Bot manager not initialized',
+        success: false
+      });
+    }
+    
+    const activeChannelId = botManager.currentChannelId;
+    let activeChannelInfo = null;
+    
+    if (activeChannelId) {
+      try {
+        const channel = await botManager.client.channels.fetch(activeChannelId);
+        if (channel) {
+          activeChannelInfo = {
+            id: channel.id,
+            name: channel.name,
+            type: channel.type,
+            guildId: channel.guild ? channel.guild.id : null,
+            guildName: channel.guild ? channel.guild.name : 'Unknown'
+          };
+        }
+      } catch (channelError) {
+        console.error('Error fetching active channel:', channelError);
+      }
+    }
+    
+    res.json({
+      success: true,
+      activeChannelId,
+      activeChannelInfo,
+      hasActiveChannel: !!activeChannelId,
+      botManagerReady: !!botManager,
+      clientReady: botManager.client && botManager.client.isReady()
+    });
+  } catch (error) {
+    console.error('Error checking active channel:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to check active channel',
+      success: false
+    });
   }
 });
 
