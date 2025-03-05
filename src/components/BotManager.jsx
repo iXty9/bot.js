@@ -891,42 +891,6 @@ const BotManager = () => {
                     )}
                   </select>
                 </div>
-                    <SelectTrigger
-                      className="w-full"
-                      style={{
-                        padding: '0.5rem 2.5rem 0.5rem 1rem',
-                        borderRadius: '0.75rem',
-                        background: 'hsl(var(--secondary))',
-                        border: '1px solid hsl(var(--border))',
-                        color: 'hsl(var(--foreground))',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        appearance: 'none',
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-                        backgroundRepeat: 'no-repeat',
-                        backgroundPosition: 'right 0.5rem center',
-                        backgroundSize: '1rem',
-                      }}
-                    aria-label="Select a channel"
-                    >
-                      <SelectValue placeholder="Select a channel..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.isArray(channels) && channels.length > 0 ? (
-                        channels.map(channel => (
-                          <SelectItem key={channel.id} value={channel.id}>
-                            {channel.name} ({channel.guildName})
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="p-2 text-center text-muted-foreground">
-                          No channels available
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
                 <div>
                   <label htmlFor="thread-select" className="block mb-2 text-sm font-medium">Select Thread (optional):</label>
                   <select
@@ -969,7 +933,80 @@ const BotManager = () => {
                 </div>
               </div>
 
-              <div style={{ marginTop: '1rem' }}>
+              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', height: '460px' }}>
+                <div style={{ 
+                  flex: '1', 
+                  overflowY: 'auto', 
+                  marginBottom: '1rem',
+                  background: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '0.75rem',
+                  padding: '1rem'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h3 style={{ fontWeight: 'bold' }}>Message History</h3>
+                    <button
+                      onClick={() => {
+                        if (selectedChannel) {
+                          queryClient.invalidateQueries(['messages', selectedChannel.id]);
+                          setOutput('Refreshing messages...');
+                        }
+                      }}
+                      disabled={!selectedChannel || isLoadingMessages}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '0.25rem',
+                        fontSize: '0.75rem',
+                        background: 'hsl(var(--primary))',
+                        color: 'white',
+                        border: 'none',
+                        cursor: selectedChannel ? 'pointer' : 'not-allowed',
+                        opacity: selectedChannel ? 1 : 0.5
+                      }}
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                  {isLoadingMessages ? (
+                    <div style={{ textAlign: 'center', padding: '2rem' }}>
+                      <div style={{
+                        width: '24px',
+                        height: '24px',
+                        border: '2px solid hsl(var(--primary))',
+                        borderTopColor: 'transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                        margin: '0 auto'
+                      }}></div>
+                      <p style={{ marginTop: '0.5rem' }}>Loading messages...</p>
+                    </div>
+                  ) : messages.length > 0 ? (
+                    <div>
+                      {messages.map(msg => (
+                        <div key={msg.id} style={{
+                          padding: '0.5rem',
+                          marginBottom: '0.5rem',
+                          borderRadius: '0.5rem',
+                          background: 'hsl(var(--secondary))',
+                          borderLeft: '3px solid hsl(var(--primary))'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                            <span style={{ fontWeight: 'bold' }}>{msg.author}</span>
+                            <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                              {new Date(msg.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          <div>{msg.content}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'hsl(var(--muted-foreground))' }}>
+                      {selectedChannel ? 'No messages in this channel' : 'Select a channel to view messages'}
+                    </div>
+                  )}
+                </div>
+                
                 <textarea
                   placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
                   value={message}
@@ -980,8 +1017,8 @@ const BotManager = () => {
                     background: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '0.75rem',
-                    padding: '1.5rem',
-                    height: '460px',
+                    padding: '1rem',
+                    height: '120px',
                     fontSize: '0.9rem',
                     color: 'hsl(var(--foreground))',
                     fontFamily: 'monospace',
