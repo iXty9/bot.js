@@ -21,6 +21,25 @@ class ConsoleUI {
     this.composer = text;
     this.render();
   }
+  
+  // Add a method to display channel list
+  displayChannelList(channels) {
+    if (!channels || channels.length === 0) {
+      this.addLog('No channels available.');
+      return;
+    }
+    
+    let output = 'Available channels:\n';
+    channels.forEach(ch => {
+      output += `- ${ch.name} (${ch.guildName}) - ${ch.type}\n`;
+      if (ch.type === 'forum' && ch.threads) {
+        ch.threads.forEach(thread => {
+          output += `  └─ ${thread.name}\n`;
+        });
+      }
+    });
+    this.addLog(output.trim());
+  }
 
   addLog(message) {
     this.output += message + '\n';

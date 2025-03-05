@@ -19,12 +19,13 @@ class CommandHandler {
         this.consoleUI.updateStatusBar(this.getStatusBarContent());
         this.consoleUI.addLog(chalk.green('Channels initialized successfully.'));
         
-        // Pass channels to the UI component that uses the Select component
-        // Assuming there's a method in consoleUI to update the channel list in the UI
-        this.consoleUI.updateChannelList(channels.map(channel => ({
-          value: channel.id,
-          label: `${channel.name} (${channel.guildName})`
-        })));
+        // Log available channels instead of trying to update UI directly
+        if (channels && channels.length > 0) {
+          this.consoleUI.addLog(chalk.yellow('Available channels:'));
+          channels.forEach(ch => {
+            this.consoleUI.addLog(chalk.cyan(`- ${ch.name} (${ch.guildName}) - ${ch.type}`));
+          });
+        }
       } catch (error) {
         this.consoleUI.addLog(chalk.red('Error fetching channels: ' + error.message));
       }
