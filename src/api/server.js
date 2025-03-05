@@ -611,44 +611,83 @@ app.get('/api/channels', authenticateToken, async (req, res) => {
       
       // Fallback: Get channels directly from Discord client
       channels = [];
-      for (const guild of botManager.client.guilds.cache.values()) {
-        try {
-          const guildChannels = await guild.channels.fetch();
-          for (const channel of guildChannels.values()) {
-            // Check for text or forum channels (0 = text, 15 = forum)
-            // Also check for string types for compatibility with different Discord.js versions
-            if (channel.type === 0 || channel.type === 15 || 
-                channel.type === 'GUILD_TEXT' || channel.type === 'GUILD_FORUM' ||
-                channel.type === 'text' || channel.type === 'forum') {
-              const channelInfo = {
-                id: channel.id,
-                name: channel.name,
-                guildName: guild.name,
-                guildId: guild.id,
-                type: (channel.type === 15 || channel.type === 'GUILD_FORUM' || channel.type === 'forum') ? 'forum' : 'text'
-              };
-              
-              if (channel.type === 15 || channel.type === 'GUILD_FORUM' || channel.type === 'forum') {
-                try {
-                  const threads = await channel.threads.fetch();
-                  channelInfo.threads = Array.from(threads.threads.values()).map(thread => ({
-                    id: thread.id,
-                    name: thread.name
-                  }));
-                } catch (threadError) {
-                  console.error(`Error fetching threads for channel ${channel.name}:`, threadError);
-                  channelInfo.threads = [];
-                }
-              }
-              
-              channels.push(channelInfo);
-            }
-          }
-        } catch (guildError) {
-          console.error(`Error fetching channels for guild ${guild.name}:`, guildError);
+      try {
+        console.log('Using fallback method to fetch channels directly from Discord client');
+        
+        // Check if client is ready
+        if (!botManager.client || !botManager.client.isReady()) {
+          throw new Error('Discord client is not ready');
         }
+        
+        // Log guilds for debugging
+        const guilds = Array.from(botManager.client.guilds.cache.values());
+        console.log(`Bot is in ${guilds.length} guilds:`, guilds.map(g => g.name));
+        
+        for (const guild of guilds) {
+          try {
+            console.log(`Fetching channels for guild: ${guild.name} (${guild.id})`);
+            
+            // Force fetch all channels for this guild
+            const guildChannels = await guild.channels.fetch();
+            console.log(`Found ${guildChannels.size} channels in guild ${guild.name}`);
+            
+            for (const channel of guildChannels.values()) {
+              // Log channel details for debugging
+              console.log(`Examining channel: ${channel.name} (${channel.id}), type: ${channel.type}`);
+              
+              // Check for text or forum channels with more comprehensive type checking
+              const isTextChannel = 
+                channel.type === 0 || 
+                channel.type === 'GUILD_TEXT' || 
+                channel.type === 'text' || 
+                channel.type === 'DM' ||
+                channel.type === 'GROUP_DM' ||
+                // Discord.js v14 uses numeric types
+                channel.type === 0 || // TextChannel
+                channel.type === 1 || // DMChannel
+                channel.type === 3;   // GroupDMChannel
+                
+              const isForumChannel = 
+                channel.type === 15 || 
+                channel.type === 'GUILD_FORUM' || 
+                channel.type === 'forum';
+              
+              if (isTextChannel || isForumChannel) {
+                console.log(`Adding channel to list: ${channel.name} (${channel.id})`);
+                
+                const channelInfo = {
+                  id: channel.id,
+                  name: channel.name,
+                  guildName: guild.name,
+                  guildId: guild.id,
+                  type: isForumChannel ? 'forum' : 'text'
+                };
+                
+                if (isForumChannel) {
+                  try {
+                    const threads = await channel.threads.fetch();
+                    channelInfo.threads = Array.from(threads.threads.values()).map(thread => ({
+                      id: thread.id,
+                      name: thread.name
+                    }));
+                    console.log(`Found ${channelInfo.threads.length} threads in forum channel ${channel.name}`);
+                  } catch (threadError) {
+                    console.error(`Error fetching threads for channel ${channel.name}:`, threadError);
+                    channelInfo.threads = [];
+                  }
+                }
+                
+                channels.push(channelInfo);
+              }
+            }
+          } catch (guildError) {
+            console.error(`Error fetching channels for guild ${guild.name}:`, guildError);
+          }
+        }
+        console.log(`Found ${channels.length} channels using fallback method`);
+      } catch (fallbackError) {
+        console.error('Error in fallback channel fetching:', fallbackError);
       }
-      console.log(`Found ${channels.length} channels using fallback method`);
     }
     
     // Add current channel indicator
@@ -1216,27 +1255,80 @@ app.get('/api/debug/channels', authenticateToken, async (req, res) => {
     
     // Get raw channels from Discord client
     const rawChannels = [];
-    for (const guild of botManager.client.guilds.cache.values()) {
-      const guildChannels = Array.from(guild.channels.cache.values());
-      rawChannels.push(...guildChannels.map(ch => ({
-        id: ch.id,
-        name: ch.name,
-        type: ch.type,
-        guildId: guild.id,
-        guildName: guild.name
-      })));
+    const guilds = Array.from(botManager.client.guilds.cache.values());
+    
+    console.log(`Bot is in ${guilds.length} guilds:`, guilds.map(g => ({name: g.name, id: g.id})));
+    
+    for (const guild of guilds) {
+      try {
+        console.log(`Fetching channels for guild: ${guild.name} (${guild.id})`);
+        
+        // Force fetch all channels for this guild
+        const guildChannels = await guild.channels.fetch();
+        console.log(`Found ${guildChannels.size} channels in guild ${guild.name}`);
+        
+        for (const channel of guildChannels.values()) {
+          // Add all channels to raw list for debugging
+          rawChannels.push({
+            id: channel.id,
+            name: channel.name,
+            type: channel.type,
+            typeString: typeof channel.type === 'number' ? `Numeric: ${channel.type}` : `String: ${channel.type}`,
+            guildId: guild.id,
+            guildName: guild.name,
+            isText: channel.isText?.() || false,
+            isTextBased: channel.isTextBased?.() || false,
+            isVoice: channel.isVoice?.() || false,
+            isThread: channel.isThread?.() || false,
+            isCategory: channel.isCategory?.() || false
+          });
+        }
+      } catch (guildError) {
+        console.error(`Error fetching channels for guild ${guild.name}:`, guildError);
+      }
     }
     
     // Get channels from botManager method
-    const botManagerChannels = await botManager.listChannels();
+    let botManagerChannels = [];
+    try {
+      botManagerChannels = await botManager.listChannels();
+    } catch (error) {
+      console.error('Error getting channels from botManager:', error);
+    }
+    
+    // Create a filtered list of text channels for the UI
+    const textChannels = rawChannels.filter(ch => {
+      // Check for text or forum channels with more comprehensive type checking
+      const isTextChannel = 
+        ch.type === 0 || 
+        ch.type === 'GUILD_TEXT' || 
+        ch.type === 'text' || 
+        ch.isText || 
+        ch.isTextBased;
+        
+      const isForumChannel = 
+        ch.type === 15 || 
+        ch.type === 'GUILD_FORUM' || 
+        ch.type === 'forum';
+        
+      return isTextChannel || isForumChannel;
+    }).map(ch => ({
+      id: ch.id,
+      name: ch.name,
+      guildName: ch.guildName,
+      guildId: ch.guildId,
+      type: (ch.type === 15 || ch.type === 'GUILD_FORUM' || ch.type === 'forum') ? 'forum' : 'text'
+    }));
     
     res.json({
       success: true,
       debug: true,
       rawChannels,
+      textChannels,
       botManagerChannels,
       currentChannelId: botManager.currentChannelId || null,
-      clientReady: botManager.client.isReady()
+      clientReady: botManager.client.isReady(),
+      guilds: guilds.map(g => ({name: g.name, id: g.id}))
     });
   } catch (error) {
     console.error('Error in channel debug endpoint:', error);

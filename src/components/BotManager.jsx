@@ -309,19 +309,55 @@ const BotManager = () => {
   useEffect(() => {
     if (!isLoadingChannels && (!channels || channels.length === 0)) {
       console.log('No channels found, attempting to refetch...');
+      
+      // Direct API call to fetch channels
+      const fetchChannelsDirectly = async () => {
+        try {
+          const token = localStorage.getItem('discord_token');
+          const response = await fetch('/api/channels', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          console.log('Direct API response:', data);
+          
+          if (data.success && Array.isArray(data.channels)) {
+            // Force update the channels in state
+            queryClient.setQueryData(['channels'], data.channels);
+            setOutput(`Found ${data.channels.length} channels via API`);
+          } else {
+            setLocalError('API returned success but no channels array');
+          }
+        } catch (err) {
+          console.error('Direct API check error:', err);
+          setLocalError(`API check failed: ${err.message}`);
+        }
+      };
+      
+      // Try both methods
       refetchChannels()
         .then(result => {
           console.log('Refetch channels result:', result);
-          if (result.error) {
-            setLocalError(`Failed to load channels: ${result.error.message}`);
+          if (result.error || !result.data || result.data.length === 0) {
+            console.log('Refetch failed or returned empty, trying direct API call');
+            fetchChannelsDirectly();
           }
         })
         .catch(err => {
           console.error('Error refetching channels:', err);
           setLocalError(`Failed to load channels: ${err.message}`);
+          // Try direct API call as fallback
+          fetchChannelsDirectly();
         });
     }
-  }, [isLoadingChannels, channels, refetchChannels]);
+  }, [isLoadingChannels, channels, refetchChannels, queryClient]);
 
   const validateStatus = (status) => {
     const validStatuses = ['online', 'idle', 'dnd', 'invisible'];
@@ -736,6 +772,74 @@ const BotManager = () => {
                   <Button 
                     onClick={async () => {
                       try {
+                        setOutput('Debugging channel loading...');
+                        setLocalError('');
+                        
+                        // First check if client is ready
+                        const response = await fetch('/api/debug/bot', {
+                          headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('discord_token')}`,
+                            'Content-Type': 'application/json'
+                          }
+                        });
+                        
+                        if (!response.ok) {
+                          throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        console.log('Bot debug info:', data);
+                        
+                        if (!data.clientReady) {
+                          setLocalError('Discord client is not ready. Try restarting the bot.');
+                          return;
+                        }
+                        
+                        // Then check detailed channel info
+                        const channelsResponse = await fetch('/api/debug/channels', {
+                          headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('discord_token')}`,
+                            'Content-Type': 'application/json'
+                          }
+                        });
+                        
+                        if (!channelsResponse.ok) {
+                          throw new Error(`HTTP error! status: ${channelsResponse.status}`);
+                        }
+                        
+                        const channelsData = await channelsResponse.json();
+                        console.log('Channels debug info:', channelsData);
+                        
+                        if (channelsData.rawChannels && channelsData.rawChannels.length > 0) {
+                          setOutput(`Found ${channelsData.rawChannels.length} raw channels. Check console for details.`);
+                          
+                          // Force update the channels in state with the raw channels
+                          const textChannels = channelsData.rawChannels.filter(ch => 
+                            ch.type === 0 || ch.type === 'GUILD_TEXT' || ch.type === 'text' || 
+                            ch.type === 15 || ch.type === 'GUILD_FORUM' || ch.type === 'forum'
+                          );
+                          
+                          if (textChannels.length > 0) {
+                            queryClient.setQueryData(['channels'], textChannels);
+                            setOutput(`Updated channel list with ${textChannels.length} text channels`);
+                          } else {
+                            setLocalError('No text channels found in raw channel list');
+                          }
+                        } else {
+                          setLocalError('No raw channels found. Bot may not have access to any servers.');
+                        }
+                      } catch (error) {
+                        console.error('Channel debug error:', error);
+                        setLocalError(`Debug failed: ${error.message}`);
+                      }
+                    }}
+                    variant="outline"
+                  >
+                    Debug Channels
+                  </Button>
+                  <Button 
+                    onClick={async () => {
+                      try {
                         setOutput('Checking active channel...');
                         const token = localStorage.getItem('discord_token');
                         const response = await fetch('/api/debug/active-channel', {
@@ -860,7 +964,7 @@ const BotManager = () => {
                         });
                       }
                     }}
-                    disabled={isLoadingChannels || !channels || channels.length === 0}
+                    disabled={isLoadingChannels}
                     style={{
                       width: '100%',
                       padding: '0.5rem 2.5rem 0.5rem 1rem',
@@ -870,7 +974,7 @@ const BotManager = () => {
                       color: 'hsl(var(--foreground))',
                       fontSize: '0.875rem',
                       fontWeight: 500,
-                      cursor: 'pointer',
+                      cursor: isLoadingChannels ? 'not-allowed' : 'pointer',
                       transition: 'all 0.2s ease',
                       appearance: 'none',
                       backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
@@ -880,10 +984,12 @@ const BotManager = () => {
                     }}
                   >
                     <option value="">Select a channel...</option>
-                    {Array.isArray(channels) && channels.length > 0 ? (
+                    {isLoadingChannels ? (
+                      <option value="" disabled>Loading channels...</option>
+                    ) : Array.isArray(channels) && channels.length > 0 ? (
                       channels.map(channel => (
                         <option key={channel.id} value={channel.id}>
-                          {channel.name} ({channel.guildName})
+                          {channel.name} ({channel.guildName || 'Unknown Server'})
                         </option>
                       ))
                     ) : (
