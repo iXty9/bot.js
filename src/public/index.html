@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <meta name="description" content="Discord Bot Manager - A web interface for managing Discord bots">
     <meta name="theme-color" content="hsl(var(--background))">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://discord.com https://*.discord.com ws: wss: http: https:; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; frame-src 'self' https://discord.com https://*.discord.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://discord.com https://*.discord.com ws://localhost:* wss://localhost:* http://localhost:* https://localhost:* ws: wss: http: https:; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; frame-src 'self' https://discord.com https://*.discord.com;">
     <title>Discord Bot Manager</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -108,6 +108,9 @@
             transition: all 0.15s ease;
             appearance: auto;
             cursor: pointer;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
         
         select:focus, .dropdown:focus {
@@ -119,6 +122,7 @@
         .dropdown-container {
             position: relative;
             width: 100%;
+            margin-bottom: 1rem;
         }
         
         .dropdown-menu {
@@ -134,6 +138,23 @@
             max-height: 15rem;
             overflow-y: auto;
             margin-top: 0.25rem;
+            display: block !important;
+        }
+        
+        .dropdown-item {
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+        }
+        
+        .dropdown-item:hover {
+            background-color: hsl(var(--secondary));
+        }
+        
+        /* Fix for select elements */
+        select option {
+            background-color: hsl(var(--popover));
+            color: hsl(var(--popover-foreground));
+            padding: 0.5rem;
         }
         textarea:focus {
             outline: none;
@@ -207,5 +228,57 @@
         </div>
     </noscript>
     <script src="/bundle.js"></script>
+    <script>
+        // Helper function to ensure dropdowns work properly
+        document.addEventListener('DOMContentLoaded', function() {
+            // Monitor DOM changes to ensure dropdowns are properly styled
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+                        // Check for select elements and ensure they're visible
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.tagName === 'SELECT') {
+                                ensureSelectVisible(node);
+                            } else if (node.querySelectorAll) {
+                                const selects = node.querySelectorAll('select');
+                                selects.forEach(ensureSelectVisible);
+                            }
+                        });
+                    }
+                });
+            });
+            
+            // Start observing the document with the configured parameters
+            observer.observe(document.body, { childList: true, subtree: true });
+            
+            // Function to ensure select elements are visible
+            function ensureSelectVisible(select) {
+                if (select) {
+                    select.style.display = 'block';
+                    select.style.visibility = 'visible';
+                    select.style.opacity = '1';
+                    
+                    // Ensure parent containers are also visible
+                    let parent = select.parentElement;
+                    while (parent && parent !== document.body) {
+                        if (getComputedStyle(parent).display === 'none') {
+                            parent.style.display = 'block';
+                        }
+                        if (getComputedStyle(parent).visibility === 'hidden') {
+                            parent.style.visibility = 'visible';
+                        }
+                        if (getComputedStyle(parent).opacity === '0') {
+                            parent.style.opacity = '1';
+                        }
+                        parent = parent.parentElement;
+                    }
+                }
+            }
+            
+            // Apply to any existing selects
+            const existingSelects = document.querySelectorAll('select');
+            existingSelects.forEach(ensureSelectVisible);
+        });
+    </script>
 </body>
 </html>
