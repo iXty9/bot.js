@@ -415,14 +415,8 @@ class BotManager extends EventEmitter {
     }
     
     // Select the appropriate webhook URL based on message type
-    let webhookUrl;
-    if (isDM) {
-      // For DMs, explicitly use the DM webhook URL from the environment
-      webhookUrl = process.env.DM_WEBHOOK_URL;
-      console.log(`Using DM webhook URL from env: ${webhookUrl}`);
-    } else {
-      webhookUrl = this.webhookUrl;
-    }
+    let webhookUrl = isDM ? this.dmWebhookUrl : this.webhookUrl;
+    console.log(`Using ${isDM ? 'DM' : 'regular'} webhook URL: ${webhookUrl}`);
     
     if (isDM) {
       this.log(`Using DM webhook URL: ${webhookUrl.substring(0, 30)}...`);
