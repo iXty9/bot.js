@@ -27,6 +27,7 @@ class BotManager extends EventEmitter {
     this.webhookUrl = webhookUrl;
     
     // Initialize logs array first before using log method
+    this.logs = [];
     
     // Ensure DM webhook URL is properly set
     if (dmWebhookUrl && dmWebhookUrl.trim() !== '') {
