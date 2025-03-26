@@ -13,8 +13,8 @@ class ConsoleUI {
   }
 
   updateStatusBar(status) {
+    // Store the status but don't render immediately
     this.statusBar = status;
-    this.render();
   }
 
   updateComposer(text) {
@@ -42,7 +42,16 @@ class ConsoleUI {
   }
 
   addLog(message) {
+    // Add the message to output and trigger a render
     this.output += message + '\n';
+    
+    // Limit the output buffer to prevent excessive scrolling
+    const maxLines = 100;
+    const lines = this.output.split('\n');
+    if (lines.length > maxLines) {
+      this.output = lines.slice(lines.length - maxLines).join('\n');
+    }
+    
     this.render();
   }
 
@@ -79,15 +88,19 @@ class ConsoleUI {
 
   render() {
     try {
+      // Clear the screen only once
       this.clearScreen();
       
-      // Only show status bar if it exists
+      // Create a complete UI layout in memory before printing anything
+      let uiContent = '';
+      
+      // Add status bar at the top if it exists
       if (this.statusBar) {
-        console.log(chalk.bgBlue.white.bold(` ${this.statusBar} `));
+        uiContent += chalk.bgBlue.white.bold(` ${this.statusBar} `) + '\n\n';
       }
       
+      // Format the output content
       let formattedOutput = this.output || '';
-
       if (this.output.includes('Available commands:')) {
         const [preHelp, helpContent] = this.output.split('Available commands:');
         const helpLines = helpContent.trim().split('\n');
@@ -99,6 +112,7 @@ class ConsoleUI {
         formattedOutput = preChannels + 'Available channels and threads:\n' + formattedChannels;
       }
 
+      // Create output box
       const BOXEN_OPTIONS = {
         padding: 1,
         margin: 1,
@@ -110,8 +124,9 @@ class ConsoleUI {
         height: this.terminalHeight - 10
       };
       const outputBox = boxen(formattedOutput, BOXEN_OPTIONS);
-      console.log(outputBox);
+      uiContent += outputBox + '\n';
       
+      // Create composer box
       const composerBox = boxen(this.composer || 'Type your message here...', {
         padding: 1,
         margin: 1,
@@ -120,10 +135,14 @@ class ConsoleUI {
         title: chalk.yellow('Composer'),
         titleAlignment: 'center'
       });
-      console.log(composerBox);
+      uiContent += composerBox + '\n';
       
+      // Add prompt message
       const PROMPT_MESSAGE = 'Enter a command or message:';
-      console.log(chalk.cyan(PROMPT_MESSAGE));
+      uiContent += chalk.cyan(PROMPT_MESSAGE);
+      
+      // Print the entire UI at once
+      console.log(uiContent);
       this.rl.prompt();
     } catch (error) {
       console.error('Error during rendering:', error);

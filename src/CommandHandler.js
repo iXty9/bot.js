@@ -13,21 +13,20 @@ class CommandHandler {
 
   async initialize() {
     try {
-      try {
-        const channels = await this.botManager.listChannels();
-        this.currentChannel = channels.find(ch => ch.name === 'general') || channels[0];
-        this.consoleUI.updateStatusBar(this.getStatusBarContent());
-        this.consoleUI.addLog(chalk.green('Channels initialized successfully.'));
-        
-        // Log available channels instead of trying to update UI directly
-        if (channels && channels.length > 0) {
-          this.consoleUI.addLog(chalk.yellow('Available channels:'));
-          channels.forEach(ch => {
-            this.consoleUI.addLog(chalk.cyan(`- ${ch.name} (${ch.guildName}) - ${ch.type}`));
-          });
-        }
-      } catch (error) {
-        this.consoleUI.addLog(chalk.red('Error fetching channels: ' + error.message));
+      const channels = await this.botManager.listChannels();
+      this.currentChannel = channels.find(ch => ch.name === 'general') || channels[0];
+      
+      // Set status bar once
+      this.consoleUI.updateStatusBar(this.getStatusBarContent());
+      this.consoleUI.addLog(chalk.green('Channels initialized successfully.'));
+      
+      // Format channel list as a single log entry
+      if (channels && channels.length > 0) {
+        let channelList = chalk.yellow('Available channels:') + '\n';
+        channels.forEach(ch => {
+          channelList += chalk.cyan(`- ${ch.name} (${ch.guildName}) - ${ch.type === 'forum' ? 'forum' : 'text'}`) + '\n';
+        });
+        this.consoleUI.addLog(channelList.trim());
       }
     } catch (error) {
       this.consoleUI.addLog(chalk.red('Error initializing channels: ' + error.message));
@@ -36,11 +35,9 @@ class CommandHandler {
   }
 
   updateStatusBar() {
-    const status = this.client.user.presence.status;
-    const channelName = this.currentChannel ? `${this.currentChannel.name} (${this.currentChannel.guildName})` : 'No channel selected';
-    const threadName = this.currentThread ? ` > ${this.currentThread.name}` : '';
-    const statusBarContent = `${this.client.user.tag} | ${status} | Channel: ${channelName}${threadName}`;
-    this.consoleUI.updateStatusBar(statusBarContent);
+    // Only update the status bar, don't trigger a full render
+    const statusBarContent = this.getStatusBarContent();
+    this.consoleUI.statusBar = statusBarContent;
   }
 
   getStatusBarContent() {

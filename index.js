@@ -79,21 +79,27 @@ client.once('ready', async () => {
   consoleUI.addLog(`Logged in as ${client.user.tag}!`);
   consoleUI.addLog('Type "/help" for a list of commands.');
   
-  // Log guild and channel information for debugging
-  console.log(`Bot is in ${client.guilds.cache.size} guilds`);
+  // Log guild and channel information to debug log instead of console
+  const debugInfo = {
+    guilds: client.guilds.cache.size,
+    channels: []
+  };
+  
   for (const guild of client.guilds.cache.values()) {
-    console.log(`Guild: ${guild.name} (${guild.id})`);
-    console.log(`Channels in ${guild.name}: ${guild.channels.cache.size}`);
-    
-    // Log text channels
     const textChannels = guild.channels.cache.filter(ch => 
       ch.isTextBased && ch.isTextBased()
     );
-    console.log(`Text channels in ${guild.name}: ${textChannels.size}`);
-    textChannels.forEach(ch => {
-      console.log(`- ${ch.name} (${ch.id}) - Type: ${ch.type}`);
+    
+    debugInfo.channels.push({
+      guild: guild.name,
+      id: guild.id,
+      channelCount: guild.channels.cache.size,
+      textChannelCount: textChannels.size
     });
   }
+  
+  // Log to debug file instead of console
+  console.debug('Bot debug info:', JSON.stringify(debugInfo, null, 2));
   
   await commandHandler.initialize(); // Initialize the current channel
   await registerSlashCommands(); // Register slash commands
