@@ -88,6 +88,24 @@ client.once('ready', async () => {
     process.exit(1);
   }
 
+  // Check webhook status
+  try {
+    const webhookStatus = await botManager.checkWebhooks();
+    if (!webhookStatus.regular) {
+      consoleUI.addLog(chalk.red.bold('WARNING: Regular webhook is OFFLINE! Messages will not be processed correctly.'));
+    }
+    if (!webhookStatus.dm) {
+      consoleUI.addLog(chalk.red.bold('WARNING: DM webhook is OFFLINE! Direct messages will not be processed correctly.'));
+    }
+    if (!webhookStatus.regular || !webhookStatus.dm) {
+      consoleUI.addLog(chalk.yellow('Please check your webhook configurations and ensure they are accessible.'));
+    } else {
+      consoleUI.addLog(chalk.green('All webhooks are online and responding.'));
+    }
+  } catch (error) {
+    consoleUI.addLog(chalk.red(`Error checking webhooks: ${error.message}`));
+  }
+
   consoleUI.addLog(`Logged in as ${client.user.tag}!`);
   consoleUI.addLog('Type "/help" for a list of commands.');
   

@@ -678,6 +678,44 @@ class BotManager extends EventEmitter {
   }
   
   /**
+   * Checks if a webhook URL is online and responding
+   * @param {string} url - The webhook URL to check
+   * @param {string} name - Name of the webhook for logging
+   * @returns {Promise<boolean>} True if webhook is online, false otherwise
+   */
+  async checkWebhookStatus(url, name) {
+    if (!url) {
+      this.log(`${name} webhook URL is not set`);
+      return false;
+    }
+    
+    try {
+      // Send a HEAD request to check if the webhook is online
+      // We use HEAD to minimize data transfer
+      await axios.head(url, { timeout: 5000 });
+      this.log(`${name} webhook is online`);
+      return true;
+    } catch (error) {
+      this.log(`${name} webhook is offline: ${error.message}`);
+      return false;
+    }
+  }
+  
+  /**
+   * Checks both webhooks and returns their status
+   * @returns {Promise<{regular: boolean, dm: boolean}>} Status of both webhooks
+   */
+  async checkWebhooks() {
+    const regularStatus = await this.checkWebhookStatus(this.webhookUrl, 'Regular');
+    const dmStatus = await this.checkWebhookStatus(this.dmWebhookUrl, 'DM');
+    
+    return {
+      regular: regularStatus,
+      dm: dmStatus
+    };
+  }
+  
+  /**
    * Sets the active channel for the bot
    * @param {string} channelId - The ID of the channel to set as active
    * @returns {Promise<string>} Success message
