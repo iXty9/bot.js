@@ -690,25 +690,30 @@ class BotManager extends EventEmitter {
     }
     
     try {
-      // Many webhook endpoints don't support HEAD requests
-      // Use a GET request with a small payload instead
-      const response = await axios.get(url, { 
-        timeout: 5000,
-        validateStatus: status => status < 500 // Accept any non-server error status
-      });
+      // Try to send a minimal POST request to verify the webhook is actually working
+      const response = await axios.post(url, 
+        { type: 'ping', message: 'Webhook status check' },
+        { 
+          timeout: 3000,
+          validateStatus: status => status >= 200 && status < 300 // Only accept 2xx status codes as success
+        }
+      );
       
-      // Most webhook endpoints return 2xx or 4xx status codes when they're online
-      // Even a 404 or 405 means the server is responding
-      this.log(`${name} webhook is online (status: ${response.status})`);
+      this.log(`${name} webhook is online and accepting requests (status: ${response.status})`);
       return true;
     } catch (error) {
-      // Check if it's a 4xx error, which means the webhook exists but rejected our request
-      if (error.response && error.response.status >= 400 && error.response.status < 500) {
-        this.log(`${name} webhook is online but returned ${error.response.status}`);
-        return true;
+      // Log detailed error information
+      if (error.response) {
+        this.log(`${name} webhook returned error status: ${error.response.status}`);
+        if (error.response.data) {
+          this.log(`${name} webhook error details: ${JSON.stringify(error.response.data)}`);
+        }
+      } else if (error.request) {
+        this.log(`${name} webhook is offline (no response received): ${error.message}`);
+      } else {
+        this.log(`${name} webhook check error: ${error.message}`);
       }
       
-      this.log(`${name} webhook appears to be offline: ${error.message}`);
       return false;
     }
   }
@@ -718,17 +723,23 @@ class BotManager extends EventEmitter {
    * @returns {Promise<{regular: boolean, dm: boolean}>} Status of both webhooks
    */
   async checkWebhooks() {
+    // First try the main check method
     let regularStatus = await this.checkWebhookStatus(this.webhookUrl, 'Regular');
     let dmStatus = await this.checkWebhookStatus(this.dmWebhookUrl, 'DM');
     
-    // If either webhook check failed, try a fallback method with a minimal POST request
+    // If either webhook check failed, try the fallback method
     if (!regularStatus) {
+      this.log('Primary check for Regular webhook failed, trying fallback...');
       regularStatus = await this.fallbackWebhookCheck(this.webhookUrl, 'Regular');
     }
     
     if (!dmStatus) {
+      this.log('Primary check for DM webhook failed, trying fallback...');
       dmStatus = await this.fallbackWebhookCheck(this.dmWebhookUrl, 'DM');
     }
+    
+    // Log the final status
+    this.log(`Final webhook status - Regular: ${regularStatus ? 'ONLINE' : 'OFFLINE'}, DM: ${dmStatus ? 'ONLINE' : 'OFFLINE'}`);
     
     return {
       regular: regularStatus,
@@ -737,7 +748,7 @@ class BotManager extends EventEmitter {
   }
   
   /**
-   * Fallback method to check webhook status using a minimal POST request
+   * Fallback method to check webhook status using a connection test
    * @param {string} url - The webhook URL to check
    * @param {string} name - Name of the webhook for logging
    * @returns {Promise<boolean>} True if webhook is online, false otherwise
@@ -748,20 +759,42 @@ class BotManager extends EventEmitter {
     }
     
     try {
-      this.log(`Trying fallback check for ${name} webhook...`);
+      this.log(`Trying TCP connection check for ${name} webhook...`);
       
-      // Send a minimal POST request that most webhook endpoints should accept
-      const response = await axios.post(url, 
-        { type: 'ping', message: 'Webhook status check' },
-        { 
-          timeout: 5000,
-          validateStatus: status => true // Accept any status code
+      // Parse the URL to get hostname and port
+      const urlObj = new URL(url);
+      const hostname = urlObj.hostname;
+      const port = urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80);
+      
+      // Use a simple HEAD request with short timeout to check if server is reachable
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      
+      try {
+        await axios.head(`${urlObj.protocol}//${hostname}:${port}`, {
+          signal: controller.signal,
+          timeout: 2000
+        });
+        clearTimeout(timeoutId);
+        
+        this.log(`${name} webhook server is reachable, but webhook may not be accepting requests`);
+        return false; // Server is up but webhook didn't accept our POST request
+      } catch (headError) {
+        clearTimeout(timeoutId);
+        if (headError.code === 'ECONNREFUSED' || headError.code === 'ETIMEDOUT') {
+          this.log(`${name} webhook server is not reachable: ${headError.message}`);
+          return false;
         }
-      );
-      
-      // If we get any response, the webhook is online
-      this.log(`${name} webhook responded to fallback check with status: ${response.status}`);
-      return true;
+        
+        // If we get any response (even an error), the server is at least online
+        if (headError.response) {
+          this.log(`${name} webhook server is reachable, but webhook may not be accepting requests`);
+          return false;
+        }
+        
+        this.log(`${name} webhook connection check failed: ${headError.message}`);
+        return false;
+      }
     } catch (error) {
       this.log(`${name} webhook fallback check failed: ${error.message}`);
       return false;
