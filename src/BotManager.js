@@ -505,8 +505,8 @@ class BotManager extends EventEmitter {
       } catch (error) {
         this.log(`Failed to send message to webhook: ${error.message}`);
         if (process.env.DEBUG === 'true' && error.response) {
-          console.debug('Error response:', error.response.status, error.response.statusText);
-          console.debug('Error data:', JSON.stringify(error.response.data, null, 2));
+          this.log(`Error response: ${error.response.status} ${error.response.statusText}`);
+          this.log(`Error data: ${JSON.stringify(error.response.data)}`);
         }
         // Stop typing indicator on error
         try {
