@@ -17,7 +17,8 @@ const client = new Client({
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.DirectMessageReactions,
     GatewayIntentBits.DirectMessageTyping
-  ]
+  ],
+  partials: ['CHANNEL', 'MESSAGE', 'USER', 'GUILD_MEMBER', 'REACTION'] // Enable partials for DM handling
 });
 
 // Create a readline interface for command-line I/O.
@@ -118,6 +119,26 @@ client.once('ready', async () => {
 // Event listener for new messages.
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return; // Ignore messages from bots
+  
+  // Log message type for debugging
+  if (process.env.DEBUG === 'true') {
+    const isDM = !message.guild;
+    console.debug(`Received message: ${isDM ? 'DM' : 'Guild'} from ${message.author.username}`);
+  }
+  
+  // For DMs, ensure the channel is fully fetched
+  if (!message.guild) {
+    try {
+      // Ensure DM channel is fully loaded
+      const dmChannel = await client.channels.fetch(message.channel.id);
+      if (dmChannel) {
+        console.log(`Successfully fetched DM channel: ${dmChannel.id}`);
+      }
+    } catch (error) {
+      console.error('Error fetching DM channel:', error);
+    }
+  }
+  
   await botManager.handleIncomingMessage(message);
   consoleUI.updateStatusBar(commandHandler.getStatusBarContent());
 });

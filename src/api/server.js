@@ -1189,6 +1189,31 @@ app.get('/api/debug/token-status', authenticateToken, (req, res) => {
   }
 });
 
+// Add a debug endpoint to check webhook URLs
+app.get('/api/debug/webhooks', authenticateToken, (req, res) => {
+  try {
+    // Check webhook URLs (safely - don't expose full URLs)
+    const webhookStatus = {
+      mainWebhookSet: !!process.env.WEBHOOK_URL,
+      dmWebhookSet: !!process.env.DM_WEBHOOK_URL,
+      mainWebhookPrefix: process.env.WEBHOOK_URL ? process.env.WEBHOOK_URL.substring(0, 20) + '...' : null,
+      dmWebhookPrefix: process.env.DM_WEBHOOK_URL ? process.env.DM_WEBHOOK_URL.substring(0, 20) + '...' : null,
+      botManagerInitialized: !!botManager,
+      botManagerWebhooks: botManager ? {
+        mainWebhookSet: !!botManager.webhookUrl,
+        dmWebhookSet: !!botManager.dmWebhookUrl,
+        usingDifferentWebhooks: botManager.webhookUrl !== botManager.dmWebhookUrl
+      } : null,
+      timestamp: Date.now()
+    };
+    
+    res.json(webhookStatus);
+  } catch (error) {
+    console.error('Webhook status debug error:', error);
+    res.status(500).json({ error: 'Failed to check webhook status' });
+  }
+});
+
 // Add a debug endpoint to check authentication
 app.get('/api/debug/auth', (req, res) => {
   try {
@@ -1240,6 +1265,63 @@ app.get('/api/debug/auth', (req, res) => {
   } catch (error) {
     console.error('Auth debug error:', error);
     res.status(500).json({ error: 'Failed to debug auth' });
+  }
+});
+
+// Add a test endpoint to manually trigger webhook calls
+app.post('/api/debug/test-webhook', authenticateToken, async (req, res) => {
+  try {
+    const { type = 'regular', message = 'Test message' } = req.body;
+    
+    if (!botManager) {
+      return res.status(500).json({ 
+        error: 'Bot manager not initialized',
+        success: false
+      });
+    }
+    
+    // Select the appropriate webhook URL
+    const webhookUrl = type === 'dm' ? botManager.dmWebhookUrl : botManager.webhookUrl;
+    
+    if (!webhookUrl) {
+      return res.status(400).json({
+        error: `No ${type} webhook URL configured`,
+        success: false
+      });
+    }
+    
+    // Create test webhook data
+    const webhookData = {
+      content: message,
+      author: 'Test User',
+      channel: type === 'dm' ? 'DM' : 'test-channel',
+      guild: type === 'dm' ? 'Direct Message' : 'Test Guild',
+      timestamp: Date.now(),
+      messageId: 'test-' + Date.now(),
+      authorId: 'test-user-id',
+      channelId: 'test-channel-id',
+      guildId: type === 'dm' ? null : 'test-guild-id',
+      isDM: type === 'dm'
+    };
+    
+    // Log the test
+    console.log(`Testing ${type} webhook with URL: ${webhookUrl.substring(0, 30)}...`);
+    
+    // Send the test webhook
+    const response = await axios.post(webhookUrl, webhookData);
+    
+    res.json({
+      success: true,
+      webhookType: type,
+      responseStatus: response.status,
+      responseData: response.data
+    });
+  } catch (error) {
+    console.error(`Error testing ${req.body.type || 'regular'} webhook:`, error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to test webhook',
+      success: false
+    });
   }
 });
 

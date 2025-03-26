@@ -377,8 +377,27 @@ class BotManager extends EventEmitter {
     // Determine if this is a DM or a guild message
     const isDM = !message.guild;
     
+    // Log detailed message info for debugging
+    if (isDM) {
+      this.log(`DM detected from ${message.author.username} (${message.author.id})`);
+      this.log(`DM channel ID: ${message.channel.id}, type: ${message.channel.type}`);
+      if (process.env.DEBUG === 'true') {
+        console.debug('DM message details:', {
+          author: message.author.username,
+          authorId: message.author.id,
+          channelId: message.channel.id,
+          channelType: message.channel.type,
+          content: message.content.substring(0, 50) + (message.content.length > 50 ? '...' : '')
+        });
+      }
+    }
+    
     // Select the appropriate webhook URL based on message type
     const webhookUrl = isDM ? this.dmWebhookUrl : this.webhookUrl;
+    
+    if (isDM && this.dmWebhookUrl) {
+      this.log(`Using DM webhook URL: ${this.dmWebhookUrl.substring(0, 30)}...`);
+    }
     
     if (webhookUrl) {
       try {
