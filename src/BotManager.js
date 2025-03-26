@@ -377,10 +377,13 @@ class BotManager extends EventEmitter {
   // Processes incoming messages, manages stats, and attempts to send the message to a specified webhook if available.
 
   async handleIncomingMessage(message) {
+    console.log('handleIncomingMessage function triggered');
     this.stats.messagesReceived++;
     this.stats.lastActivity = Date.now();
   
-    // UI FEEDBACK: Typing Indicator
+    console.log(`Message received: ${message.content}`);
+    console.log(`Message author: ${message.author.username} (${message.author.id})`);
+    console.log(`Message channel type: ${message.channel.type}`);
     // Sends a typing indicator to signal to users that the bot is processing a message.
     try {
       await message.channel.sendTyping();
