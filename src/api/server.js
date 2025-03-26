@@ -18,6 +18,7 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 const requiredEnvVars = ['DISCORD_TOKEN', 'API_PORT', 'API_HOST'];
 requiredEnvVars.forEach((varName) => {
   if (!process.env[varName] || process.env[varName].trim() === '') {
+    fs.appendFileSync('console.log', `${new Date().toISOString()} - Error: ${varName} is required in .env file\n`);
     console.error(`Error: ${varName} is required in .env file`);
     process.exit(1);
   }
@@ -25,11 +26,12 @@ requiredEnvVars.forEach((varName) => {
 
 // Set default JWT_SECRET if not provided
 if (!process.env.JWT_SECRET) {
-  console.log('No JWT_SECRET found in environment, using a default secret');
+  fs.appendFileSync('console.log', `${new Date().toISOString()} - No JWT_SECRET found in environment, using a default secret\n`);
   process.env.JWT_SECRET = 'default-jwt-secret-for-development-only';
 }
 
 if (process.env.DISCORD_TOKEN === 'your-discord-bot-token-here') {
+  fs.appendFileSync('console.log', `${new Date().toISOString()} - Error: Please configure a valid DISCORD_TOKEN in .env file\n`);
   console.error('Error: Please configure a valid DISCORD_TOKEN in .env file');
   // Instead of exiting, set a flag to indicate the token needs to be updated
   process.env.DISCORD_TOKEN = '';
@@ -163,23 +165,24 @@ function initializeBotManager(client) {
         return;
       }
       
-      // Log webhook URLs before initializing
-      console.log('Initializing BotManager with webhook URLs:');
-      console.log(`Regular webhook URL: ${process.env.WEBHOOK_URL}`);
-      console.log(`DM webhook URL: ${process.env.DM_WEBHOOK_URL}`);
-      console.log(`Are webhook URLs different? ${process.env.WEBHOOK_URL !== process.env.DM_WEBHOOK_URL}`);
+      // Log webhook URLs before initializing to file only
+      fs.appendFileSync('console.log', `${new Date().toISOString()} - Initializing BotManager with webhook URLs:\n`);
+      fs.appendFileSync('console.log', `${new Date().toISOString()} - Regular webhook URL: ${process.env.WEBHOOK_URL}\n`);
+      fs.appendFileSync('console.log', `${new Date().toISOString()} - DM webhook URL: ${process.env.DM_WEBHOOK_URL}\n`);
+      fs.appendFileSync('console.log', `${new Date().toISOString()} - Are webhook URLs different? ${process.env.WEBHOOK_URL !== process.env.DM_WEBHOOK_URL}\n`);
       
       // Initialize BotManager with both webhook URLs
       botManager = new BotManager(client, process.env.WEBHOOK_URL, process.env.DM_WEBHOOK_URL);
       
-      // Verify initialization
-      console.log('BotManager initialized with:');
-      console.log(`Regular webhook URL: ${botManager.webhookUrl}`);
-      console.log(`DM webhook URL: ${botManager.dmWebhookUrl}`);
+      // Verify initialization to file only
+      fs.appendFileSync('console.log', `${new Date().toISOString()} - BotManager initialized with:\n`);
+      fs.appendFileSync('console.log', `${new Date().toISOString()} - Regular webhook URL: ${botManager.webhookUrl}\n`);
+      fs.appendFileSync('console.log', `${new Date().toISOString()} - DM webhook URL: ${botManager.dmWebhookUrl}\n`);
       
       resolve(botManager);
       
     } catch (error) {
+      fs.appendFileSync('console.log', `${new Date().toISOString()} - Error initializing BotManager: ${error}\n`);
       console.error('Error initializing BotManager:', error);
       reject(error);
     }
@@ -1586,7 +1589,7 @@ app.use((req, res, next) => {
 
 const server = http.createServer(app);
 server.listen(PORT, HOST, () => {
-  console.log(`Server is running on http://${HOST}:${PORT}`);
+  fs.appendFileSync('console.log', `${new Date().toISOString()} - Server is running on http://${HOST}:${PORT}\n`);
 });
 
 const io = new Server(server, {

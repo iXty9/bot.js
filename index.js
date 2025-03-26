@@ -7,6 +7,7 @@ import chalk from 'chalk';
 import BotManager from './src/BotManager.js';
 import ConsoleUI from './src/ConsoleUI.js';
 import CommandHandler from './src/CommandHandler.js';
+import fs from 'fs';
 
 // Create a new Discord.js client instance with required intents.
 const client = new Client({
@@ -22,11 +23,11 @@ const client = new Client({
   allowedMentions: { parse: ['users', 'roles'], repliedUser: true }
 });
 
-// Log environment variables for debugging (without exposing token)
-console.log('Environment variables:');
-console.log('WEBHOOK_URL set:', !!process.env.WEBHOOK_URL);
-console.log('DM_WEBHOOK_URL set:', !!process.env.DM_WEBHOOK_URL);
-console.log('Are webhook URLs different?', process.env.WEBHOOK_URL !== process.env.DM_WEBHOOK_URL);
+// Log environment variables to file instead of console
+fs.appendFileSync('console.log', `${new Date().toISOString()} - Environment variables:\n`);
+fs.appendFileSync('console.log', `${new Date().toISOString()} - WEBHOOK_URL set: ${!!process.env.WEBHOOK_URL}\n`);
+fs.appendFileSync('console.log', `${new Date().toISOString()} - DM_WEBHOOK_URL set: ${!!process.env.DM_WEBHOOK_URL}\n`);
+fs.appendFileSync('console.log', `${new Date().toISOString()} - Are webhook URLs different? ${process.env.WEBHOOK_URL !== process.env.DM_WEBHOOK_URL}\n`);
 
 // Create a readline interface for command-line I/O.
 const rl = readline.createInterface({
@@ -60,17 +61,18 @@ const commands = [
 // Function to register slash commands
 async function registerSlashCommands() {
   try {
-    console.log('Started refreshing application (/) commands.');
+    fs.appendFileSync('console.log', `${new Date().toISOString()} - Started refreshing application (/) commands.\n`);
 
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
 
-    console.log('Successfully reloaded application (/) commands.');
+    fs.appendFileSync('console.log', `${new Date().toISOString()} - Successfully reloaded application (/) commands.\n`);
     commands.forEach(command => {
-      console.log(`Registered command: ${command.name} - ${command.description}`);
+      fs.appendFileSync('console.log', `${new Date().toISOString()} - Registered command: ${command.name} - ${command.description}\n`);
     });
   } catch (error) {
+    fs.appendFileSync('console.log', `${new Date().toISOString()} - Error registering slash commands: ${error}\n`);
     console.error('Error registering slash commands:', error);
   }
 }
