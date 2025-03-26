@@ -1189,6 +1189,58 @@ app.get('/api/debug/token-status', authenticateToken, (req, res) => {
   }
 });
 
+// Add a direct test endpoint for DM webhook
+app.post('/api/debug/test-dm-webhook', authenticateToken, async (req, res) => {
+  try {
+    const { message = 'Test DM message' } = req.body;
+    
+    // Get DM webhook URL directly from environment
+    const dmWebhookUrl = process.env.DM_WEBHOOK_URL;
+    
+    if (!dmWebhookUrl) {
+      return res.status(400).json({
+        error: 'No DM webhook URL configured in environment',
+        success: false
+      });
+    }
+    
+    console.log(`Direct DM webhook test: Using URL: ${dmWebhookUrl}`);
+    
+    // Create test webhook data
+    const webhookData = {
+      content: message,
+      author: 'Test User',
+      channel: 'DM',
+      guild: 'Direct Message',
+      timestamp: Date.now(),
+      messageId: 'test-dm-' + Date.now(),
+      authorId: 'test-user-id',
+      channelId: 'test-channel-id',
+      guildId: null,
+      isDM: true,
+      messageType: 'directMessage',
+      directMessage: true
+    };
+    
+    // Send the test webhook
+    const response = await axios.post(dmWebhookUrl, webhookData);
+    
+    res.json({
+      success: true,
+      webhookType: 'dm',
+      responseStatus: response.status,
+      responseData: response.data,
+      webhookUrl: dmWebhookUrl
+    });
+  } catch (error) {
+    console.error(`Error testing DM webhook:`, error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to test DM webhook',
+      success: false
+    });
+  }
+});
+
 // Add a debug endpoint to check webhook URLs
 app.get('/api/debug/webhooks', authenticateToken, (req, res) => {
   try {
@@ -1280,8 +1332,11 @@ app.post('/api/debug/test-webhook', authenticateToken, async (req, res) => {
       });
     }
     
-    // Select the appropriate webhook URL
-    const webhookUrl = type === 'dm' ? botManager.dmWebhookUrl : botManager.webhookUrl;
+    // Select the appropriate webhook URL directly from environment
+    // This bypasses any potential issues with the botManager properties
+    const webhookUrl = type === 'dm' 
+      ? process.env.DM_WEBHOOK_URL 
+      : process.env.WEBHOOK_URL;
     
     if (!webhookUrl) {
       return res.status(400).json({
@@ -1289,6 +1344,9 @@ app.post('/api/debug/test-webhook', authenticateToken, async (req, res) => {
         success: false
       });
     }
+    
+    // Log the webhook URL being used
+    console.log(`Test webhook: Using ${type} webhook URL: ${webhookUrl}`);
     
     // Create test webhook data
     const webhookData = {

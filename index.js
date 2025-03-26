@@ -18,8 +18,15 @@ const client = new Client({
     GatewayIntentBits.DirectMessageReactions,
     GatewayIntentBits.DirectMessageTyping
   ],
-  partials: ['CHANNEL', 'MESSAGE', 'USER', 'GUILD_MEMBER', 'REACTION'] // Enable partials for DM handling
+  partials: ['CHANNEL', 'MESSAGE', 'USER', 'GUILD_MEMBER', 'REACTION'], // Enable partials for DM handling
+  allowedMentions: { parse: ['users', 'roles'], repliedUser: true }
 });
+
+// Log environment variables for debugging (without exposing token)
+console.log('Environment variables:');
+console.log('WEBHOOK_URL set:', !!process.env.WEBHOOK_URL);
+console.log('DM_WEBHOOK_URL set:', !!process.env.DM_WEBHOOK_URL);
+console.log('Are webhook URLs different?', process.env.WEBHOOK_URL !== process.env.DM_WEBHOOK_URL);
 
 // Create a readline interface for command-line I/O.
 const rl = readline.createInterface({

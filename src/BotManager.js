@@ -377,26 +377,31 @@ class BotManager extends EventEmitter {
     // Determine if this is a DM or a guild message
     const isDM = !message.guild;
     
-    // Log detailed message info for debugging
+    // Force DEBUG to true for DM messages to help troubleshoot
     if (isDM) {
-      this.log(`DM detected from ${message.author.username} (${message.author.id})`);
-      this.log(`DM channel ID: ${message.channel.id}, type: ${message.channel.type}`);
-      if (process.env.DEBUG === 'true') {
-        console.debug('DM message details:', {
-          author: message.author.username,
-          authorId: message.author.id,
-          channelId: message.channel.id,
-          channelType: message.channel.type,
-          content: message.content.substring(0, 50) + (message.content.length > 50 ? '...' : '')
-        });
-      }
+      console.log(`DM detected from ${message.author.username} (${message.author.id})`);
+      console.log(`DM channel ID: ${message.channel.id}, type: ${message.channel.type}`);
+      console.log('DM message details:', {
+        author: message.author.username,
+        authorId: message.author.id,
+        channelId: message.channel.id,
+        channelType: message.channel.type,
+        content: message.content.substring(0, 50) + (message.content.length > 50 ? '...' : '')
+      });
+      
+      // Log the DM webhook URL
+      console.log(`DM webhook URL: ${this.dmWebhookUrl}`);
+      console.log(`Regular webhook URL: ${this.webhookUrl}`);
+      console.log(`Are URLs different? ${this.dmWebhookUrl !== this.webhookUrl}`);
     }
     
     // Select the appropriate webhook URL based on message type
-    const webhookUrl = isDM ? this.dmWebhookUrl : this.webhookUrl;
+    // For DMs, explicitly use the DM webhook URL from the environment
+    const webhookUrl = isDM ? process.env.DM_WEBHOOK_URL : this.webhookUrl;
     
-    if (isDM && this.dmWebhookUrl) {
-      this.log(`Using DM webhook URL: ${this.dmWebhookUrl.substring(0, 30)}...`);
+    if (isDM) {
+      this.log(`Using DM webhook URL: ${webhookUrl.substring(0, 30)}...`);
+      console.log(`Using DM webhook URL: ${webhookUrl}`);
     }
     
     if (webhookUrl) {
@@ -414,7 +419,10 @@ class BotManager extends EventEmitter {
           guildId: message.guild ? message.guild.id : null,
           threadId: message.channel.isThread() ? message.channel.id : null,
           threadName: message.channel.isThread() ? message.channel.name : null,
-          isDM: isDM
+          isDM: isDM,
+          // Add more explicit DM flags to ensure n8n recognizes it
+          messageType: isDM ? 'directMessage' : 'channelMessage',
+          directMessage: isDM
         };
   
         // Log the message receipt with appropriate context
@@ -429,14 +437,38 @@ class BotManager extends EventEmitter {
         }
   
         try {
+          // For DMs, add extra logging
+          if (isDM) {
+            console.log(`Sending DM to webhook: ${webhookUrl}`);
+            console.log(`DM webhook data:`, JSON.stringify(webhookData, null, 2));
+          }
+          
           const response = await axios.post(webhookUrl, webhookData);
           this.log(`Webhook response: ${response.status} ${response.statusText}`);
-          this.log(`Webhook data: ${JSON.stringify(response.data)}`);
+          
+          if (isDM) {
+            console.log(`DM webhook response: ${response.status} ${response.statusText}`);
+            console.log(`DM webhook response data:`, JSON.stringify(response.data, null, 2));
+          } else {
+            this.log(`Webhook data: ${JSON.stringify(response.data)}`);
+          }
         } catch (error) {
           this.log(`Webhook error: ${error.message}`);
+          
+          // For DMs, add extra error logging
+          if (isDM) {
+            console.error(`DM webhook error:`, error);
+            console.error(`DM webhook URL used: ${webhookUrl}`);
+          }
+          
           if (error.response) {
             this.log(`Error status: ${error.response.status}`);
             this.log(`Error data: ${JSON.stringify(error.response.data)}`);
+            
+            if (isDM) {
+              console.error(`DM webhook error status: ${error.response.status}`);
+              console.error(`DM webhook error data:`, JSON.stringify(error.response.data, null, 2));
+            }
           }
         }
       } catch (error) {
