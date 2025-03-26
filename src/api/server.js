@@ -163,7 +163,7 @@ function initializeBotManager(client) {
         return;
       }
       
-      botManager = new BotManager(client, process.env.WEBHOOK_URL);
+      botManager = new BotManager(client, process.env.WEBHOOK_URL, process.env.DM_WEBHOOK_URL);
       resolve(botManager);
       
     } catch (error) {

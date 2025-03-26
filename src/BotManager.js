@@ -21,10 +21,11 @@ class BotManager extends EventEmitter {
   // FUNCTION: constructor
   // Initial setup for the BotManager instance with parameters 'client' and 'webhookUrl'. Initializes logs, setups statistics and an event listener for scheduled log cleanup.
 
-  constructor(client, webhookUrl) {
+  constructor(client, webhookUrl, dmWebhookUrl = null) {
     super();
     this.client = client;
     this.webhookUrl = webhookUrl;
+    this.dmWebhookUrl = dmWebhookUrl || webhookUrl; // Use separate webhook for DMs if provided
     this.logs = []; // Use array for ordered logs
     this.maxLogs = 50;
     this.currentChannelId = null;
@@ -373,11 +374,14 @@ class BotManager extends EventEmitter {
       this.log(`Error starting typing indicator: ${error.message}`);
     }
   
-    if (this.webhookUrl) {
+    // Determine if this is a DM or a guild message
+    const isDM = !message.guild;
+    
+    // Select the appropriate webhook URL based on message type
+    const webhookUrl = isDM ? this.dmWebhookUrl : this.webhookUrl;
+    
+    if (webhookUrl) {
       try {
-        // Determine if this is a DM or a guild message
-        const isDM = !message.guild;
-        
         // Create webhook data with special handling for DMs
         const webhookData = {
           content: message.content,
@@ -396,17 +400,17 @@ class BotManager extends EventEmitter {
   
         // Log the message receipt with appropriate context
         if (isDM) {
-          this.log(`Received DM from ${message.author.username}`);
+          this.log(`Received DM from ${message.author.username}, sending to DM webhook`);
         } else {
-          this.log(`Received message from ${message.author.username} in ${message.channel.name}`);
+          this.log(`Received message from ${message.author.username} in ${message.channel.name}, sending to regular webhook`);
         }
         
         if (process.env.DEBUG === 'true') {
-          console.debug('Sending webhook data:', JSON.stringify(webhookData, null, 2));
+          console.debug(`Sending webhook data to ${isDM ? 'DM webhook' : 'regular webhook'}:`, JSON.stringify(webhookData, null, 2));
         }
   
         try {
-          const response = await axios.post(this.webhookUrl, webhookData);
+          const response = await axios.post(webhookUrl, webhookData);
           this.log(`Webhook response: ${response.status} ${response.statusText}`);
           this.log(`Webhook data: ${JSON.stringify(response.data)}`);
         } catch (error) {

@@ -70,7 +70,7 @@ async function registerSlashCommands() {
 // Event listener for when the client is ready.
 client.once('ready', async () => {
   // Initialize bot components after client is ready
-  botManager = new BotManager(client, process.env.WEBHOOK_URL);
+  botManager = new BotManager(client, process.env.WEBHOOK_URL, process.env.DM_WEBHOOK_URL);
   commandHandler = new CommandHandler(client, botManager, consoleUI);
   
   try {
