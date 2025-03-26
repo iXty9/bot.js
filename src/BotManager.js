@@ -375,21 +375,32 @@ class BotManager extends EventEmitter {
   
     if (this.webhookUrl) {
       try {
+        // Determine if this is a DM or a guild message
+        const isDM = !message.guild;
+        
+        // Create webhook data with special handling for DMs
         const webhookData = {
           content: message.content,
           author: message.author.username,
-          channel: message.channel.name,
-          guild: message.guild ? message.guild.name : null,
+          channel: isDM ? 'DM' : message.channel.name,
+          guild: message.guild ? message.guild.name : 'Direct Message',
           timestamp: message.createdTimestamp,
           messageId: message.id,
           authorId: message.author.id,
           channelId: message.channel.id,
           guildId: message.guild ? message.guild.id : null,
           threadId: message.channel.isThread() ? message.channel.id : null,
-          threadName: message.channel.isThread() ? message.channel.name : null
+          threadName: message.channel.isThread() ? message.channel.name : null,
+          isDM: isDM
         };
   
-        this.log(`Received message from ${message.author.username} in ${message.channel.name}`);
+        // Log the message receipt with appropriate context
+        if (isDM) {
+          this.log(`Received DM from ${message.author.username}`);
+        } else {
+          this.log(`Received message from ${message.author.username} in ${message.channel.name}`);
+        }
+        
         if (process.env.DEBUG === 'true') {
           console.debug('Sending webhook data:', JSON.stringify(webhookData, null, 2));
         }
@@ -419,7 +430,11 @@ class BotManager extends EventEmitter {
         }
       }
     } else {
-      this.log(`Message received: ${message.content} (from ${message.author.username} in ${message.guild ? message.guild.name : 'DM'}#${message.channel.name}${message.channel.isThread() ? `(thread: ${message.channel.name})` : ''})`);
+      // Determine if this is a DM
+      const isDM = !message.guild;
+      const channelInfo = isDM ? 'DM' : `${message.guild.name}#${message.channel.name}${message.channel.isThread() ? `(thread: ${message.channel.name})` : ''}`;
+      
+      this.log(`Message received: ${message.content} (from ${message.author.username} in ${channelInfo})`);
     }
   }
   
