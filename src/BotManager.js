@@ -26,6 +26,8 @@ class BotManager extends EventEmitter {
     this.client = client;
     this.webhookUrl = webhookUrl;
     
+    // Initialize logs array first before using log method
+    
     // Ensure DM webhook URL is properly set
     if (dmWebhookUrl && dmWebhookUrl.trim() !== '') {
       this.dmWebhookUrl = dmWebhookUrl;
@@ -39,8 +41,6 @@ class BotManager extends EventEmitter {
     this.log(`Regular webhook URL: ${this.webhookUrl}`);
     this.log(`DM webhook URL: ${this.dmWebhookUrl}`);
     this.log(`Are webhook URLs different? ${this.webhookUrl !== this.dmWebhookUrl}`);
-    
-    this.logs = []; // Use array for ordered logs
     this.maxLogs = 50;
     this.currentChannelId = null;
     this.currentThreadId = null;
