@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { Client, GatewayIntentBits, REST, Routes } from 'discord.js';
 import { initializeBotManager, app, server, io } from './src/api/server.js';
 import readline from 'readline';
+import chalk from 'chalk';
 import BotManager from './src/BotManager.js';
 import ConsoleUI from './src/ConsoleUI.js';
 import CommandHandler from './src/CommandHandler.js';
