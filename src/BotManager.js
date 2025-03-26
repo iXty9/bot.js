@@ -25,7 +25,21 @@ class BotManager extends EventEmitter {
     super();
     this.client = client;
     this.webhookUrl = webhookUrl;
-    this.dmWebhookUrl = dmWebhookUrl || webhookUrl; // Use separate webhook for DMs if provided
+    
+    // Ensure DM webhook URL is properly set
+    if (dmWebhookUrl && dmWebhookUrl.trim() !== '') {
+      this.dmWebhookUrl = dmWebhookUrl;
+      console.log(`DM webhook URL initialized: ${this.dmWebhookUrl}`);
+    } else {
+      this.dmWebhookUrl = webhookUrl;
+      console.log(`No separate DM webhook URL provided, using regular webhook URL: ${this.webhookUrl}`);
+    }
+    
+    // Log the webhook URLs for debugging
+    console.log(`Regular webhook URL: ${this.webhookUrl}`);
+    console.log(`DM webhook URL: ${this.dmWebhookUrl}`);
+    console.log(`Are webhook URLs different? ${this.webhookUrl !== this.dmWebhookUrl}`);
+    
     this.logs = []; // Use array for ordered logs
     this.maxLogs = 50;
     this.currentChannelId = null;
@@ -393,11 +407,22 @@ class BotManager extends EventEmitter {
       console.log(`DM webhook URL: ${this.dmWebhookUrl}`);
       console.log(`Regular webhook URL: ${this.webhookUrl}`);
       console.log(`Are URLs different? ${this.dmWebhookUrl !== this.webhookUrl}`);
+      
+      // Check if DM webhook URL is set in environment
+      if (!process.env.DM_WEBHOOK_URL) {
+        console.error("ERROR: DM_WEBHOOK_URL is not set in environment variables!");
+      }
     }
     
     // Select the appropriate webhook URL based on message type
-    // For DMs, explicitly use the DM webhook URL from the environment
-    const webhookUrl = isDM ? process.env.DM_WEBHOOK_URL : this.webhookUrl;
+    let webhookUrl;
+    if (isDM) {
+      // For DMs, explicitly use the DM webhook URL from the environment
+      webhookUrl = process.env.DM_WEBHOOK_URL;
+      console.log(`Using DM webhook URL from env: ${webhookUrl}`);
+    } else {
+      webhookUrl = this.webhookUrl;
+    }
     
     if (isDM) {
       this.log(`Using DM webhook URL: ${webhookUrl.substring(0, 30)}...`);
@@ -419,10 +444,14 @@ class BotManager extends EventEmitter {
           guildId: message.guild ? message.guild.id : null,
           threadId: message.channel.isThread() ? message.channel.id : null,
           threadName: message.channel.isThread() ? message.channel.name : null,
+          
+          // Add explicit DM flags to ensure n8n recognizes it properly
           isDM: isDM,
-          // Add more explicit DM flags to ensure n8n recognizes it
           messageType: isDM ? 'directMessage' : 'channelMessage',
-          directMessage: isDM
+          directMessage: isDM,
+          dm: isDM,
+          type: isDM ? 'dm' : 'channel',
+          source: isDM ? 'direct_message' : 'channel_message'
         };
   
         // Log the message receipt with appropriate context
@@ -620,6 +649,29 @@ class BotManager extends EventEmitter {
       this.log(errorMsg);
       throw new Error(errorMsg);
     }
+  }
+  
+  // Debug function to check webhook URLs
+  getWebhookInfo() {
+    return {
+      regularWebhook: {
+        url: this.webhookUrl,
+        isSet: !!this.webhookUrl,
+        length: this.webhookUrl ? this.webhookUrl.length : 0
+      },
+      dmWebhook: {
+        url: this.dmWebhookUrl,
+        isSet: !!this.dmWebhookUrl,
+        length: this.dmWebhookUrl ? this.dmWebhookUrl.length : 0,
+        fromEnv: this.dmWebhookUrl === process.env.DM_WEBHOOK_URL
+      },
+      environment: {
+        regularWebhookSet: !!process.env.WEBHOOK_URL,
+        dmWebhookSet: !!process.env.DM_WEBHOOK_URL,
+        areEnvUrlsDifferent: process.env.WEBHOOK_URL !== process.env.DM_WEBHOOK_URL
+      },
+      areInstanceUrlsDifferent: this.webhookUrl !== this.dmWebhookUrl
+    };
   }
   
   /**

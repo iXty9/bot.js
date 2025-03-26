@@ -163,10 +163,24 @@ function initializeBotManager(client) {
         return;
       }
       
+      // Log webhook URLs before initializing
+      console.log('Initializing BotManager with webhook URLs:');
+      console.log(`Regular webhook URL: ${process.env.WEBHOOK_URL}`);
+      console.log(`DM webhook URL: ${process.env.DM_WEBHOOK_URL}`);
+      console.log(`Are webhook URLs different? ${process.env.WEBHOOK_URL !== process.env.DM_WEBHOOK_URL}`);
+      
+      // Initialize BotManager with both webhook URLs
       botManager = new BotManager(client, process.env.WEBHOOK_URL, process.env.DM_WEBHOOK_URL);
+      
+      // Verify initialization
+      console.log('BotManager initialized with:');
+      console.log(`Regular webhook URL: ${botManager.webhookUrl}`);
+      console.log(`DM webhook URL: ${botManager.dmWebhookUrl}`);
+      
       resolve(botManager);
       
     } catch (error) {
+      console.error('Error initializing BotManager:', error);
       reject(error);
     }
   });
@@ -1258,6 +1272,11 @@ app.get('/api/debug/webhooks', authenticateToken, (req, res) => {
       } : null,
       timestamp: Date.now()
     };
+    
+    // Add detailed webhook info if botManager is available
+    if (botManager) {
+      webhookStatus.detailedInfo = botManager.getWebhookInfo();
+    }
     
     res.json(webhookStatus);
   } catch (error) {
