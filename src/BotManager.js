@@ -391,6 +391,11 @@ class BotManager extends EventEmitter {
     // Determine if this is a DM or a guild message
     const isDM = !message.guild;
     
+    // Add logging to confirm message receipt
+    console.log(`Message received from ${message.author.username} (${message.author.id})`);
+    console.log(`Message content: ${message.content}`);
+    console.log(`Message channel type: ${message.channel.type}`);
+    
     // Force DEBUG to true for DM messages to help troubleshoot
     if (isDM) {
       console.log(`DM detected from ${message.author.username} (${message.author.id})`);
