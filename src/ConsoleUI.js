@@ -10,6 +10,13 @@ class ConsoleUI {
     this.composer = '';
     this.terminalWidth = process.stdout.columns || 80;
     this.terminalHeight = process.stdout.rows || 24;
+    
+    // Listen for terminal resize events
+    process.stdout.on('resize', () => {
+      this.terminalWidth = process.stdout.columns || 80;
+      this.terminalHeight = process.stdout.rows || 24;
+      this.render(); // Re-render UI when terminal size changes
+    });
   }
 
   updateStatusBar(status) {
@@ -56,7 +63,9 @@ class ConsoleUI {
   }
 
   clearScreen() {
-    console.clear();
+    // More thorough screen clearing to prevent multiple consoles
+    process.stdout.write('\x1b[2J'); // Clear entire screen
+    process.stdout.write('\x1b[0;0H'); // Move cursor to top-left corner
   }
 
   formatChannelsAndThreads(content) {
@@ -88,7 +97,7 @@ class ConsoleUI {
 
   render() {
     try {
-      // Clear the screen only once
+      // Clear the screen and reset cursor position to prevent multiple consoles
       this.clearScreen();
       
       // Create a complete UI layout in memory before printing anything
@@ -151,12 +160,19 @@ class ConsoleUI {
 
   promptUser(callback) {
     const PROMPT_SYMBOL = '> ';
+    
+    // Clear the line before showing the prompt
+    process.stdout.write('\r\x1b[K');
+    
     this.rl.question(chalk.green(PROMPT_SYMBOL), (input) => {
       if (input.trim() === '') {
-        console.log(chalk.red('Empty input is not allowed.'));
+        // Add to output instead of using console.log to prevent scrolling
+        this.addLog(chalk.red('Empty input is not allowed.'));
       } else {
         callback(input);
       }
+      // Re-render before showing the prompt again
+      this.render();
       this.promptUser(callback);
     });
   }
