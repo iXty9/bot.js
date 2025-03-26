@@ -29,16 +29,16 @@ class BotManager extends EventEmitter {
     // Ensure DM webhook URL is properly set
     if (dmWebhookUrl && dmWebhookUrl.trim() !== '') {
       this.dmWebhookUrl = dmWebhookUrl;
-      console.log(`DM webhook URL initialized: ${this.dmWebhookUrl}`);
+      this.log(`DM webhook URL initialized: ${this.dmWebhookUrl}`);
     } else {
       this.dmWebhookUrl = webhookUrl;
-      console.log(`No separate DM webhook URL provided, using regular webhook URL: ${this.webhookUrl}`);
+      this.log(`No separate DM webhook URL provided, using regular webhook URL: ${this.webhookUrl}`);
     }
     
     // Log the webhook URLs for debugging
-    console.log(`Regular webhook URL: ${this.webhookUrl}`);
-    console.log(`DM webhook URL: ${this.dmWebhookUrl}`);
-    console.log(`Are webhook URLs different? ${this.webhookUrl !== this.dmWebhookUrl}`);
+    this.log(`Regular webhook URL: ${this.webhookUrl}`);
+    this.log(`DM webhook URL: ${this.dmWebhookUrl}`);
+    this.log(`Are webhook URLs different? ${this.webhookUrl !== this.dmWebhookUrl}`);
     
     this.logs = []; // Use array for ordered logs
     this.maxLogs = 50;
@@ -377,13 +377,13 @@ class BotManager extends EventEmitter {
   // Processes incoming messages, manages stats, and attempts to send the message to a specified webhook if available.
 
   async handleIncomingMessage(message) {
-    console.log('handleIncomingMessage function triggered');
+    this.log('handleIncomingMessage function triggered');
     this.stats.messagesReceived++;
     this.stats.lastActivity = Date.now();
   
-    console.log(`Message received: ${message.content}`);
-    console.log(`Message author: ${message.author.username} (${message.author.id})`);
-    console.log(`Message channel type: ${message.channel.type}`);
+    this.log(`Message received: ${message.content}`);
+    this.log(`Message author: ${message.author.username} (${message.author.id})`);
+    this.log(`Message channel type: ${message.channel.type}`);
     // Sends a typing indicator to signal to users that the bot is processing a message.
     try {
       await message.channel.sendTyping();
@@ -395,15 +395,15 @@ class BotManager extends EventEmitter {
     const isDM = !message.guild;
     
     // Add logging to confirm message receipt
-    console.log(`Message received from ${message.author.username} (${message.author.id})`);
-    console.log(`Message content: ${message.content}`);
-    console.log(`Message channel type: ${message.channel.type}`);
+    this.log(`Message received from ${message.author.username} (${message.author.id})`);
+    this.log(`Message content: ${message.content}`);
+    this.log(`Message channel type: ${message.channel.type}`);
     
     // Force DEBUG to true for DM messages to help troubleshoot
     if (isDM) {
-      console.log(`DM detected from ${message.author.username} (${message.author.id})`);
-      console.log(`DM channel ID: ${message.channel.id}, type: ${message.channel.type}`);
-      console.log('DM message details:', {
+      this.log(`DM detected from ${message.author.username} (${message.author.id})`);
+      this.log(`DM channel ID: ${message.channel.id}, type: ${message.channel.type}`);
+      this.log('DM message details:', {
         author: message.author.username,
         authorId: message.author.id,
         channelId: message.channel.id,
@@ -412,9 +412,9 @@ class BotManager extends EventEmitter {
       });
       
       // Log the DM webhook URL
-      console.log(`DM webhook URL: ${this.dmWebhookUrl}`);
-      console.log(`Regular webhook URL: ${this.webhookUrl}`);
-      console.log(`Are URLs different? ${this.dmWebhookUrl !== this.webhookUrl}`);
+      this.log(`DM webhook URL: ${this.dmWebhookUrl}`);
+      this.log(`Regular webhook URL: ${this.webhookUrl}`);
+      this.log(`Are URLs different? ${this.dmWebhookUrl !== this.webhookUrl}`);
       
       // Check if DM webhook URL is set in environment
       if (!process.env.DM_WEBHOOK_URL) {
@@ -424,11 +424,11 @@ class BotManager extends EventEmitter {
     
     // Select the appropriate webhook URL based on message type
     let webhookUrl = isDM ? this.dmWebhookUrl : this.webhookUrl;
-    console.log(`Using ${isDM ? 'DM' : 'regular'} webhook URL: ${webhookUrl}`);
+    this.log(`Using ${isDM ? 'DM' : 'regular'} webhook URL: ${webhookUrl}`);
     
     if (isDM) {
       this.log(`Using DM webhook URL: ${webhookUrl.substring(0, 30)}...`);
-      console.log(`Using DM webhook URL: ${webhookUrl}`);
+      this.log(`Using DM webhook URL: ${webhookUrl}`);
     }
     
     if (webhookUrl) {
@@ -470,16 +470,16 @@ class BotManager extends EventEmitter {
         try {
           // For DMs, add extra logging
           if (isDM) {
-            console.log(`Sending DM to webhook: ${webhookUrl}`);
-            console.log(`DM webhook data:`, JSON.stringify(webhookData, null, 2));
+            this.log(`Sending DM to webhook: ${webhookUrl}`);
+            this.log(`DM webhook data: ${JSON.stringify(webhookData, null, 2)}`);
           }
           
           const response = await axios.post(webhookUrl, webhookData);
           this.log(`Webhook response: ${response.status} ${response.statusText}`);
           
           if (isDM) {
-            console.log(`DM webhook response: ${response.status} ${response.statusText}`);
-            console.log(`DM webhook response data:`, JSON.stringify(response.data, null, 2));
+            this.log(`DM webhook response: ${response.status} ${response.statusText}`);
+            this.log(`DM webhook response data: ${JSON.stringify(response.data, null, 2)}`);
           } else {
             this.log(`Webhook data: ${JSON.stringify(response.data)}`);
           }
@@ -488,8 +488,8 @@ class BotManager extends EventEmitter {
           
           // For DMs, add extra error logging
           if (isDM) {
-            console.error(`DM webhook error:`, error);
-            console.error(`DM webhook URL used: ${webhookUrl}`);
+            this.log(`DM webhook error: ${error.message}`);
+            this.log(`DM webhook URL used: ${webhookUrl}`);
           }
           
           if (error.response) {
@@ -497,8 +497,8 @@ class BotManager extends EventEmitter {
             this.log(`Error data: ${JSON.stringify(error.response.data)}`);
             
             if (isDM) {
-              console.error(`DM webhook error status: ${error.response.status}`);
-              console.error(`DM webhook error data:`, JSON.stringify(error.response.data, null, 2));
+              this.log(`DM webhook error status: ${error.response.status}`);
+              this.log(`DM webhook error data: ${JSON.stringify(error.response.data, null, 2)}`);
             }
           }
         }
