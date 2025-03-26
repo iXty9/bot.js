@@ -98,8 +98,10 @@ client.once('ready', async () => {
     });
   }
   
-  // Log to debug file instead of console
-  console.debug('Bot debug info:', JSON.stringify(debugInfo, null, 2));
+  // Log to debug file instead of console output
+  if (process.env.DEBUG === 'true') {
+    console.debug('Bot debug info:', JSON.stringify(debugInfo, null, 2));
+  }
   
   await commandHandler.initialize(); // Initialize the current channel
   await registerSlashCommands(); // Register slash commands
@@ -149,8 +151,10 @@ process.on('unhandledRejection', (error) => {
   console.error('Unhandled promise rejection:', error);
 });
 
-// Log the current working directory
-console.log('Current working directory:', process.cwd());
+// Log the current working directory only in debug mode
+if (process.env.DEBUG === 'true') {
+  console.log('Current working directory:', process.cwd());
+}
 
 // Add a debug endpoint
 app.get('/api/debug', async (req, res) => {
@@ -192,7 +196,10 @@ app.get('/api/debug', async (req, res) => {
 const PORT = process.env.API_PORT || 6987;
 const HOST = process.env.API_HOST || '0.0.0.0';
 
-console.log(`Configured API server to run on http://${HOST}:${PORT}`);
+// Only log server configuration in debug mode or store it for the UI
+if (process.env.DEBUG === 'true') {
+  console.log(`Configured API server to run on http://${HOST}:${PORT}`);
+}
 
 // Start the server using the imported server instance
 const startServer = () => {
@@ -204,8 +211,13 @@ const startServer = () => {
           reject(error);
           return;
         }
-        console.log(`API server successfully running on http://${HOST}:${PORT}`);
-        console.log(`WebSocket server is available at ws://${HOST}:${PORT}`);
+        // Add to UI output instead of console
+        if (consoleUI) {
+          consoleUI.addLog(chalk.green(`API server running on http://${HOST}:${PORT}`));
+        } else if (process.env.DEBUG === 'true') {
+          console.log(`API server successfully running on http://${HOST}:${PORT}`);
+          console.log(`WebSocket server is available at ws://${HOST}:${PORT}`);
+        }
         resolve(server);
       });
 

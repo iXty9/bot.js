@@ -48,7 +48,10 @@ class CommandHandler {
   }
 
   async handleInput(input) {
-    this.consoleUI.addLog(chalk.green(`Executing command: ${input}`));
+    // Don't log every command to the output
+    if (process.env.DEBUG === 'true') {
+      console.debug(`Executing command: ${input}`);
+    }
     if (this.awaitingChannelSelection) {
       this.handleChannelSelection(input);
       return;
@@ -69,8 +72,10 @@ class CommandHandler {
       return;
     }
 
-    // Log command execution attempt
-    console.log('Executing command:', { command, args });
+    // Log command execution attempt only in debug mode
+    if (process.env.DEBUG === 'true') {
+      console.debug('Executing command:', { command, args });
+    }
 
     switch(command) {
       case 'help':

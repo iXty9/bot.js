@@ -199,7 +199,9 @@ class BotManager extends EventEmitter {
 
   refreshLogs() {
     try {
-      console.log('Refreshing logs from file...');
+      if (process.env.DEBUG === 'true') {
+        console.debug('Refreshing logs from file...');
+      }
       
       // Clear in-memory logs
       this.logs = [];
@@ -231,16 +233,19 @@ class BotManager extends EventEmitter {
         }
       }
       
-      console.log(`Refreshed ${this.logs.length} logs`);
+      if (process.env.DEBUG === 'true') {
+        console.debug(`Refreshed ${this.logs.length} logs`);
+      }
       
       // Add a log entry about the refresh
       this.log('Logs refreshed from file');
       
       return this.logs;
     } catch (error) {
-      console.error('Error refreshing logs:', error);
-      // Add a log entry about the error
       this.log(`Error refreshing logs: ${error.message}`);
+      if (process.env.DEBUG === 'true') {
+        console.error('Error refreshing logs:', error);
+      }
       return [];
     }
   }
@@ -289,7 +294,7 @@ class BotManager extends EventEmitter {
         throw new Error('No channel specified and no current channel set');
       }
       
-      console.log(`Sending message to channel ${targetChannelId}${targetThreadId ? ` (thread: ${targetThreadId})` : ''}`);
+      this.log(`Sending message to channel ${targetChannelId}${targetThreadId ? ` (thread: ${targetThreadId})` : ''}`);
       
       if (!message || message.trim() === '') {
         throw new Error('Message content cannot be empty');
@@ -304,22 +309,30 @@ class BotManager extends EventEmitter {
         throw new Error(`Channel with ID "${targetChannelId}" not found`);
       }
       
-      console.log(`Found channel: ${channel.name} (type: ${channel.type})`);
+      if (process.env.DEBUG === 'true') {
+        console.debug(`Found channel: ${channel.name} (type: ${channel.type})`);
+      }
       
       // Determine target (channel or thread)
       let targetChannel = channel;
       if (targetThreadId) {
-        console.log(`Looking for thread: ${targetThreadId}`);
+        if (process.env.DEBUG === 'true') {
+          console.debug(`Looking for thread: ${targetThreadId}`);
+        }
         const thread = await channel.threads.fetch(targetThreadId);
         if (!thread) {
           throw new Error(`Thread with ID "${targetThreadId}" not found in channel "${channel.name}"`);
         }
         targetChannel = thread;
-        console.log(`Found thread: ${thread.name}`);
+        if (process.env.DEBUG === 'true') {
+          console.debug(`Found thread: ${thread.name}`);
+        }
       }
       
       // Send the message
-      console.log(`Sending message to ${targetChannel.name}`);
+      if (process.env.DEBUG === 'true') {
+        console.debug(`Sending message to ${targetChannel.name}`);
+      }
       const sentMessage = await targetChannel.send(message);
       
       // Log success
@@ -376,7 +389,10 @@ class BotManager extends EventEmitter {
           threadName: message.channel.isThread() ? message.channel.name : null
         };
   
-        console.log('Sending webhook data:', JSON.stringify(webhookData, null, 2));
+        this.log(`Received message from ${message.author.username} in ${message.channel.name}`);
+        if (process.env.DEBUG === 'true') {
+          console.debug('Sending webhook data:', JSON.stringify(webhookData, null, 2));
+        }
   
         try {
           const response = await axios.post(this.webhookUrl, webhookData);
@@ -390,10 +406,10 @@ class BotManager extends EventEmitter {
           }
         }
       } catch (error) {
-        console.error('Failed to send message to webhook:', error);
-        if (error.response) {
-          console.error('Error response:', error.response.status, error.response.statusText);
-          console.error('Error data:', JSON.stringify(error.response.data, null, 2));
+        this.log(`Failed to send message to webhook: ${error.message}`);
+        if (process.env.DEBUG === 'true' && error.response) {
+          console.debug('Error response:', error.response.status, error.response.statusText);
+          console.debug('Error data:', JSON.stringify(error.response.data, null, 2));
         }
         // Stop typing indicator on error
         try {
@@ -403,7 +419,7 @@ class BotManager extends EventEmitter {
         }
       }
     } else {
-      console.log(`Message received: ${message.content} (from ${message.author.username} in ${message.guild ? message.guild.name : 'DM'}#${message.channel.name}${message.channel.isThread() ? `(thread: ${message.channel.name})` : ''})`);
+      this.log(`Message received: ${message.content} (from ${message.author.username} in ${message.guild ? message.guild.name : 'DM'}#${message.channel.name}${message.channel.isThread() ? `(thread: ${message.channel.name})` : ''})`);
     }
   }
   
@@ -412,26 +428,35 @@ class BotManager extends EventEmitter {
 
   async listChannels() {
     try {
-      console.log('Listing channels from all guilds...');
+      // Use debug log instead of console.log
+      if (process.env.DEBUG === 'true') {
+        console.debug('Listing channels from all guilds...');
+      }
       const channels = [];
       
       // Check if client is ready
       if (!this.client || !this.client.isReady()) {
-        console.error('Discord client is not ready');
+        this.log('Discord client is not ready');
         return [];
       }
       
       // Get guilds
       const guilds = this.client.guilds.cache;
-      console.log(`Found ${guilds.size} guilds`);
+      if (process.env.DEBUG === 'true') {
+        console.debug(`Found ${guilds.size} guilds`);
+      }
       
       for (const guild of guilds.values()) {
-        console.log(`Processing guild: ${guild.name} (${guild.id})`);
+        if (process.env.DEBUG === 'true') {
+          console.debug(`Processing guild: ${guild.name} (${guild.id})`);
+        }
         
         try {
           // Fetch all channels in the guild
           const guildChannels = await guild.channels.fetch();
-          console.log(`Found ${guildChannels.size} channels in guild ${guild.name}`);
+          if (process.env.DEBUG === 'true') {
+            console.debug(`Found ${guildChannels.size} channels in guild ${guild.name}`);
+          }
           
           for (const channel of guildChannels.values()) {
             // Check channel type - support both enum and numeric values
@@ -444,7 +469,9 @@ class BotManager extends EventEmitter {
               channel.type === 15;
             
             if (isTextChannel || isForumChannel) {
-              console.log(`Processing channel: ${channel.name} (${channel.id}, type: ${channel.type})`);
+              if (process.env.DEBUG === 'true') {
+                console.debug(`Processing channel: ${channel.name} (${channel.id}, type: ${channel.type})`);
+              }
               
               const channelInfo = {
                 id: channel.id,
@@ -458,14 +485,16 @@ class BotManager extends EventEmitter {
               if (isForumChannel) {
                 try {
                   const threads = await channel.threads.fetch();
-                  console.log(`Found ${threads.threads.size} threads in forum ${channel.name}`);
+                  if (process.env.DEBUG === 'true') {
+                    console.debug(`Found ${threads.threads.size} threads in forum ${channel.name}`);
+                  }
                   
                   channelInfo.threads = Array.from(threads.threads.values()).map(thread => ({
                     id: thread.id,
                     name: thread.name
                   }));
                 } catch (threadError) {
-                  console.error(`Error fetching threads for channel ${channel.name}:`, threadError);
+                  this.log(`Error fetching threads for channel ${channel.name}: ${threadError.message}`);
                   channelInfo.threads = [];
                 }
               }
@@ -475,14 +504,16 @@ class BotManager extends EventEmitter {
             }
           }
         } catch (guildError) {
-          console.error(`Error processing guild ${guild.name}:`, guildError);
+          this.log(`Error processing guild ${guild.name}: ${guildError.message}`);
         }
       }
       
-      console.log(`Returning ${channels.length} channels total`);
+      if (process.env.DEBUG === 'true') {
+        console.debug(`Returning ${channels.length} channels total`);
+      }
       return channels;
     } catch (error) {
-      console.error('Error in listChannels:', error);
+      this.log(`Error in listChannels: ${error.message}`);
       return [];
     }
   }
@@ -532,7 +563,9 @@ class BotManager extends EventEmitter {
         throw new Error('Channel ID is required');
       }
       
-      console.log(`Attempting to set active channel: ${channelId}`);
+      if (process.env.DEBUG === 'true') {
+        console.debug(`Attempting to set active channel: ${channelId}`);
+      }
       
       // Store the channel ID immediately
       this.currentChannelId = channelId;
@@ -554,7 +587,7 @@ class BotManager extends EventEmitter {
           });
         }
       } catch (fetchError) {
-        console.warn(`Could not fetch channel details: ${fetchError.message}`);
+        this.log(`Could not fetch channel details: ${fetchError.message}`);
         // Continue anyway since we already set the ID
       }
       
@@ -564,7 +597,9 @@ class BotManager extends EventEmitter {
       return `Active channel set to: ${channelInfo}`;
     } catch (error) {
       this.log(`Error setting active channel: ${error.message}`);
-      console.error('Full error:', error);
+      if (process.env.DEBUG === 'true') {
+        console.error('Full error:', error);
+      }
       throw new Error(`Failed to set active channel: ${error.message}`);
     }
   }
