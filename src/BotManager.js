@@ -690,13 +690,25 @@ class BotManager extends EventEmitter {
     }
     
     try {
-      // Send a HEAD request to check if the webhook is online
-      // We use HEAD to minimize data transfer
-      await axios.head(url, { timeout: 5000 });
-      this.log(`${name} webhook is online`);
+      // Many webhook endpoints don't support HEAD requests
+      // Use a GET request with a small payload instead
+      const response = await axios.get(url, { 
+        timeout: 5000,
+        validateStatus: status => status < 500 // Accept any non-server error status
+      });
+      
+      // Most webhook endpoints return 2xx or 4xx status codes when they're online
+      // Even a 404 or 405 means the server is responding
+      this.log(`${name} webhook is online (status: ${response.status})`);
       return true;
     } catch (error) {
-      this.log(`${name} webhook is offline: ${error.message}`);
+      // Check if it's a 4xx error, which means the webhook exists but rejected our request
+      if (error.response && error.response.status >= 400 && error.response.status < 500) {
+        this.log(`${name} webhook is online but returned ${error.response.status}`);
+        return true;
+      }
+      
+      this.log(`${name} webhook appears to be offline: ${error.message}`);
       return false;
     }
   }
@@ -706,13 +718,54 @@ class BotManager extends EventEmitter {
    * @returns {Promise<{regular: boolean, dm: boolean}>} Status of both webhooks
    */
   async checkWebhooks() {
-    const regularStatus = await this.checkWebhookStatus(this.webhookUrl, 'Regular');
-    const dmStatus = await this.checkWebhookStatus(this.dmWebhookUrl, 'DM');
+    let regularStatus = await this.checkWebhookStatus(this.webhookUrl, 'Regular');
+    let dmStatus = await this.checkWebhookStatus(this.dmWebhookUrl, 'DM');
+    
+    // If either webhook check failed, try a fallback method with a minimal POST request
+    if (!regularStatus) {
+      regularStatus = await this.fallbackWebhookCheck(this.webhookUrl, 'Regular');
+    }
+    
+    if (!dmStatus) {
+      dmStatus = await this.fallbackWebhookCheck(this.dmWebhookUrl, 'DM');
+    }
     
     return {
       regular: regularStatus,
       dm: dmStatus
     };
+  }
+  
+  /**
+   * Fallback method to check webhook status using a minimal POST request
+   * @param {string} url - The webhook URL to check
+   * @param {string} name - Name of the webhook for logging
+   * @returns {Promise<boolean>} True if webhook is online, false otherwise
+   */
+  async fallbackWebhookCheck(url, name) {
+    if (!url) {
+      return false;
+    }
+    
+    try {
+      this.log(`Trying fallback check for ${name} webhook...`);
+      
+      // Send a minimal POST request that most webhook endpoints should accept
+      const response = await axios.post(url, 
+        { type: 'ping', message: 'Webhook status check' },
+        { 
+          timeout: 5000,
+          validateStatus: status => true // Accept any status code
+        }
+      );
+      
+      // If we get any response, the webhook is online
+      this.log(`${name} webhook responded to fallback check with status: ${response.status}`);
+      return true;
+    } catch (error) {
+      this.log(`${name} webhook fallback check failed: ${error.message}`);
+      return false;
+    }
   }
   
   /**
