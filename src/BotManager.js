@@ -131,7 +131,7 @@ class BotManager extends EventEmitter {
         .sort((a, b) => b.timestamp - a.timestamp)
         .slice(0, 50); // Only return last 50 logs
     } catch (error) {
-      console.error(`Error reading logs: ${error.message}`);
+      this.log(`Error reading logs: ${error.message}`);
       return [];
     }
   }
@@ -368,7 +368,7 @@ class BotManager extends EventEmitter {
       return sentMessage;
     } catch (error) {
       this.log(`Error sending message: ${error.message}`);
-      console.error('Full error:', error);
+      this.log(`Full error: ${error.message}`);
       throw new Error(`Failed to send message: ${error.message}`);
     }
   }
@@ -418,7 +418,7 @@ class BotManager extends EventEmitter {
       
       // Check if DM webhook URL is set in environment
       if (!process.env.DM_WEBHOOK_URL) {
-        console.error("ERROR: DM_WEBHOOK_URL is not set in environment variables!");
+        this.log("ERROR: DM_WEBHOOK_URL is not set in environment variables!");
       }
     }
     
@@ -722,7 +722,7 @@ class BotManager extends EventEmitter {
     } catch (error) {
       this.log(`Error setting active channel: ${error.message}`);
       if (process.env.DEBUG === 'true') {
-        console.error('Full error:', error);
+        this.log(`Full error: ${error.message}`);
       }
       throw new Error(`Failed to set active channel: ${error.message}`);
     }
