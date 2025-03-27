@@ -105,6 +105,9 @@ class CommandHandler {
       case 'web':
         await this.openWebUI();
         break;
+      case 'testdm':
+        await this.testDMWebhook();
+        break;
       case 'exit':
         this.consoleUI.addLog('Exiting...');
         process.exit(0);
@@ -126,6 +129,7 @@ class CommandHandler {
       chalk.cyan('  /list               ') + '- List all available channels and threads',
       chalk.cyan('  /server <action>    ') + '- Start or stop the web server (action: start, stop)',
       chalk.cyan('  /web                ') + '- Open the web UI in browser',
+      chalk.cyan('  /testdm             ') + '- Test the DM webhook connection',
       chalk.cyan('  /exit               ') + '- Exit the program',
       '',
       chalk.green('Compose your message by typing or pasting. Use /send to send the message.')
@@ -252,6 +256,30 @@ class CommandHandler {
   clearComposer() {
     this.composingMessage = '';
     this.consoleUI.updateComposer('');
+  }
+
+  async testDMWebhook() {
+    try {
+      this.consoleUI.addLog(chalk.yellow('Testing DM webhook connection...'));
+      const result = await this.botManager.testDMWebhook();
+      if (result) {
+        this.consoleUI.addLog(chalk.green('DM webhook test successful!'));
+      } else {
+        this.consoleUI.addLog(chalk.red('DM webhook test failed. Check logs for details.'));
+      }
+      
+      // Display webhook info
+      const webhookInfo = this.botManager.getWebhookInfo();
+      let infoText = chalk.yellow('Webhook Configuration:') + '\n';
+      infoText += chalk.cyan(`Regular webhook: ${webhookInfo.regularWebhook.isSet ? 'Configured' : 'Not set'}\n`);
+      infoText += chalk.cyan(`DM webhook: ${webhookInfo.dmWebhook.isSet ? 'Configured' : 'Not set'}\n`);
+      infoText += chalk.cyan(`Using separate DM webhook: ${webhookInfo.areInstanceUrlsDifferent ? 'Yes' : 'No'}\n`);
+      infoText += chalk.cyan(`DM webhook from env: ${webhookInfo.dmWebhook.fromEnv ? 'Yes' : 'No'}`);
+      
+      this.consoleUI.addLog(infoText);
+    } catch (error) {
+      this.consoleUI.addLog(chalk.red(`Error testing DM webhook: ${error.message}`));
+    }
   }
 
   async openWebUI() {
