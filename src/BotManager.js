@@ -32,13 +32,13 @@ class BotManager extends EventEmitter {
     // Ensure DM webhook URL is properly set with more explicit logging
     if (dmWebhookUrl && dmWebhookUrl.trim() !== '') {
       this.dmWebhookUrl = dmWebhookUrl;
-      console.log(`DM webhook URL set from constructor parameter`);
+      this.log(`DM webhook URL set from constructor parameter`);
     } else if (process.env.DM_WEBHOOK_URL && process.env.DM_WEBHOOK_URL.trim() !== '') {
       this.dmWebhookUrl = process.env.DM_WEBHOOK_URL;
-      console.log(`DM webhook URL set from environment variable`);
+      this.log(`DM webhook URL set from environment variable`);
     } else {
       this.dmWebhookUrl = webhookUrl;
-      console.log(`DM webhook URL falling back to regular webhook URL`);
+      this.log(`DM webhook URL falling back to regular webhook URL`);
     }
     
     // Validate webhook URLs to ensure they're properly formatted
@@ -50,10 +50,10 @@ class BotManager extends EventEmitter {
       console.error(`WARNING: DM webhook URL doesn't start with http: ${this.dmWebhookUrl.substring(0, 10)}...`);
     }
     
-    // Log webhook configuration with more details
-    console.log(`Regular webhook URL: ${this.webhookUrl ? this.webhookUrl.substring(0, 30) + '...' : 'Not set'}`);
-    console.log(`DM webhook URL: ${this.dmWebhookUrl ? this.dmWebhookUrl.substring(0, 30) + '...' : 'Not set'}`);
-    console.log(`Are webhook URLs different: ${this.webhookUrl !== this.dmWebhookUrl}`);
+    // Log webhook configuration only once and to the log file
+    this.log(`Regular webhook URL: ${this.webhookUrl ? this.webhookUrl.substring(0, 30) + '...' : 'Not set'}`);
+    this.log(`DM webhook URL: ${this.dmWebhookUrl ? this.dmWebhookUrl.substring(0, 30) + '...' : 'Not set'}`);
+    this.log(`Are webhook URLs different: ${this.webhookUrl !== this.dmWebhookUrl}`);
     
     this.log(`Regular webhook URL configured: ${this.webhookUrl ? 'Yes' : 'No'}`);
     this.log(`DM webhook URL configured: ${this.dmWebhookUrl ? 'Yes' : 'No'}`);
@@ -164,9 +164,6 @@ class BotManager extends EventEmitter {
     // Use ONLY the raw event handler for DM processing
     // This is our single source of truth for DM processing
     
-    // Create a processing lock to prevent race conditions
-    this.processingLock = new Map();
-    
     this.client.on('raw', async (packet) => {
       // Only process DM-related packets
       if (packet.t === 'MESSAGE_CREATE' && packet.d) {
@@ -211,12 +208,6 @@ class BotManager extends EventEmitter {
             this.log(`Processing DM from ${packet.d.author.username} (${packet.d.author.id})`);
             
             try {
-              // Ensure we're not already processing this message
-              if (this.processingLock.has(messageId)) {
-                console.log(`Message ${messageId} is already being processed in the try block, skipping`);
-                return;
-              }
-              
               // Create a simplified payload from the raw data
               const webhookData = {
                 content: packet.d.content,
@@ -248,11 +239,11 @@ class BotManager extends EventEmitter {
                 ...(process.env.DEBUG === 'true' ? { rawData: packet.d } : {})
               };
               
-              // Log only in debug mode
+              // Log only once and only in debug mode
               if (process.env.DEBUG === 'true') {
-                console.log(`Forwarding raw DM directly to webhook: ${this.dmWebhookUrl.substring(0, 30)}...`);
+                this.log(`Forwarding raw DM directly to webhook: ${this.dmWebhookUrl.substring(0, 30)}...`);
               } else {
-                console.log(`Forwarding DM from ${packet.d.author.username} to webhook...`);
+                this.log(`Forwarding DM from ${packet.d.author.username} to webhook...`);
               }
               
               // Send to webhook directly - ONLY ONCE
@@ -287,6 +278,9 @@ class BotManager extends EventEmitter {
             } catch (error) {
               console.error(`Error preparing DM webhook data: ${error.message}`);
               this.log(`Error preparing DM webhook data: ${error.message}`);
+              
+              // Make sure to release the lock even if there's an error
+              this.processingLock.delete(messageId);
             }
           }
         }
