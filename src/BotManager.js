@@ -203,6 +203,14 @@ class BotManager extends EventEmitter {
             return;
           }
           
+          // IMPORTANT: Skip messages sent by the bot itself to prevent webhook loops
+          if (packet.d.author.id === this.client.user.id) {
+            if (process.env.DEBUG === 'true') {
+              console.log(`Ignoring DM sent by the bot itself: ${messageId}`);
+            }
+            return;
+          }
+          
           // Additional duplicate detection based on content and timestamp
           const authorId = packet.d.author.id;
           const content = packet.d.content;
@@ -233,13 +241,16 @@ class BotManager extends EventEmitter {
           // Only log the raw event in debug mode
           if (process.env.DEBUG === 'true') {
             console.log('[DISCORD RAW EVENT] DM packet received:');
+            console.log(`Message author: ${packet.d.author.username} (${packet.d.author.id})`);
+            console.log(`Bot's ID: ${this.client.user.id}`);
+            console.log(`Is from bot: ${packet.d.author.id === this.client.user.id ? 'YES' : 'NO'}`);
             console.log(JSON.stringify(packet.d, null, 2));
           }
         
           // Process the DM directly from the raw event
           if (this.dmWebhookUrl) {
-            // Log only once
-            this.log(`Processing DM from ${packet.d.author.username} (${packet.d.author.id})`);
+            // Log only once, with clear indication this is an incoming DM from a user
+            this.log(`Processing INCOMING DM from ${packet.d.author.username} (${packet.d.author.id})`);
             
             try {
               // Create a simplified payload from the raw data
