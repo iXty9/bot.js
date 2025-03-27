@@ -101,10 +101,19 @@ class BotManager extends EventEmitter {
     // Log when the bot receives a direct message
     this.client.on('messageCreate', message => {
       // Only log DMs to avoid cluttering logs with all messages
-      if (!message.guild) {
+      // Check both the guild property and the channel_type
+      const isDM = !message.guild || message.channel.type === 1 || message.channel.type === 'DM';
+      if (isDM) {
         console.log(`[DISCORD EVENT] DM received from ${message.author.username} (${message.author.id})`);
         console.log(`[DISCORD EVENT] DM content: ${message.content.substring(0, 100)}`);
+        console.log(`[DISCORD EVENT] DM channel type: ${message.channel.type}`);
         this.log(`[DISCORD EVENT] DM received from ${message.author.username}`);
+        
+        // Attempt to forward the DM immediately to the webhook
+        this.handleIncomingMessage(message).catch(err => {
+          console.error(`[DISCORD EVENT] Failed to handle DM: ${err.message}`);
+          this.log(`[DISCORD EVENT] Failed to handle DM: ${err.message}`);
+        });
       }
     });
 
@@ -126,7 +135,7 @@ class BotManager extends EventEmitter {
 
     // Log channel-related events
     this.client.on('channelCreate', channel => {
-      if (channel.type === 'DM') {
+      if (channel.type === 'DM' || channel.type === 1) {
         console.log(`[DISCORD EVENT] DM channel created with ${channel.recipient?.username || 'unknown user'}`);
         this.log(`[DISCORD EVENT] DM channel created`);
       }
@@ -134,7 +143,7 @@ class BotManager extends EventEmitter {
 
     // Log when the bot is added to a direct message
     this.client.on('channelUpdate', (oldChannel, newChannel) => {
-      if (newChannel.type === 'DM') {
+      if (newChannel.type === 'DM' || newChannel.type === 1) {
         console.log(`[DISCORD EVENT] DM channel updated with ${newChannel.recipient?.username || 'unknown user'}`);
         this.log(`[DISCORD EVENT] DM channel updated`);
       }
@@ -144,11 +153,87 @@ class BotManager extends EventEmitter {
     if (process.env.DEBUG === 'true') {
       this.client.on('raw', packet => {
         // Only log DM-related packets
-        if (packet.t === 'MESSAGE_CREATE' && packet.d && !packet.d.guild_id) {
-          console.log('[DISCORD RAW EVENT] DM packet received:');
-          console.log(JSON.stringify(packet.d, null, 2));
+        if (packet.t === 'MESSAGE_CREATE' && packet.d) {
+          // Check if it's a DM by looking at channel_type === 1
+          const isDM = packet.d.channel_type === 1 || !packet.d.guild_id;
+          if (isDM) {
+            console.log('[DISCORD RAW EVENT] DM packet received:');
+            console.log(JSON.stringify(packet.d, null, 2));
+            
+            // Try to manually forward this DM to the webhook
+            if (this.dmWebhookUrl) {
+              this.forwardRawDMToWebhook(packet.d).catch(err => {
+                console.error(`Failed to forward raw DM to webhook: ${err.message}`);
+              });
+            }
+          }
         }
       });
+    }
+  }
+  
+  /**
+   * Forward a raw DM packet directly to the webhook
+   * @param {Object} dmData - The raw DM data from Discord
+   * @returns {Promise<void>}
+   */
+  async forwardRawDMToWebhook(dmData) {
+    if (!this.dmWebhookUrl) {
+      console.error('No DM webhook URL configured for raw forwarding');
+      return;
+    }
+    
+    try {
+      console.log(`Forwarding raw DM directly to webhook: ${this.dmWebhookUrl.substring(0, 30)}...`);
+      
+      // Create a simplified payload from the raw data
+      const webhookData = {
+        content: dmData.content,
+        author: dmData.author.username,
+        authorId: dmData.author.id,
+        channelId: dmData.channel_id,
+        messageId: dmData.id,
+        timestamp: new Date(dmData.timestamp).getTime(),
+        timestampISO: dmData.timestamp,
+        
+        // Add explicit DM flags
+        isDM: true,
+        messageType: 'directMessage',
+        directMessage: true,
+        dm: true,
+        type: 'dm',
+        source: 'direct_message',
+        
+        // Include the raw channel type for debugging
+        channelType: dmData.channel_type,
+        
+        // Include the full raw data for complete information
+        rawData: dmData,
+        
+        // Flag that this came from raw event handler
+        fromRawEvent: true
+      };
+      
+      // Send to webhook
+      const response = await axios.post(this.dmWebhookUrl, webhookData, {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'DiscordBot/1.0'
+        }
+      });
+      
+      console.log(`Raw DM webhook response: ${response.status} ${response.statusText}`);
+      this.log(`Raw DM forwarded to webhook successfully`);
+      
+    } catch (error) {
+      console.error(`Error forwarding raw DM to webhook: ${error.message}`);
+      this.log(`Error forwarding raw DM to webhook: ${error.message}`);
+      
+      if (error.response) {
+        console.error(`Error status: ${error.response.status}`);
+        console.error(`Error data:`, error.response.data);
+      }
     }
   }
 
@@ -449,7 +534,8 @@ class BotManager extends EventEmitter {
     this.stats.lastActivity = Date.now();
   
     // Determine if this is a DM or a guild message
-    const isDM = !message.guild;
+    // Check both the guild property and the channel_type from raw data if available
+    const isDM = !message.guild || message.channel.type === 1 || message.channel.type === 'DM';
     
     // Log basic message info with more details for debugging
     this.log(`Message received from ${message.author.username} (${message.author.id})`);
@@ -502,7 +588,7 @@ class BotManager extends EventEmitter {
     }
     
     try {
-      // Create webhook data with more explicit DM flags
+      // Create webhook data with more explicit DM flags and include raw channel_type
       const webhookData = {
         content: message.content,
         author: message.author.username,
@@ -528,7 +614,14 @@ class BotManager extends EventEmitter {
         isDirectMessage: isDM,
         messageSource: isDM ? 'dm' : 'guild',
         fromUser: message.author.username,
-        fromUserId: message.author.id
+        fromUserId: message.author.id,
+        
+        // Add raw channel type information from Discord
+        channelType: message.channel.type,
+        rawChannelType: message.channel.type === 1 ? 'DM (1)' : `${message.channel.type}`,
+        
+        // Add timestamp in ISO format for better readability
+        timestampISO: new Date(message.createdTimestamp).toISOString()
       };
       
       // Log webhook attempt with more details
@@ -537,7 +630,7 @@ class BotManager extends EventEmitter {
       if (isDM) {
         // For DMs, log more details to help troubleshoot
         console.log(`Sending DM to webhook: ${webhookUrl.substring(0, 30)}...`);
-        console.log(`DM webhook data:`, JSON.stringify(webhookData, null, 2).substring(0, 200) + '...');
+        console.log(`DM webhook data:`, JSON.stringify(webhookData, null, 2));
       }
       
       // Send to webhook with timeout and retry
@@ -887,6 +980,7 @@ class BotManager extends EventEmitter {
       this.log(`Testing DM webhook: ${this.dmWebhookUrl.substring(0, 30)}...`);
       console.log(`Testing DM webhook: ${this.dmWebhookUrl.substring(0, 30)}...`);
       
+      // Create a test message that mimics the structure of a real DM
       const testData = {
         content: "This is a test message from the Discord bot",
         author: this.client.user.username,
@@ -895,14 +989,36 @@ class BotManager extends EventEmitter {
         timestamp: Date.now(),
         messageId: "test-" + Date.now(),
         authorId: this.client.user.id,
+        channelId: "test-channel-" + Date.now(),
+        
+        // Add explicit DM flags
         isDM: true,
         messageType: "directMessage",
         directMessage: true,
         dm: true,
         type: "dm",
         source: "direct_message",
-        isTest: true
+        isTest: true,
+        
+        // Add channel type information from the raw data
+        channelType: 1,
+        rawChannelType: "DM (1)",
+        
+        // Add timestamp in ISO format
+        timestampISO: new Date().toISOString(),
+        
+        // Add a sample of what the raw data would look like
+        rawSample: {
+          channel_type: 1,
+          author: {
+            username: this.client.user.username,
+            id: this.client.user.id
+          }
+        }
       };
+      
+      // Log the full test data for debugging
+      console.log("DM webhook test data:", JSON.stringify(testData, null, 2));
       
       const response = await axios.post(this.dmWebhookUrl, testData, {
         timeout: 10000,
@@ -914,6 +1030,42 @@ class BotManager extends EventEmitter {
       
       this.log(`DM webhook test response: ${response.status} ${response.statusText}`);
       console.log(`DM webhook test response: ${response.status} ${response.statusText}`);
+      
+      // If successful, also try sending a raw-format message
+      if (response.status >= 200 && response.status < 300) {
+        // Try a second test with the exact format from the raw event
+        const rawFormatTest = {
+          type: 0,
+          content: "This is a raw format test message",
+          channel_type: 1,
+          channel_id: "test-channel-" + Date.now(),
+          author: {
+            username: this.client.user.username,
+            id: this.client.user.id
+          },
+          timestamp: new Date().toISOString(),
+          id: "test-" + Date.now()
+        };
+        
+        console.log("Testing with raw format:", JSON.stringify(rawFormatTest, null, 2));
+        
+        try {
+          const rawResponse = await axios.post(this.dmWebhookUrl, rawFormatTest, {
+            timeout: 10000,
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': 'DiscordBot/1.0'
+            }
+          });
+          
+          console.log(`Raw format test response: ${rawResponse.status} ${rawResponse.statusText}`);
+          this.log(`Raw format test successful`);
+        } catch (rawError) {
+          console.error(`Raw format test failed: ${rawError.message}`);
+          this.log(`Raw format test failed: ${rawError.message}`);
+          // Continue anyway since the main test passed
+        }
+      }
       
       return response.status >= 200 && response.status < 300;
     } catch (error) {
