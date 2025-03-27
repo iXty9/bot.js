@@ -129,6 +129,18 @@ class BotManager extends EventEmitter {
     this.client.on('ready', () => {
       console.log(`[DISCORD EVENT] Bot connected as ${this.client.user.tag}`);
       this.log(`[DISCORD EVENT] Bot connected as ${this.client.user.tag}`);
+      
+      // Debug: Log all registered event listeners
+      if (process.env.DEBUG === 'true') {
+        const events = this.client.eventNames();
+        this.log(`Registered Discord events: ${events.join(', ')}`);
+        console.log(`Registered Discord events: ${events.join(', ')}`);
+        
+        // Check for multiple raw event handlers
+        const rawListeners = this.client.listeners('raw').length;
+        this.log(`Number of 'raw' event listeners: ${rawListeners}`);
+        console.log(`Number of 'raw' event listeners: ${rawListeners}`);
+      }
     });
 
     this.client.on('disconnect', (event) => {
@@ -160,10 +172,17 @@ class BotManager extends EventEmitter {
     // Create a global processed message tracker and processing lock
     this.processedMessageIds = new Set();
     this.processingLock = new Map();
+    
+    // Track message timestamps to detect duplicates even with different IDs
+    this.processedMessageTimestamps = new Map();
   
     // Use ONLY the raw event handler for DM processing
     // This is our single source of truth for DM processing
     
+    // Remove any existing 'raw' event handlers to prevent duplicates
+    this.client.removeAllListeners('raw');
+    
+    // Register our single raw event handler
     this.client.on('raw', async (packet) => {
       // Only process DM-related packets
       if (packet.t === 'MESSAGE_CREATE' && packet.d) {
@@ -172,7 +191,7 @@ class BotManager extends EventEmitter {
         if (isDM) {
           const messageId = packet.d.id;
           
-          // Skip if we've already processed this message
+          // Skip if we've already processed this message ID
           if (this.processedMessageIds.has(messageId)) {
             console.log(`Preventing duplicate processing of DM: ${messageId}`);
             return;
@@ -184,16 +203,31 @@ class BotManager extends EventEmitter {
             return;
           }
           
+          // Additional duplicate detection based on content and timestamp
+          const authorId = packet.d.author.id;
+          const content = packet.d.content;
+          const timestamp = new Date(packet.d.timestamp).getTime();
+          const messageKey = `${authorId}:${content}:${timestamp}`;
+          
+          // Check if we've seen this exact message in the last 5 seconds
+          const recentTimestamp = this.processedMessageTimestamps.get(messageKey);
+          if (recentTimestamp && (Date.now() - recentTimestamp) < 5000) {
+            console.log(`Detected duplicate message with different ID: ${messageId}`);
+            return;
+          }
+          
           // Set a processing lock
           this.processingLock.set(messageId, Date.now());
           
           // Mark as processed immediately to prevent any race conditions
           this.processedMessageIds.add(messageId);
+          this.processedMessageTimestamps.set(messageKey, Date.now());
           
-          // Clean up the set periodically to prevent memory leaks
+          // Clean up the sets periodically to prevent memory leaks
           setTimeout(() => {
             this.processedMessageIds.delete(messageId);
             this.processingLock.delete(messageId);
+            this.processedMessageTimestamps.delete(messageKey);
           }, 60000);
         
           // Only log the raw event in debug mode
