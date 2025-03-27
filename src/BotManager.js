@@ -32,16 +32,14 @@ class BotManager extends EventEmitter {
     // Ensure DM webhook URL is properly set
     if (dmWebhookUrl && dmWebhookUrl.trim() !== '') {
       this.dmWebhookUrl = dmWebhookUrl;
-      this.log(`DM webhook URL initialized: ${this.dmWebhookUrl}`);
     } else {
-      this.dmWebhookUrl = webhookUrl;
-      this.log(`No separate DM webhook URL provided, using regular webhook URL: ${this.webhookUrl}`);
+      // If no specific DM webhook URL is provided, use the environment variable
+      this.dmWebhookUrl = process.env.DM_WEBHOOK_URL || webhookUrl;
     }
     
-    // Log the webhook URLs for debugging
-    this.log(`Regular webhook URL: ${this.webhookUrl}`);
-    this.log(`DM webhook URL: ${this.dmWebhookUrl}`);
-    this.log(`Are webhook URLs different? ${this.webhookUrl !== this.dmWebhookUrl}`);
+    // Log webhook configuration
+    this.log(`Regular webhook URL configured: ${this.webhookUrl ? 'Yes' : 'No'}`);
+    this.log(`DM webhook URL configured: ${this.dmWebhookUrl ? 'Yes' : 'No'}`);
     this.maxLogs = 50;
     this.currentChannelId = null;
     this.currentThreadId = null;
@@ -378,150 +376,85 @@ class BotManager extends EventEmitter {
   // Processes incoming messages, manages stats, and attempts to send the message to a specified webhook if available.
 
   async handleIncomingMessage(message) {
-    this.log('handleIncomingMessage function triggered');
+    // Update stats
     this.stats.messagesReceived++;
     this.stats.lastActivity = Date.now();
-  
-    this.log(`Message received: ${message.content}`);
-    this.log(`Message author: ${message.author.username} (${message.author.id})`);
-    this.log(`Message channel type: ${message.channel.type}`);
-    // Sends a typing indicator to signal to users that the bot is processing a message.
-    try {
-      await message.channel.sendTyping();
-    } catch (error) {
-      this.log(`Error starting typing indicator: ${error.message}`);
-    }
   
     // Determine if this is a DM or a guild message
     const isDM = !message.guild;
     
-    // Add logging to confirm message receipt
+    // Log basic message info
     this.log(`Message received from ${message.author.username} (${message.author.id})`);
-    this.log(`Message content: ${message.content}`);
     this.log(`Message channel type: ${message.channel.type}`);
     
-    // Force DEBUG to true for DM messages to help troubleshoot
+    // Send typing indicator
+    try {
+      await message.channel.sendTyping();
+    } catch (error) {
+      this.log(`Error with typing indicator: ${error.message}`);
+    }
+    
+    // Special handling for DMs
     if (isDM) {
-      this.log(`DM detected from ${message.author.username} (${message.author.id})`);
-      this.log(`DM channel ID: ${message.channel.id}, type: ${message.channel.type}`);
-      this.log('DM message details:', {
+      this.log(`DM detected from ${message.author.username}`);
+      
+      // Make sure we have a DM webhook URL
+      if (!this.dmWebhookUrl) {
+        this.log("ERROR: No DM webhook URL configured!");
+        // Fallback to regular webhook if DM webhook is not set
+        this.dmWebhookUrl = this.webhookUrl;
+        this.log(`Falling back to regular webhook URL for DMs`);
+      }
+    }
+    
+    // Select the appropriate webhook URL
+    const webhookUrl = isDM ? this.dmWebhookUrl : this.webhookUrl;
+    
+    if (!webhookUrl) {
+      this.log(`No webhook URL configured for ${isDM ? 'DM' : 'channel'} messages`);
+      return;
+    }
+    
+    try {
+      // Create webhook data
+      const webhookData = {
+        content: message.content,
         author: message.author.username,
+        channel: isDM ? 'DM' : message.channel.name,
+        guild: message.guild ? message.guild.name : 'Direct Message',
+        timestamp: message.createdTimestamp,
+        messageId: message.id,
         authorId: message.author.id,
         channelId: message.channel.id,
-        channelType: message.channel.type,
-        content: message.content.substring(0, 50) + (message.content.length > 50 ? '...' : '')
-      });
-      
-      // Log the DM webhook URL
-      this.log(`DM webhook URL: ${this.dmWebhookUrl}`);
-      this.log(`Regular webhook URL: ${this.webhookUrl}`);
-      this.log(`Are URLs different? ${this.dmWebhookUrl !== this.webhookUrl}`);
-      
-      // Check if DM webhook URL is set in environment
-      if (!process.env.DM_WEBHOOK_URL) {
-        this.log("ERROR: DM_WEBHOOK_URL is not set in environment variables!");
-      }
-    }
-    
-    // Select the appropriate webhook URL based on message type
-    let webhookUrl = isDM ? this.dmWebhookUrl : this.webhookUrl;
-    this.log(`Using ${isDM ? 'DM' : 'regular'} webhook URL: ${webhookUrl}`);
-    
-    if (isDM) {
-      this.log(`Using DM webhook URL: ${webhookUrl.substring(0, 30)}...`);
-      this.log(`Using DM webhook URL: ${webhookUrl}`);
-    }
-    
-    if (webhookUrl) {
-      try {
-        // Create webhook data with special handling for DMs
-        const webhookData = {
-          content: message.content,
-          author: message.author.username,
-          channel: isDM ? 'DM' : message.channel.name,
-          guild: message.guild ? message.guild.name : 'Direct Message',
-          timestamp: message.createdTimestamp,
-          messageId: message.id,
-          authorId: message.author.id,
-          channelId: message.channel.id,
-          guildId: message.guild ? message.guild.id : null,
-          threadId: message.channel.isThread() ? message.channel.id : null,
-          threadName: message.channel.isThread() ? message.channel.name : null,
-          
-          // Add explicit DM flags to ensure n8n recognizes it properly
-          isDM: isDM,
-          messageType: isDM ? 'directMessage' : 'channelMessage',
-          directMessage: isDM,
-          dm: isDM,
-          type: isDM ? 'dm' : 'channel',
-          source: isDM ? 'direct_message' : 'channel_message'
-        };
-  
-        // Log the message receipt with appropriate context
-        if (isDM) {
-          this.log(`Received DM from ${message.author.username}, sending to DM webhook`);
-        } else {
-          this.log(`Received message from ${message.author.username} in ${message.channel.name}, sending to regular webhook`);
-        }
+        guildId: message.guild ? message.guild.id : null,
+        threadId: message.channel.isThread() ? message.channel.id : null,
+        threadName: message.channel.isThread() ? message.channel.name : null,
         
+        // Add explicit DM flags
+        isDM: isDM,
+        messageType: isDM ? 'directMessage' : 'channelMessage',
+        directMessage: isDM,
+        dm: isDM,
+        type: isDM ? 'dm' : 'channel',
+        source: isDM ? 'direct_message' : 'channel_message'
+      };
+      
+      // Log webhook attempt
+      this.log(`Sending ${isDM ? 'DM' : 'channel'} message to webhook`);
+      
+      // Send to webhook
+      const response = await axios.post(webhookUrl, webhookData);
+      this.log(`Webhook response: ${response.status} ${response.statusText}`);
+      
+    } catch (error) {
+      this.log(`Webhook error: ${error.message}`);
+      
+      if (error.response) {
+        this.log(`Error status: ${error.response.status}`);
         if (process.env.DEBUG === 'true') {
-          console.debug(`Sending webhook data to ${isDM ? 'DM webhook' : 'regular webhook'}:`, JSON.stringify(webhookData, null, 2));
-        }
-  
-        try {
-          // For DMs, add extra logging
-          if (isDM) {
-            this.log(`Sending DM to webhook: ${webhookUrl}`);
-            this.log(`DM webhook data: ${JSON.stringify(webhookData, null, 2)}`);
-          }
-          
-          const response = await axios.post(webhookUrl, webhookData);
-          this.log(`Webhook response: ${response.status} ${response.statusText}`);
-          
-          if (isDM) {
-            this.log(`DM webhook response: ${response.status} ${response.statusText}`);
-            this.log(`DM webhook response data: ${JSON.stringify(response.data, null, 2)}`);
-          } else {
-            this.log(`Webhook data: ${JSON.stringify(response.data)}`);
-          }
-        } catch (error) {
-          this.log(`Webhook error: ${error.message}`);
-          
-          // For DMs, add extra error logging
-          if (isDM) {
-            this.log(`DM webhook error: ${error.message}`);
-            this.log(`DM webhook URL used: ${webhookUrl}`);
-          }
-          
-          if (error.response) {
-            this.log(`Error status: ${error.response.status}`);
-            this.log(`Error data: ${JSON.stringify(error.response.data)}`);
-            
-            if (isDM) {
-              this.log(`DM webhook error status: ${error.response.status}`);
-              this.log(`DM webhook error data: ${JSON.stringify(error.response.data, null, 2)}`);
-            }
-          }
-        }
-      } catch (error) {
-        this.log(`Failed to send message to webhook: ${error.message}`);
-        if (process.env.DEBUG === 'true' && error.response) {
-          this.log(`Error response: ${error.response.status} ${error.response.statusText}`);
           this.log(`Error data: ${JSON.stringify(error.response.data)}`);
         }
-        // Stop typing indicator on error
-        try {
-          await message.channel.sendTyping();
-        } catch (typingError) {
-          this.log(`Error stopping typing indicator: ${typingError.message}`);
-        }
       }
-    } else {
-      // Determine if this is a DM
-      const isDM = !message.guild;
-      const channelInfo = isDM ? 'DM' : `${message.guild.name}#${message.channel.name}${message.channel.isThread() ? `(thread: ${message.channel.name})` : ''}`;
-      
-      this.log(`Message received: ${message.content} (from ${message.author.username} in ${channelInfo})`);
     }
   }
   
