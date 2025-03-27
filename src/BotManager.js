@@ -116,6 +116,11 @@ class BotManager extends EventEmitter {
         // Mark as processed
         processedMessageIds.add(message.id);
         
+        // Remove from pending raw events if it exists
+        if (pendingRawEvents && pendingRawEvents.has(message.id)) {
+          pendingRawEvents.delete(message.id);
+        }
+        
         // Clean up the set periodically to prevent memory leaks
         setTimeout(() => processedMessageIds.delete(message.id), 60000);
         
@@ -164,26 +169,26 @@ class BotManager extends EventEmitter {
       }
     });
 
-    // Always listen for raw Discord events to ensure DMs work even without debug mode
+    // Only use raw events as a fallback if the messageCreate event doesn't catch the DM
+    // This prevents duplicate processing while ensuring DMs are still captured
+    let rawEventTimer = null;
+    const pendingRawEvents = new Map();
+    
     this.client.on('raw', packet => {
       // Only process DM-related packets
       if (packet.t === 'MESSAGE_CREATE' && packet.d) {
         // Check if it's a DM by looking at channel_type === 1
         const isDM = packet.d.channel_type === 1 || !packet.d.guild_id;
         if (isDM) {
+          const messageId = packet.d.id;
+          
           // Skip if we've already processed this message
-          if (processedMessageIds.has(packet.d.id)) {
+          if (processedMessageIds.has(messageId)) {
             if (process.env.DEBUG === 'true') {
-              console.log(`[DISCORD RAW EVENT] Skipping already processed DM: ${packet.d.id}`);
+              console.log(`[DISCORD RAW EVENT] Skipping already processed DM: ${messageId}`);
             }
             return;
           }
-          
-          // Mark as processed
-          processedMessageIds.add(packet.d.id);
-          
-          // Clean up the set periodically to prevent memory leaks
-          setTimeout(() => processedMessageIds.delete(packet.d.id), 60000);
           
           // Only log the raw event in debug mode
           if (process.env.DEBUG === 'true') {
@@ -191,12 +196,40 @@ class BotManager extends EventEmitter {
             console.log(JSON.stringify(packet.d, null, 2));
           }
           
-          // Always forward DMs to webhook regardless of debug mode
-          if (this.dmWebhookUrl) {
-            this.forwardRawDMToWebhook(packet.d).catch(err => {
-              console.error(`Failed to forward raw DM to webhook: ${err.message}`);
-            });
+          // Store the raw event and set a timer to process it if messageCreate doesn't
+          pendingRawEvents.set(messageId, packet.d);
+          
+          // Clear any existing timer
+          if (rawEventTimer) {
+            clearTimeout(rawEventTimer);
           }
+          
+          // Set a timer to process any pending raw events that weren't handled by messageCreate
+          rawEventTimer = setTimeout(() => {
+            for (const [id, data] of pendingRawEvents.entries()) {
+              // Only process if not already handled
+              if (!processedMessageIds.has(id)) {
+                // Mark as processed
+                processedMessageIds.add(id);
+                
+                // Clean up the set periodically to prevent memory leaks
+                setTimeout(() => processedMessageIds.delete(id), 60000);
+                
+                // Log that we're using the raw event as fallback
+                this.log(`Processing DM from raw event as fallback: ${id}`);
+                
+                // Forward to webhook
+                if (this.dmWebhookUrl) {
+                  this.forwardRawDMToWebhook(data).catch(err => {
+                    console.error(`Failed to forward raw DM to webhook: ${err.message}`);
+                  });
+                }
+              }
+            }
+            
+            // Clear the pending events
+            pendingRawEvents.clear();
+          }, 500); // Wait 500ms to see if messageCreate handles it first
         }
       }
     });
