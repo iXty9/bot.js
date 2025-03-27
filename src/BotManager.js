@@ -52,6 +52,9 @@ class BotManager extends EventEmitter {
     this.maxLogs = 50;
     this.currentChannelId = null;
     this.currentThreadId = null;
+    
+    // Set up Discord event logging
+    this.setupDiscordEventLogging();
 
     // Set up a timer for log cleanup every hour
     setInterval(() => {
@@ -91,6 +94,62 @@ class BotManager extends EventEmitter {
     this.on('threadChanged', (threadInfo) => {
       this.log(`Thread changed to: ${threadInfo.name}`);
     });
+  }
+  
+  // Set up comprehensive Discord client event logging
+  setupDiscordEventLogging() {
+    // Log when the bot receives a direct message
+    this.client.on('messageCreate', message => {
+      // Only log DMs to avoid cluttering logs with all messages
+      if (!message.guild) {
+        console.log(`[DISCORD EVENT] DM received from ${message.author.username} (${message.author.id})`);
+        console.log(`[DISCORD EVENT] DM content: ${message.content.substring(0, 100)}`);
+        this.log(`[DISCORD EVENT] DM received from ${message.author.username}`);
+      }
+    });
+
+    // Log when the bot connects/disconnects
+    this.client.on('ready', () => {
+      console.log(`[DISCORD EVENT] Bot connected as ${this.client.user.tag}`);
+      this.log(`[DISCORD EVENT] Bot connected as ${this.client.user.tag}`);
+    });
+
+    this.client.on('disconnect', (event) => {
+      console.log(`[DISCORD EVENT] Bot disconnected with code ${event?.code || 'unknown'}`);
+      this.log(`[DISCORD EVENT] Bot disconnected`);
+    });
+
+    this.client.on('error', error => {
+      console.error(`[DISCORD EVENT] Client error: ${error.message}`);
+      this.log(`[DISCORD EVENT] Client error: ${error.message}`);
+    });
+
+    // Log channel-related events
+    this.client.on('channelCreate', channel => {
+      if (channel.type === 'DM') {
+        console.log(`[DISCORD EVENT] DM channel created with ${channel.recipient?.username || 'unknown user'}`);
+        this.log(`[DISCORD EVENT] DM channel created`);
+      }
+    });
+
+    // Log when the bot is added to a direct message
+    this.client.on('channelUpdate', (oldChannel, newChannel) => {
+      if (newChannel.type === 'DM') {
+        console.log(`[DISCORD EVENT] DM channel updated with ${newChannel.recipient?.username || 'unknown user'}`);
+        this.log(`[DISCORD EVENT] DM channel updated`);
+      }
+    });
+
+    // Debug raw Discord events to see everything
+    if (process.env.DEBUG === 'true') {
+      this.client.on('raw', packet => {
+        // Only log DM-related packets
+        if (packet.t === 'MESSAGE_CREATE' && packet.d && !packet.d.guild_id) {
+          console.log('[DISCORD RAW EVENT] DM packet received:');
+          console.log(JSON.stringify(packet.d, null, 2));
+        }
+      });
+    }
   }
 
   // FUNCTION: getUsageStats
@@ -409,8 +468,16 @@ class BotManager extends EventEmitter {
       this.log(`DM detected from ${message.author.username} (${message.author.id})`);
       this.log(`DM channel ID: ${message.channel.id}`);
       
-      // Force debug logging for DMs to help troubleshoot
-      console.log(`DM received from ${message.author.username}: ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`);
+      // Add detailed message object inspection for DMs
+      console.log('=== DETAILED DM MESSAGE INSPECTION ===');
+      console.log(`Author: ${message.author.username} (${message.author.id})`);
+      console.log(`Channel ID: ${message.channel.id}`);
+      console.log(`Channel Type: ${message.channel.type}`);
+      console.log(`Message ID: ${message.id}`);
+      console.log(`Content: ${message.content}`);
+      console.log(`Timestamp: ${message.createdAt}`);
+      console.log(`Available methods on channel:`, Object.getOwnPropertyNames(Object.getPrototypeOf(message.channel)));
+      console.log('=====================================');
       
       // Check if DM webhook URL is set in environment
       if (!process.env.DM_WEBHOOK_URL) {
