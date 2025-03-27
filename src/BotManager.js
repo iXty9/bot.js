@@ -41,6 +41,15 @@ class BotManager extends EventEmitter {
       console.log(`DM webhook URL falling back to regular webhook URL`);
     }
     
+    // Validate webhook URLs to ensure they're properly formatted
+    if (this.webhookUrl && !this.webhookUrl.startsWith('http')) {
+      console.error(`WARNING: Regular webhook URL doesn't start with http: ${this.webhookUrl.substring(0, 10)}...`);
+    }
+    
+    if (this.dmWebhookUrl && !this.dmWebhookUrl.startsWith('http')) {
+      console.error(`WARNING: DM webhook URL doesn't start with http: ${this.dmWebhookUrl.substring(0, 10)}...`);
+    }
+    
     // Log webhook configuration with more details
     console.log(`Regular webhook URL: ${this.webhookUrl ? this.webhookUrl.substring(0, 30) + '...' : 'Not set'}`);
     console.log(`DM webhook URL: ${this.dmWebhookUrl ? this.dmWebhookUrl.substring(0, 30) + '...' : 'Not set'}`);
@@ -101,39 +110,30 @@ class BotManager extends EventEmitter {
     // Track processed message IDs to prevent duplicate processing
     const processedMessageIds = new Set();
     
-    // Log when the bot receives a direct message
+    // Log when the bot receives a message, but don't process DMs here
+    // We're now handling all DMs exclusively through the raw event handler
     this.client.on('messageCreate', message => {
       // Only log DMs to avoid cluttering logs with all messages
-      // Check both the guild property and the channel_type
       const isDM = !message.guild || message.channel.type === 1 || message.channel.type === 'DM';
       if (isDM) {
         // Skip if we've already processed this message
-        if (processedMessageIds.has(message.id)) {
-          console.log(`[DISCORD EVENT] Skipping already processed DM: ${message.id}`);
+        if (globalProcessedMessageIds.has(message.id)) {
+          if (process.env.DEBUG === 'true') {
+            console.log(`[DISCORD EVENT] Skipping already processed DM: ${message.id}`);
+          }
           return;
         }
         
-        // Mark as processed
-        processedMessageIds.add(message.id);
-        
-        // Remove from pending raw events if it exists
-        if (pendingRawEvents && pendingRawEvents.has(message.id)) {
-          pendingRawEvents.delete(message.id);
+        // Just log that we received the DM, but don't process it
+        // The raw event handler will take care of processing
+        if (process.env.DEBUG === 'true') {
+          console.log(`[DISCORD EVENT] DM received from ${message.author.username} (${message.author.id})`);
+          console.log(`[DISCORD EVENT] DM content: ${message.content.substring(0, 100)}`);
+          console.log(`[DISCORD EVENT] DM channel type: ${message.channel.type}`);
         }
         
-        // Clean up the set periodically to prevent memory leaks
-        setTimeout(() => processedMessageIds.delete(message.id), 60000);
-        
-        console.log(`[DISCORD EVENT] DM received from ${message.author.username} (${message.author.id})`);
-        console.log(`[DISCORD EVENT] DM content: ${message.content.substring(0, 100)}`);
-        console.log(`[DISCORD EVENT] DM channel type: ${message.channel.type}`);
-        this.log(`[DISCORD EVENT] DM received from ${message.author.username}`);
-        
-        // Always forward DMs to webhook regardless of debug mode
-        this.handleIncomingMessage(message).catch(err => {
-          console.error(`[DISCORD EVENT] Failed to handle DM: ${err.message}`);
-          this.log(`[DISCORD EVENT] Failed to handle DM: ${err.message}`);
-        });
+        // Mark as seen in the messageCreate handler
+        globalProcessedMessageIds.add(message.id);
       }
     });
 
@@ -169,11 +169,12 @@ class BotManager extends EventEmitter {
       }
     });
 
-    // Only use raw events as a fallback if the messageCreate event doesn't catch the DM
-    // This prevents duplicate processing while ensuring DMs are still captured
-    let rawEventTimer = null;
-    const pendingRawEvents = new Map();
+    // Use a global Set to track processed messages across all event handlers
+    // This is a more robust solution than separate tracking in each handler
+    const globalProcessedMessageIds = new Set();
     
+    // Use a single source of truth for DM processing
+    // We'll only use the raw event handler for DMs to avoid duplication
     this.client.on('raw', packet => {
       // Only process DM-related packets
       if (packet.t === 'MESSAGE_CREATE' && packet.d) {
@@ -183,12 +184,18 @@ class BotManager extends EventEmitter {
           const messageId = packet.d.id;
           
           // Skip if we've already processed this message
-          if (processedMessageIds.has(messageId)) {
+          if (globalProcessedMessageIds.has(messageId)) {
             if (process.env.DEBUG === 'true') {
               console.log(`[DISCORD RAW EVENT] Skipping already processed DM: ${messageId}`);
             }
             return;
           }
+          
+          // Mark as processed immediately to prevent any race conditions
+          globalProcessedMessageIds.add(messageId);
+          
+          // Clean up the set periodically to prevent memory leaks
+          setTimeout(() => globalProcessedMessageIds.delete(messageId), 60000);
           
           // Only log the raw event in debug mode
           if (process.env.DEBUG === 'true') {
@@ -196,40 +203,14 @@ class BotManager extends EventEmitter {
             console.log(JSON.stringify(packet.d, null, 2));
           }
           
-          // Store the raw event and set a timer to process it if messageCreate doesn't
-          pendingRawEvents.set(messageId, packet.d);
-          
-          // Clear any existing timer
-          if (rawEventTimer) {
-            clearTimeout(rawEventTimer);
+          // Process the DM directly from the raw event
+          // This is now our single source of truth for DM processing
+          if (this.dmWebhookUrl) {
+            this.log(`Processing DM from ${packet.d.author.username} (${packet.d.author.id})`);
+            this.forwardRawDMToWebhook(packet.d).catch(err => {
+              console.error(`Failed to forward raw DM to webhook: ${err.message}`);
+            });
           }
-          
-          // Set a timer to process any pending raw events that weren't handled by messageCreate
-          rawEventTimer = setTimeout(() => {
-            for (const [id, data] of pendingRawEvents.entries()) {
-              // Only process if not already handled
-              if (!processedMessageIds.has(id)) {
-                // Mark as processed
-                processedMessageIds.add(id);
-                
-                // Clean up the set periodically to prevent memory leaks
-                setTimeout(() => processedMessageIds.delete(id), 60000);
-                
-                // Log that we're using the raw event as fallback
-                this.log(`Processing DM from raw event as fallback: ${id}`);
-                
-                // Forward to webhook
-                if (this.dmWebhookUrl) {
-                  this.forwardRawDMToWebhook(data).catch(err => {
-                    console.error(`Failed to forward raw DM to webhook: ${err.message}`);
-                  });
-                }
-              }
-            }
-            
-            // Clear the pending events
-            pendingRawEvents.clear();
-          }, 500); // Wait 500ms to see if messageCreate handles it first
         }
       }
     });
