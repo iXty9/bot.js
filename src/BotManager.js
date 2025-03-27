@@ -222,6 +222,8 @@ class BotManager extends EventEmitter {
         console.log(`Forwarding raw DM directly to webhook: ${this.dmWebhookUrl.substring(0, 30)}...`);
       } else {
         this.log(`Forwarding DM from ${dmData.author.username} to webhook`);
+        // Log to console only once
+        console.log(`Forwarding DM from ${dmData.author.username} to webhook...`);
       }
       
       // Create a simplified payload from the raw data
@@ -256,7 +258,7 @@ class BotManager extends EventEmitter {
       };
       
       // Send to webhook - ONLY ONCE
-      console.log(`Forwarding DM from ${dmData.author.username} to webhook...`);
+      // No console.log here to prevent duplicate messages
       const response = await axios.post(this.dmWebhookUrl, webhookData, {
         timeout: 10000,
         headers: {
