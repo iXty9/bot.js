@@ -110,30 +110,18 @@ class BotManager extends EventEmitter {
     // Track processed message IDs to prevent duplicate processing
     const processedMessageIds = new Set();
     
-    // Log when the bot receives a message, but don't process DMs here
+    // Log when the bot receives a message, but COMPLETELY IGNORE DMs
     // We're now handling all DMs exclusively through the raw event handler
     this.client.on('messageCreate', message => {
-      // Only log DMs to avoid cluttering logs with all messages
-      const isDM = !message.guild || message.channel.type === 1 || message.channel.type === 'DM';
-      if (isDM) {
-        // Skip if we've already processed this message
-        if (globalProcessedMessageIds.has(message.id)) {
-          if (process.env.DEBUG === 'true') {
-            console.log(`[DISCORD EVENT] Skipping already processed DM: ${message.id}`);
-          }
-          return;
-        }
-        
-        // Just log that we received the DM, but don't process it
-        // The raw event handler will take care of processing
+      // Only process guild messages, completely ignore DMs
+      if (message.guild) {
+        // This is a guild message, not a DM, so process normally
+        // Normal message handling goes here
+      } else {
+        // This is a DM, just log it in debug mode but DO NOT PROCESS
         if (process.env.DEBUG === 'true') {
-          console.log(`[DISCORD EVENT] DM received from ${message.author.username} (${message.author.id})`);
-          console.log(`[DISCORD EVENT] DM content: ${message.content.substring(0, 100)}`);
-          console.log(`[DISCORD EVENT] DM channel type: ${message.channel.type}`);
+          console.log(`[DISCORD EVENT] Ignoring DM in messageCreate: ${message.id}`);
         }
-        
-        // Mark as seen in the messageCreate handler
-        globalProcessedMessageIds.add(message.id);
       }
     });
 
@@ -169,12 +157,11 @@ class BotManager extends EventEmitter {
       }
     });
 
-    // Use a global Set to track processed messages across all event handlers
-    // This is a more robust solution than separate tracking in each handler
-    const globalProcessedMessageIds = new Set();
-    
-    // Use a single source of truth for DM processing
-    // We'll only use the raw event handler for DMs to avoid duplication
+    // Create a global processed message tracker
+    this.processedMessageIds = new Set();
+  
+    // Use ONLY the raw event handler for DM processing
+    // This is our single source of truth for DM processing
     this.client.on('raw', packet => {
       // Only process DM-related packets
       if (packet.t === 'MESSAGE_CREATE' && packet.d) {
@@ -182,31 +169,32 @@ class BotManager extends EventEmitter {
         const isDM = packet.d.channel_type === 1 || !packet.d.guild_id;
         if (isDM) {
           const messageId = packet.d.id;
-          
+        
           // Skip if we've already processed this message
-          if (globalProcessedMessageIds.has(messageId)) {
+          if (this.processedMessageIds.has(messageId)) {
             if (process.env.DEBUG === 'true') {
               console.log(`[DISCORD RAW EVENT] Skipping already processed DM: ${messageId}`);
             }
             return;
           }
-          
+        
           // Mark as processed immediately to prevent any race conditions
-          globalProcessedMessageIds.add(messageId);
-          
+          this.processedMessageIds.add(messageId);
+        
           // Clean up the set periodically to prevent memory leaks
-          setTimeout(() => globalProcessedMessageIds.delete(messageId), 60000);
-          
+          setTimeout(() => this.processedMessageIds.delete(messageId), 60000);
+        
           // Only log the raw event in debug mode
           if (process.env.DEBUG === 'true') {
             console.log('[DISCORD RAW EVENT] DM packet received:');
             console.log(JSON.stringify(packet.d, null, 2));
           }
-          
+        
           // Process the DM directly from the raw event
-          // This is now our single source of truth for DM processing
           if (this.dmWebhookUrl) {
             this.log(`Processing DM from ${packet.d.author.username} (${packet.d.author.id})`);
+          
+            // IMPORTANT: Only forward the message once
             this.forwardRawDMToWebhook(packet.d).catch(err => {
               console.error(`Failed to forward raw DM to webhook: ${err.message}`);
             });
@@ -222,6 +210,12 @@ class BotManager extends EventEmitter {
    * @returns {Promise<void>}
    */
   async forwardRawDMToWebhook(dmData) {
+    // Double-check that this message hasn't been processed already
+    if (this.processedMessageIds.has(dmData.id)) {
+      console.log(`Preventing duplicate processing of DM: ${dmData.id}`);
+      return;
+    }
+    
     if (!this.dmWebhookUrl) {
       console.error('No DM webhook URL configured for raw forwarding');
       return;
@@ -259,11 +253,14 @@ class BotManager extends EventEmitter {
         // Include user's global name if available
         authorName: dmData.author.global_name || dmData.author.username,
         
+        // Add a unique processing ID to prevent duplicate processing
+        processingId: `${dmData.id}-${Date.now()}`,
+        
         // Only include full raw data in debug mode to reduce payload size
         ...(process.env.DEBUG === 'true' ? { rawData: dmData } : {})
       };
       
-      // Send to webhook
+      // Send to webhook - ONLY ONCE
       const response = await axios.post(this.dmWebhookUrl, webhookData, {
         timeout: 10000,
         headers: {
@@ -286,32 +283,6 @@ class BotManager extends EventEmitter {
       if (error.response && process.env.DEBUG === 'true') {
         console.error(`Error status: ${error.response.status}`);
         console.error(`Error data:`, error.response.data);
-      }
-      
-      // Try one more time with a different content type if the first attempt failed
-      try {
-        this.log(`Retrying DM webhook with different content type...`);
-        const retryWebhookData = {
-          content: dmData.content,
-          author: dmData.author.username,
-          authorId: dmData.author.id,
-          channelId: dmData.channel_id,
-          messageId: dmData.id,
-          isDM: true,
-          retryAttempt: true
-        };
-        
-        const retryResponse = await axios.post(this.dmWebhookUrl, retryWebhookData, {
-          timeout: 10000,
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'DiscordBot/1.0'
-          }
-        });
-        
-        this.log(`Retry webhook response: ${retryResponse.status} ${retryResponse.statusText}`);
-      } catch (retryError) {
-        this.log(`Retry webhook also failed: ${retryError.message}`);
       }
     }
   }
@@ -608,18 +579,25 @@ class BotManager extends EventEmitter {
   // Processes incoming messages, manages stats, and attempts to send the message to a specified webhook if available.
 
   async handleIncomingMessage(message) {
+    // IMPORTANT: This method now ONLY handles guild messages, not DMs
+    // DMs are handled exclusively by the raw event handler
+    
+    // Skip if this is a DM - we handle those exclusively in the raw event handler
+    if (!message.guild) {
+      if (process.env.DEBUG === 'true') {
+        console.log(`Skipping DM in handleIncomingMessage: ${message.id}`);
+      }
+      return;
+    }
+    
     // Update stats
     this.stats.messagesReceived++;
     this.stats.lastActivity = Date.now();
-  
-    // Determine if this is a DM or a guild message
-    // Check both the guild property and the channel_type from raw data if available
-    const isDM = !message.guild || message.channel.type === 1 || message.channel.type === 'DM';
     
-    // Log basic message info with more details for debugging
-    this.log(`Message received from ${message.author.username} (${message.author.id})`);
-    this.log(`Message channel type: ${message.channel.type}`);
-    this.log(`Message content: ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`);
+    // Log basic message info
+    this.log(`Guild message received from ${message.author.username} (${message.author.id})`);
+    this.log(`Channel: ${message.channel.name}`);
+    this.log(`Content: ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`);
     
     // Send typing indicator
     try {
@@ -628,92 +606,36 @@ class BotManager extends EventEmitter {
       this.log(`Error with typing indicator: ${error.message}`);
     }
     
-    // Special handling for DMs with more detailed logging
-    if (isDM) {
-      this.log(`DM detected from ${message.author.username} (${message.author.id})`);
-      this.log(`DM channel ID: ${message.channel.id}`);
-      
-      // Add detailed message object inspection for DMs
-      console.log('=== DETAILED DM MESSAGE INSPECTION ===');
-      console.log(`Author: ${message.author.username} (${message.author.id})`);
-      console.log(`Channel ID: ${message.channel.id}`);
-      console.log(`Channel Type: ${message.channel.type}`);
-      console.log(`Message ID: ${message.id}`);
-      console.log(`Content: ${message.content}`);
-      console.log(`Timestamp: ${message.createdAt}`);
-      console.log(`Available methods on channel:`, Object.getOwnPropertyNames(Object.getPrototypeOf(message.channel)));
-      console.log('=====================================');
-      
-      // Check if DM webhook URL is set in environment
-      if (!process.env.DM_WEBHOOK_URL) {
-        this.log("WARNING: DM_WEBHOOK_URL is not set in environment variables!");
-      }
-      
-      // Make sure we have a DM webhook URL
-      if (!this.dmWebhookUrl) {
-        this.log("ERROR: No DM webhook URL configured!");
-        // Fallback to regular webhook if DM webhook is not set
-        this.dmWebhookUrl = this.webhookUrl;
-        this.log(`Falling back to regular webhook URL for DMs: ${this.dmWebhookUrl ? 'URL set' : 'No URL available'}`);
-      }
-    }
-    
-    // Select the appropriate webhook URL
-    const webhookUrl = isDM ? this.dmWebhookUrl : this.webhookUrl;
-    
-    if (!webhookUrl) {
-      this.log(`No webhook URL configured for ${isDM ? 'DM' : 'channel'} messages`);
+    // Check if we have a webhook URL for guild messages
+    if (!this.webhookUrl) {
+      this.log(`No webhook URL configured for guild messages`);
       return;
     }
     
     try {
-      // Create webhook data with more explicit DM flags and include raw channel_type
+      // Create webhook data for guild messages
       const webhookData = {
         content: message.content,
         author: message.author.username,
-        channel: isDM ? 'DM' : message.channel.name,
-        guild: message.guild ? message.guild.name : 'Direct Message',
+        channel: message.channel.name,
+        guild: message.guild.name,
         timestamp: message.createdTimestamp,
         messageId: message.id,
         authorId: message.author.id,
         channelId: message.channel.id,
-        guildId: message.guild ? message.guild.id : null,
+        guildId: message.guild.id,
         threadId: message.channel.isThread() ? message.channel.id : null,
         threadName: message.channel.isThread() ? message.channel.name : null,
-        
-        // Add explicit DM flags to ensure proper handling
-        isDM: isDM,
-        messageType: isDM ? 'directMessage' : 'channelMessage',
-        directMessage: isDM,
-        dm: isDM,
-        type: isDM ? 'dm' : 'channel',
-        source: isDM ? 'direct_message' : 'channel_message',
-        
-        // Add additional fields that might help with webhook processing
-        isDirectMessage: isDM,
-        messageSource: isDM ? 'dm' : 'guild',
-        fromUser: message.author.username,
-        fromUserId: message.author.id,
-        
-        // Add raw channel type information from Discord
-        channelType: message.channel.type,
-        rawChannelType: message.channel.type === 1 ? 'DM (1)' : `${message.channel.type}`,
         
         // Add timestamp in ISO format for better readability
         timestampISO: new Date(message.createdTimestamp).toISOString()
       };
       
-      // Log webhook attempt with more details
-      this.log(`Sending ${isDM ? 'DM' : 'channel'} message to webhook: ${webhookUrl.substring(0, 30)}...`);
+      // Log webhook attempt
+      this.log(`Sending guild message to webhook: ${this.webhookUrl.substring(0, 30)}...`);
       
-      if (isDM) {
-        // For DMs, log more details to help troubleshoot
-        console.log(`Sending DM to webhook: ${webhookUrl.substring(0, 30)}...`);
-        console.log(`DM webhook data:`, JSON.stringify(webhookData, null, 2));
-      }
-      
-      // Send to webhook with timeout and retry
-      const response = await axios.post(webhookUrl, webhookData, {
+      // Send to webhook with timeout
+      const response = await axios.post(this.webhookUrl, webhookData, {
         timeout: 10000, // 10 second timeout
         headers: {
           'Content-Type': 'application/json',
@@ -723,48 +645,14 @@ class BotManager extends EventEmitter {
       
       this.log(`Webhook response: ${response.status} ${response.statusText}`);
       
-      if (isDM) {
-        console.log(`DM webhook response: ${response.status} ${response.statusText}`);
-      }
-      
     } catch (error) {
       this.log(`Webhook error: ${error.message}`);
-      
-      if (isDM) {
-        console.error(`DM webhook error: ${error.message}`);
-      }
       
       if (error.response) {
         this.log(`Error status: ${error.response.status}`);
         this.log(`Error data: ${JSON.stringify(error.response.data || {})}`);
-        
-        if (isDM) {
-          console.error(`DM webhook error status: ${error.response.status}`);
-          console.error(`DM webhook error data:`, error.response.data);
-        }
       } else if (error.request) {
         this.log(`No response received from webhook`);
-        
-        if (isDM) {
-          console.error(`No response received from DM webhook`);
-        }
-        
-        // Try one more time with a different content type
-        try {
-          if (isDM) {
-            this.log(`Retrying DM webhook with different content type...`);
-            const retryResponse = await axios.post(webhookUrl, webhookData, {
-              timeout: 10000,
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'User-Agent': 'DiscordBot/1.0'
-              }
-            });
-            this.log(`Retry webhook response: ${retryResponse.status} ${retryResponse.statusText}`);
-          }
-        } catch (retryError) {
-          this.log(`Retry webhook error: ${retryError.message}`);
-        }
       }
     }
   }
