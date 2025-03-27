@@ -172,9 +172,7 @@ class BotManager extends EventEmitter {
         
           // Skip if we've already processed this message
           if (this.processedMessageIds.has(messageId)) {
-            if (process.env.DEBUG === 'true') {
-              console.log(`[DISCORD RAW EVENT] Skipping already processed DM: ${messageId}`);
-            }
+            console.log(`Preventing duplicate processing of DM: ${messageId}`);
             return;
           }
         
@@ -210,11 +208,8 @@ class BotManager extends EventEmitter {
    * @returns {Promise<void>}
    */
   async forwardRawDMToWebhook(dmData) {
-    // Double-check that this message hasn't been processed already
-    if (this.processedMessageIds.has(dmData.id)) {
-      console.log(`Preventing duplicate processing of DM: ${dmData.id}`);
-      return;
-    }
+    // We already checked for duplicates in the raw event handler,
+    // so we don't need to check again here
     
     if (!this.dmWebhookUrl) {
       console.error('No DM webhook URL configured for raw forwarding');
@@ -261,6 +256,7 @@ class BotManager extends EventEmitter {
       };
       
       // Send to webhook - ONLY ONCE
+      console.log(`Forwarding DM from ${dmData.author.username} to webhook...`);
       const response = await axios.post(this.dmWebhookUrl, webhookData, {
         timeout: 10000,
         headers: {
