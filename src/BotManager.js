@@ -98,18 +98,33 @@ class BotManager extends EventEmitter {
   
   // Set up comprehensive Discord client event logging
   setupDiscordEventLogging() {
+    // Track processed message IDs to prevent duplicate processing
+    const processedMessageIds = new Set();
+    
     // Log when the bot receives a direct message
     this.client.on('messageCreate', message => {
       // Only log DMs to avoid cluttering logs with all messages
       // Check both the guild property and the channel_type
       const isDM = !message.guild || message.channel.type === 1 || message.channel.type === 'DM';
       if (isDM) {
+        // Skip if we've already processed this message
+        if (processedMessageIds.has(message.id)) {
+          console.log(`[DISCORD EVENT] Skipping already processed DM: ${message.id}`);
+          return;
+        }
+        
+        // Mark as processed
+        processedMessageIds.add(message.id);
+        
+        // Clean up the set periodically to prevent memory leaks
+        setTimeout(() => processedMessageIds.delete(message.id), 60000);
+        
         console.log(`[DISCORD EVENT] DM received from ${message.author.username} (${message.author.id})`);
         console.log(`[DISCORD EVENT] DM content: ${message.content.substring(0, 100)}`);
         console.log(`[DISCORD EVENT] DM channel type: ${message.channel.type}`);
         this.log(`[DISCORD EVENT] DM received from ${message.author.username}`);
         
-        // Attempt to forward the DM immediately to the webhook
+        // Always forward DMs to webhook regardless of debug mode
         this.handleIncomingMessage(message).catch(err => {
           console.error(`[DISCORD EVENT] Failed to handle DM: ${err.message}`);
           this.log(`[DISCORD EVENT] Failed to handle DM: ${err.message}`);
@@ -149,27 +164,42 @@ class BotManager extends EventEmitter {
       }
     });
 
-    // Debug raw Discord events to see everything
-    if (process.env.DEBUG === 'true') {
-      this.client.on('raw', packet => {
-        // Only log DM-related packets
-        if (packet.t === 'MESSAGE_CREATE' && packet.d) {
-          // Check if it's a DM by looking at channel_type === 1
-          const isDM = packet.d.channel_type === 1 || !packet.d.guild_id;
-          if (isDM) {
+    // Always listen for raw Discord events to ensure DMs work even without debug mode
+    this.client.on('raw', packet => {
+      // Only process DM-related packets
+      if (packet.t === 'MESSAGE_CREATE' && packet.d) {
+        // Check if it's a DM by looking at channel_type === 1
+        const isDM = packet.d.channel_type === 1 || !packet.d.guild_id;
+        if (isDM) {
+          // Skip if we've already processed this message
+          if (processedMessageIds.has(packet.d.id)) {
+            if (process.env.DEBUG === 'true') {
+              console.log(`[DISCORD RAW EVENT] Skipping already processed DM: ${packet.d.id}`);
+            }
+            return;
+          }
+          
+          // Mark as processed
+          processedMessageIds.add(packet.d.id);
+          
+          // Clean up the set periodically to prevent memory leaks
+          setTimeout(() => processedMessageIds.delete(packet.d.id), 60000);
+          
+          // Only log the raw event in debug mode
+          if (process.env.DEBUG === 'true') {
             console.log('[DISCORD RAW EVENT] DM packet received:');
             console.log(JSON.stringify(packet.d, null, 2));
-            
-            // Try to manually forward this DM to the webhook
-            if (this.dmWebhookUrl) {
-              this.forwardRawDMToWebhook(packet.d).catch(err => {
-                console.error(`Failed to forward raw DM to webhook: ${err.message}`);
-              });
-            }
+          }
+          
+          // Always forward DMs to webhook regardless of debug mode
+          if (this.dmWebhookUrl) {
+            this.forwardRawDMToWebhook(packet.d).catch(err => {
+              console.error(`Failed to forward raw DM to webhook: ${err.message}`);
+            });
           }
         }
-      });
-    }
+      }
+    });
   }
   
   /**
@@ -184,7 +214,12 @@ class BotManager extends EventEmitter {
     }
     
     try {
-      console.log(`Forwarding raw DM directly to webhook: ${this.dmWebhookUrl.substring(0, 30)}...`);
+      // Only log detailed info in debug mode
+      if (process.env.DEBUG === 'true') {
+        console.log(`Forwarding raw DM directly to webhook: ${this.dmWebhookUrl.substring(0, 30)}...`);
+      } else {
+        this.log(`Forwarding DM from ${dmData.author.username} to webhook`);
+      }
       
       // Create a simplified payload from the raw data
       const webhookData = {
@@ -207,11 +242,11 @@ class BotManager extends EventEmitter {
         // Include the raw channel type for debugging
         channelType: dmData.channel_type,
         
-        // Include the full raw data for complete information
-        rawData: dmData,
+        // Include user's global name if available
+        authorName: dmData.author.global_name || dmData.author.username,
         
-        // Flag that this came from raw event handler
-        fromRawEvent: true
+        // Only include full raw data in debug mode to reduce payload size
+        ...(process.env.DEBUG === 'true' ? { rawData: dmData } : {})
       };
       
       // Send to webhook
@@ -223,16 +258,46 @@ class BotManager extends EventEmitter {
         }
       });
       
-      console.log(`Raw DM webhook response: ${response.status} ${response.statusText}`);
-      this.log(`Raw DM forwarded to webhook successfully`);
+      // Only log detailed response in debug mode
+      if (process.env.DEBUG === 'true') {
+        console.log(`Raw DM webhook response: ${response.status} ${response.statusText}`);
+      }
+      
+      this.log(`DM from ${dmData.author.username} forwarded to webhook successfully`);
       
     } catch (error) {
-      console.error(`Error forwarding raw DM to webhook: ${error.message}`);
-      this.log(`Error forwarding raw DM to webhook: ${error.message}`);
+      console.error(`Error forwarding DM to webhook: ${error.message}`);
+      this.log(`Error forwarding DM to webhook: ${error.message}`);
       
-      if (error.response) {
+      if (error.response && process.env.DEBUG === 'true') {
         console.error(`Error status: ${error.response.status}`);
         console.error(`Error data:`, error.response.data);
+      }
+      
+      // Try one more time with a different content type if the first attempt failed
+      try {
+        this.log(`Retrying DM webhook with different content type...`);
+        const retryWebhookData = {
+          content: dmData.content,
+          author: dmData.author.username,
+          authorId: dmData.author.id,
+          channelId: dmData.channel_id,
+          messageId: dmData.id,
+          isDM: true,
+          retryAttempt: true
+        };
+        
+        const retryResponse = await axios.post(this.dmWebhookUrl, retryWebhookData, {
+          timeout: 10000,
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'DiscordBot/1.0'
+          }
+        });
+        
+        this.log(`Retry webhook response: ${retryResponse.status} ${retryResponse.statusText}`);
+      } catch (retryError) {
+        this.log(`Retry webhook also failed: ${retryError.message}`);
       }
     }
   }

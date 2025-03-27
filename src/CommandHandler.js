@@ -261,7 +261,16 @@ class CommandHandler {
   async testDMWebhook() {
     try {
       this.consoleUI.addLog(chalk.yellow('Testing DM webhook connection...'));
+      
+      // Check if debug mode is enabled
+      const debugMode = process.env.DEBUG === 'true';
+      if (!debugMode) {
+        this.consoleUI.addLog(chalk.yellow('Note: Debug mode is not enabled. Set DEBUG=true for more detailed logs.'));
+      }
+      
+      // Run the test
       const result = await this.botManager.testDMWebhook();
+      
       if (result) {
         this.consoleUI.addLog(chalk.green('DM webhook test successful!'));
       } else {
@@ -276,7 +285,29 @@ class CommandHandler {
       infoText += chalk.cyan(`Using separate DM webhook: ${webhookInfo.areInstanceUrlsDifferent ? 'Yes' : 'No'}\n`);
       infoText += chalk.cyan(`DM webhook from env: ${webhookInfo.dmWebhook.fromEnv ? 'Yes' : 'No'}`);
       
+      // Check webhook status
+      this.consoleUI.addLog(chalk.yellow('Checking webhook connectivity...'));
+      try {
+        const webhookStatus = await this.botManager.checkWebhooks();
+        infoText += '\n' + chalk.cyan(`Regular webhook status: ${webhookStatus.regular ? 'ONLINE' : 'OFFLINE'}`);
+        infoText += '\n' + chalk.cyan(`DM webhook status: ${webhookStatus.dm ? 'ONLINE' : 'OFFLINE'}`);
+        
+        if (!webhookStatus.dm) {
+          infoText += '\n' + chalk.red('DM webhook appears to be offline or not accepting connections.');
+          infoText += '\n' + chalk.yellow('Check your webhook URL and ensure the server is running.');
+        }
+      } catch (statusError) {
+        infoText += '\n' + chalk.red(`Error checking webhook status: ${statusError.message}`);
+      }
+      
       this.consoleUI.addLog(infoText);
+      
+      // Provide instructions for testing real DMs
+      this.consoleUI.addLog(chalk.green('\nTo test with a real DM:'));
+      this.consoleUI.addLog(chalk.white('1. Send a direct message to the bot'));
+      this.consoleUI.addLog(chalk.white('2. The message should be forwarded to your webhook'));
+      this.consoleUI.addLog(chalk.white('3. For detailed logs, restart the bot with DEBUG=true'));
+      
     } catch (error) {
       this.consoleUI.addLog(chalk.red(`Error testing DM webhook: ${error.message}`));
     }
