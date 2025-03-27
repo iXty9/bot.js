@@ -157,30 +157,47 @@ class BotManager extends EventEmitter {
       }
     });
 
-    // Create a global processed message tracker
+    // Create a global processed message tracker and processing lock
     this.processedMessageIds = new Set();
+    this.processingLock = new Map();
   
     // Use ONLY the raw event handler for DM processing
     // This is our single source of truth for DM processing
-    this.client.on('raw', packet => {
+    
+    // Create a processing lock to prevent race conditions
+    this.processingLock = new Map();
+    
+    this.client.on('raw', async (packet) => {
       // Only process DM-related packets
       if (packet.t === 'MESSAGE_CREATE' && packet.d) {
         // Check if it's a DM by looking at channel_type === 1
         const isDM = packet.d.channel_type === 1 || !packet.d.guild_id;
         if (isDM) {
           const messageId = packet.d.id;
-        
+          
           // Skip if we've already processed this message
           if (this.processedMessageIds.has(messageId)) {
             console.log(`Preventing duplicate processing of DM: ${messageId}`);
             return;
           }
-        
+          
+          // Check if this message is currently being processed
+          if (this.processingLock.has(messageId)) {
+            console.log(`Message ${messageId} is already being processed, skipping`);
+            return;
+          }
+          
+          // Set a processing lock
+          this.processingLock.set(messageId, Date.now());
+          
           // Mark as processed immediately to prevent any race conditions
           this.processedMessageIds.add(messageId);
-        
+          
           // Clean up the set periodically to prevent memory leaks
-          setTimeout(() => this.processedMessageIds.delete(messageId), 60000);
+          setTimeout(() => {
+            this.processedMessageIds.delete(messageId);
+            this.processingLock.delete(messageId);
+          }, 60000);
         
           // Only log the raw event in debug mode
           if (process.env.DEBUG === 'true') {
@@ -194,6 +211,12 @@ class BotManager extends EventEmitter {
             this.log(`Processing DM from ${packet.d.author.username} (${packet.d.author.id})`);
             
             try {
+              // Ensure we're not already processing this message
+              if (this.processingLock.has(messageId)) {
+                console.log(`Message ${messageId} is already being processed in the try block, skipping`);
+                return;
+              }
+              
               // Create a simplified payload from the raw data
               const webhookData = {
                 content: packet.d.content,
@@ -233,20 +256,23 @@ class BotManager extends EventEmitter {
               }
               
               // Send to webhook directly - ONLY ONCE
-              axios.post(this.dmWebhookUrl, webhookData, {
-                timeout: 10000,
-                headers: {
-                  'Content-Type': 'application/json',
-                  'User-Agent': 'DiscordBot/1.0'
-                }
-              }).then(response => {
+              // Use async/await with try/catch instead of promise chains
+              try {
+                const response = await axios.post(this.dmWebhookUrl, webhookData, {
+                  timeout: 10000,
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'DiscordBot/1.0'
+                  }
+                });
+                
                 // Only log detailed response in debug mode
                 if (process.env.DEBUG === 'true') {
                   console.log(`Raw DM webhook response: ${response.status} ${response.statusText}`);
                 }
                 
                 this.log(`DM from ${packet.d.author.username} forwarded to webhook successfully`);
-              }).catch(error => {
+              } catch (error) {
                 console.error(`Error forwarding DM to webhook: ${error.message}`);
                 this.log(`Error forwarding DM to webhook: ${error.message}`);
                 
@@ -254,7 +280,10 @@ class BotManager extends EventEmitter {
                   console.error(`Error status: ${error.response.status}`);
                   console.error(`Error data:`, error.response.data);
                 }
-              });
+              } finally {
+                // Release the processing lock for this message
+                this.processingLock.delete(messageId);
+              }
             } catch (error) {
               console.error(`Error preparing DM webhook data: ${error.message}`);
               this.log(`Error preparing DM webhook data: ${error.message}`);
