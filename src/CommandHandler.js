@@ -316,24 +316,24 @@ class CommandHandler {
 
   async handleFactCommand(interaction) {
     try {
-      await interaction.deferReply({ ephemeral: true }).catch(console.error);
+      await interaction.deferReply({ flags: { ephemeral: true } }).catch(console.error);
       const response = await axios.get('https://uselessfacts.jsph.pl/random.json?language=en');
       const fact = response.data.text;
       await interaction.editReply({
         content: `Here's a random fact: ${fact}`,
-        ephemeral: true
+        flags: { ephemeral: true }
       });
     } catch (error) {
       console.error('Error fetching random fact:', error);
       if (interaction.deferred) {
         await interaction.editReply({
           content: 'Sorry, I couldn\'t fetch a random fact at the moment.',
-          ephemeral: true
+          flags: { ephemeral: true }
         });
       } else {
         await interaction.reply({
           content: 'Sorry, I couldn\'t fetch a random fact at the moment.',
-          ephemeral: true
+          flags: { ephemeral: true }
         });
       }
     }
@@ -341,13 +341,13 @@ class CommandHandler {
 
   async handleStatusCommand(interaction) {
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: { ephemeral: true } });
       const newStatus = interaction.options.getString('newstatus');
       
       if (!['online', 'idle', 'dnd', 'invisible'].includes(newStatus)) {
         await interaction.editReply({
           content: 'Invalid status. Please use one of: online, idle, dnd, invisible',
-          ephemeral: true
+          flags: { ephemeral: true }
         });
         return;
       }
@@ -362,7 +362,7 @@ class CommandHandler {
 
       await interaction.editReply({ 
         content: `${statusEmoji[newStatus]} ${result}`,
-        ephemeral: true 
+        flags: { ephemeral: true }
       });
     } catch (error) {
       console.error('Error changing status:', error);
@@ -372,7 +372,7 @@ class CommandHandler {
       
       await response.call(interaction, { 
         content: `Error changing status: ${error.message}`,
-        ephemeral: true 
+        flags: { ephemeral: true }
       });
     }
   }
@@ -389,7 +389,7 @@ class CommandHandler {
       
       await interaction.reply({
         content: `Available channels:\n${channelList}`,
-        ephemeral: true
+        flags: { ephemeral: true }
       });
       return;
     }
@@ -401,7 +401,7 @@ class CommandHandler {
       if (!matchingChannel) {
         await interaction.reply({
           content: `Channel "${channelName}" not found.`,
-          ephemeral: true
+          flags: { ephemeral: true }
         });
         return;
       }
@@ -409,12 +409,12 @@ class CommandHandler {
       this.setCurrentChannel(matchingChannel);
       await interaction.reply({
         content: `Switched to channel: ${matchingChannel.name} (${matchingChannel.guildName})`,
-        ephemeral: true
+        flags: { ephemeral: true }
       });
     } catch (error) {
       await interaction.reply({
         content: `Error changing channel: ${error.message}`,
-        ephemeral: true
+        flags: { ephemeral: true }
       });
     }
   }
@@ -424,7 +424,7 @@ class CommandHandler {
     if (!this.currentChannel) {
       await interaction.reply({
         content: 'No channel selected. Use /channel to select a channel first.',
-        ephemeral: true
+        flags: { ephemeral: true }
       });
       return;
     }
@@ -437,12 +437,12 @@ class CommandHandler {
       );
       await interaction.reply({
         content: `Message sent successfully to ${this.currentChannel.name}`,
-        ephemeral: true
+        flags: { ephemeral: true }
       });
     } catch (error) {
       await interaction.reply({
         content: `Error sending message: ${error.message}`,
-        ephemeral: true
+        flags: { ephemeral: true }
       });
     }
   }
@@ -459,7 +459,7 @@ class CommandHandler {
 
     await interaction.reply({
       content: statsText,
-      ephemeral: true
+      flags: { ephemeral: true }
     });
   }
 
@@ -467,7 +467,7 @@ class CommandHandler {
     this.clearComposer();
     await interaction.reply({
       content: 'Message composition cleared.',
-      ephemeral: true
+      flags: { ephemeral: true }
     });
   }
 
@@ -482,13 +482,13 @@ class CommandHandler {
 
       await interaction.reply({
         content: helpText,
-        ephemeral: true
+        flags: { ephemeral: true }
       });
     } catch (error) {
       console.error('Error showing help:', error);
       await interaction.reply({
         content: 'Sorry, there was an error displaying the help message.',
-        ephemeral: true
+        flags: { ephemeral: true }
       });
     }
   }
