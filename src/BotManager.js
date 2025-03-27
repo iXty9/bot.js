@@ -190,100 +190,83 @@ class BotManager extends EventEmitter {
         
           // Process the DM directly from the raw event
           if (this.dmWebhookUrl) {
+            // Log only once
             this.log(`Processing DM from ${packet.d.author.username} (${packet.d.author.id})`);
-          
-            // IMPORTANT: Only forward the message once
-            this.forwardRawDMToWebhook(packet.d).catch(err => {
-              console.error(`Failed to forward raw DM to webhook: ${err.message}`);
-            });
+            
+            try {
+              // Create a simplified payload from the raw data
+              const webhookData = {
+                content: packet.d.content,
+                author: packet.d.author.username,
+                authorId: packet.d.author.id,
+                channelId: packet.d.channel_id,
+                messageId: packet.d.id,
+                timestamp: new Date(packet.d.timestamp).getTime(),
+                timestampISO: packet.d.timestamp,
+                
+                // Add explicit DM flags
+                isDM: true,
+                messageType: 'directMessage',
+                directMessage: true,
+                dm: true,
+                type: 'dm',
+                source: 'direct_message',
+                
+                // Include the raw channel type for debugging
+                channelType: packet.d.channel_type,
+                
+                // Include user's global name if available
+                authorName: packet.d.author.global_name || packet.d.author.username,
+                
+                // Add a unique processing ID to prevent duplicate processing
+                processingId: `${packet.d.id}-${Date.now()}`,
+                
+                // Only include full raw data in debug mode to reduce payload size
+                ...(process.env.DEBUG === 'true' ? { rawData: packet.d } : {})
+              };
+              
+              // Log only in debug mode
+              if (process.env.DEBUG === 'true') {
+                console.log(`Forwarding raw DM directly to webhook: ${this.dmWebhookUrl.substring(0, 30)}...`);
+              } else {
+                console.log(`Forwarding DM from ${packet.d.author.username} to webhook...`);
+              }
+              
+              // Send to webhook directly - ONLY ONCE
+              axios.post(this.dmWebhookUrl, webhookData, {
+                timeout: 10000,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'User-Agent': 'DiscordBot/1.0'
+                }
+              }).then(response => {
+                // Only log detailed response in debug mode
+                if (process.env.DEBUG === 'true') {
+                  console.log(`Raw DM webhook response: ${response.status} ${response.statusText}`);
+                }
+                
+                this.log(`DM from ${packet.d.author.username} forwarded to webhook successfully`);
+              }).catch(error => {
+                console.error(`Error forwarding DM to webhook: ${error.message}`);
+                this.log(`Error forwarding DM to webhook: ${error.message}`);
+                
+                if (error.response && process.env.DEBUG === 'true') {
+                  console.error(`Error status: ${error.response.status}`);
+                  console.error(`Error data:`, error.response.data);
+                }
+              });
+            } catch (error) {
+              console.error(`Error preparing DM webhook data: ${error.message}`);
+              this.log(`Error preparing DM webhook data: ${error.message}`);
+            }
           }
         }
       }
     });
   }
   
-  /**
-   * Forward a raw DM packet directly to the webhook
-   * @param {Object} dmData - The raw DM data from Discord
-   * @returns {Promise<void>}
-   */
-  async forwardRawDMToWebhook(dmData) {
-    // We already checked for duplicates in the raw event handler,
-    // so we don't need to check again here
-    
-    if (!this.dmWebhookUrl) {
-      console.error('No DM webhook URL configured for raw forwarding');
-      return;
-    }
-    
-    try {
-      // Only log detailed info in debug mode
-      if (process.env.DEBUG === 'true') {
-        console.log(`Forwarding raw DM directly to webhook: ${this.dmWebhookUrl.substring(0, 30)}...`);
-      } else {
-        this.log(`Forwarding DM from ${dmData.author.username} to webhook`);
-        // Log to console only once
-        console.log(`Forwarding DM from ${dmData.author.username} to webhook...`);
-      }
-      
-      // Create a simplified payload from the raw data
-      const webhookData = {
-        content: dmData.content,
-        author: dmData.author.username,
-        authorId: dmData.author.id,
-        channelId: dmData.channel_id,
-        messageId: dmData.id,
-        timestamp: new Date(dmData.timestamp).getTime(),
-        timestampISO: dmData.timestamp,
-        
-        // Add explicit DM flags
-        isDM: true,
-        messageType: 'directMessage',
-        directMessage: true,
-        dm: true,
-        type: 'dm',
-        source: 'direct_message',
-        
-        // Include the raw channel type for debugging
-        channelType: dmData.channel_type,
-        
-        // Include user's global name if available
-        authorName: dmData.author.global_name || dmData.author.username,
-        
-        // Add a unique processing ID to prevent duplicate processing
-        processingId: `${dmData.id}-${Date.now()}`,
-        
-        // Only include full raw data in debug mode to reduce payload size
-        ...(process.env.DEBUG === 'true' ? { rawData: dmData } : {})
-      };
-      
-      // Send to webhook - ONLY ONCE
-      // No console.log here to prevent duplicate messages
-      const response = await axios.post(this.dmWebhookUrl, webhookData, {
-        timeout: 10000,
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'DiscordBot/1.0'
-        }
-      });
-      
-      // Only log detailed response in debug mode
-      if (process.env.DEBUG === 'true') {
-        console.log(`Raw DM webhook response: ${response.status} ${response.statusText}`);
-      }
-      
-      this.log(`DM from ${dmData.author.username} forwarded to webhook successfully`);
-      
-    } catch (error) {
-      console.error(`Error forwarding DM to webhook: ${error.message}`);
-      this.log(`Error forwarding DM to webhook: ${error.message}`);
-      
-      if (error.response && process.env.DEBUG === 'true') {
-        console.error(`Error status: ${error.response.status}`);
-        console.error(`Error data:`, error.response.data);
-      }
-    }
-  }
+  // The forwardRawDMToWebhook method has been removed
+  // All DM webhook handling is now done directly in the raw event handler
 
   // FUNCTION: getUsageStats
   // Retrieves and returns the usage statistics such as uptime and last activity duration in seconds.
@@ -971,20 +954,9 @@ class BotManager extends EventEmitter {
         
         // Add timestamp in ISO format
         timestampISO: new Date().toISOString(),
-        
-        // Add a sample of what the raw data would look like
-        rawSample: {
-          channel_type: 1,
-          author: {
-            username: this.client.user.username,
-            id: this.client.user.id
-          }
-        }
       };
       
-      // Log the full test data for debugging
-      console.log("DM webhook test data:", JSON.stringify(testData, null, 2));
-      
+      // Send only one test message
       const response = await axios.post(this.dmWebhookUrl, testData, {
         timeout: 10000,
         headers: {
@@ -995,42 +967,6 @@ class BotManager extends EventEmitter {
       
       this.log(`DM webhook test response: ${response.status} ${response.statusText}`);
       console.log(`DM webhook test response: ${response.status} ${response.statusText}`);
-      
-      // If successful, also try sending a raw-format message
-      if (response.status >= 200 && response.status < 300) {
-        // Try a second test with the exact format from the raw event
-        const rawFormatTest = {
-          type: 0,
-          content: "This is a raw format test message",
-          channel_type: 1,
-          channel_id: "test-channel-" + Date.now(),
-          author: {
-            username: this.client.user.username,
-            id: this.client.user.id
-          },
-          timestamp: new Date().toISOString(),
-          id: "test-" + Date.now()
-        };
-        
-        console.log("Testing with raw format:", JSON.stringify(rawFormatTest, null, 2));
-        
-        try {
-          const rawResponse = await axios.post(this.dmWebhookUrl, rawFormatTest, {
-            timeout: 10000,
-            headers: {
-              'Content-Type': 'application/json',
-              'User-Agent': 'DiscordBot/1.0'
-            }
-          });
-          
-          console.log(`Raw format test response: ${rawResponse.status} ${rawResponse.statusText}`);
-          this.log(`Raw format test successful`);
-        } catch (rawError) {
-          console.error(`Raw format test failed: ${rawError.message}`);
-          this.log(`Raw format test failed: ${rawError.message}`);
-          // Continue anyway since the main test passed
-        }
-      }
       
       return response.status >= 200 && response.status < 300;
     } catch (error) {
