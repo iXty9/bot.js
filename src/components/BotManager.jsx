@@ -756,281 +756,66 @@ const BotManager = () => {
           )}
 
           {activeTab === 'Messages' && (
-            <div className="space-y-4">
-              {error && (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex gap-2">
-                  <Button onClick={() => refetchChannels()} disabled={isLoadingChannels}>
-                    {isLoadingChannels ? 'Loading...' : 'Refresh Channels'}
-                  </Button>
-                  <Button onClick={checkTokenStatus} variant="outline">
-                    Check Token
-                  </Button>
-                  <Button 
-                    onClick={async () => {
-                      try {
-                        setOutput('Debugging channel loading...');
-                        setLocalError('');
-                        
-                        // First check if client is ready
-                        const response = await fetch('/api/debug/bot', {
-                          headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('discord_token')}`,
-                            'Content-Type': 'application/json'
-                          }
-                        });
-                        
-                        if (!response.ok) {
-                          throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        
-                        const data = await response.json();
-                        console.log('Bot debug info:', data);
-                        
-                        if (!data.clientReady) {
-                          setLocalError('Discord client is not ready. Try restarting the bot.');
-                          return;
-                        }
-                        
-                        // Then check detailed channel info
-                        const channelsResponse = await fetch('/api/debug/channels', {
-                          headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('discord_token')}`,
-                            'Content-Type': 'application/json'
-                          }
-                        });
-                        
-                        if (!channelsResponse.ok) {
-                          throw new Error(`HTTP error! status: ${channelsResponse.status}`);
-                        }
-                        
-                        const channelsData = await channelsResponse.json();
-                        console.log('Channels debug info:', channelsData);
-                        
-                        if (channelsData.rawChannels && channelsData.rawChannels.length > 0) {
-                          setOutput(`Found ${channelsData.rawChannels.length} raw channels. Check console for details.`);
-                          
-                          // Force update the channels in state with the raw channels
-                          const textChannels = channelsData.rawChannels.filter(ch => 
-                            ch.type === 0 || ch.type === 'GUILD_TEXT' || ch.type === 'text' || 
-                            ch.type === 15 || ch.type === 'GUILD_FORUM' || ch.type === 'forum'
-                          );
-                          
-                          if (textChannels.length > 0) {
-                            queryClient.setQueryData(['channels'], textChannels);
-                            setOutput(`Updated channel list with ${textChannels.length} text channels`);
-                          } else {
-                            setLocalError('No text channels found in raw channel list');
-                          }
-                        } else {
-                          setLocalError('No raw channels found. Bot may not have access to any servers.');
-                        }
-                      } catch (error) {
-                        console.error('Channel debug error:', error);
-                        setLocalError(`Debug failed: ${error.message}`);
-                      }
-                    }}
-                    variant="outline"
-                  >
-                    Debug Channels
-                  </Button>
-                  <Button 
-                    onClick={async () => {
-                      try {
-                        setOutput('Checking active channel...');
-                        const token = localStorage.getItem('discord_token');
-                        const response = await fetch('/api/debug/active-channel', {
-                          headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                          }
-                        });
-                        
-                        if (!response.ok) {
-                          throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        
-                        const data = await response.json();
-                        console.log('Active channel check:', data);
-                        
-                        if (data.success) {
-                          if (data.activeChannelInfo) {
-                            setOutput(`Active channel: ${data.activeChannelInfo.name} (${data.activeChannelInfo.guildName})`);
-                            
-                            // Update selected channel if it doesn't match the active one
-                            if (!selectedChannel || selectedChannel.id !== data.activeChannelId) {
-                              const matchingChannel = channels.find(ch => ch.id === data.activeChannelId);
-                              if (matchingChannel) {
-                                console.log('Updating selected channel to match active channel:', matchingChannel);
-                                setSelectedChannel(matchingChannel);
-                              }
-                            }
-                          } else {
-                            setOutput('No active channel set');
-                          }
-                        } else {
-                          setLocalError('Failed to check active channel');
-                        }
-                      } catch (error) {
-                        console.error('Active channel check error:', error);
-                        setLocalError(`Check failed: ${error.message}`);
-                      }
-                    }}
-                    variant="outline"
-                  >
-                    Check Active Channel
-                  </Button>
-                  <Button 
-                    onClick={async () => {
-                      try {
-                        setOutput('Checking channels API directly...');
-                        const token = localStorage.getItem('discord_token');
-                        const response = await fetch('/api/channels', {
-                          headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                          }
-                        });
-                        
-                        if (!response.ok) {
-                          throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        
-                        const data = await response.json();
-                        console.log('Direct API response:', data);
-                        
-                        if (data.success && Array.isArray(data.channels)) {
-                          setOutput(`Found ${data.channels.length} channels via API`);
-                          // Force update the channels in state
-                          queryClient.setQueryData(['channels'], data.channels);
-                        } else {
-                          setLocalError('API returned success but no channels array');
-                        }
-                      } catch (error) {
-                        console.error('Direct API check error:', error);
-                        setLocalError(`API check failed: ${error.message}`);
-                      }
-                    }}
-                    variant="outline"
-                  >
-                    Check API
-                  </Button>
-                </div>
+            <div style={{ maxWidth: 700, margin: '0 auto', padding: '2rem 0' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem' }}>Send a Message</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Channel Selector */}
                 <div>
-                  {Array.isArray(channels) ? 
-                    `${channels.length} channels available` : 
-                    'No channels loaded'}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-10 mb-4">
-                <div>
-                  <label htmlFor="channel-select" className="block mb-2 text-sm font-medium">Select Channel:</label>
+                  <label htmlFor="channel-select" style={{ fontWeight: 500, marginBottom: 8, display: 'block' }}>Channel</label>
                   <select
                     id="channel-select"
                     value={selectedChannel?.id || ""}
-                    onChange={(e) => {
-                      console.log('Channel selected:', e.target.value);
+                    onChange={e => {
                       const channel = channels?.find(c => c.id === e.target.value);
-                      console.log('Found channel:', channel);
                       setSelectedChannel(channel || null);
-                      setSelectedThread(null); // Reset thread when channel changes
-                      
-                      // Set the active channel on the server
-                      if (channel) {
-                        fetch('/api/channel', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('discord_token')}`
-                          },
-                          body: JSON.stringify({ channelId: channel.id })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                          if (data.success) {
-                            console.log('Active channel set successfully:', data);
-                            setOutput(`Channel set to ${channel.name}`);
-                          } else {
-                            console.error('Failed to set active channel:', data);
-                            setLocalError(`Failed to set channel: ${data.error}`);
-                          }
-                        })
-                        .catch(err => {
-                          console.error('Error setting active channel:', err);
-                          setLocalError(`Error setting channel: ${err.message}`);
-                        });
-                      }
+                      setSelectedThread(null);
                     }}
-                    disabled={isLoadingChannels}
                     style={{
                       width: '100%',
-                      padding: '0.5rem 2.5rem 0.5rem 1rem',
-                      borderRadius: '0.75rem',
-                      background: 'hsl(var(--secondary))',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '0.5rem',
                       border: '1px solid hsl(var(--border))',
+                      background: 'hsl(var(--secondary))',
                       color: 'hsl(var(--foreground))',
-                      fontSize: '0.875rem',
+                      fontSize: '1rem',
                       fontWeight: 500,
-                      cursor: isLoadingChannels ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                      appearance: 'none',
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-                      backgroundRepeat: 'no-repeat',
-                      backgroundPosition: 'right 0.5rem center',
-                      backgroundSize: '1rem',
+                      marginBottom: 0,
                     }}
                   >
                     <option value="">Select a channel...</option>
-                    {isLoadingChannels ? (
-                      <option value="" disabled>Loading channels...</option>
-                    ) : Array.isArray(channels) && channels.length > 0 ? (
+                    {Array.isArray(channels) && channels.length > 0 &&
                       channels.map(channel => (
                         <option key={channel.id} value={channel.id}>
-                          {channel.name} ({channel.guildName || 'Unknown Server'})
+                          {channel.name} ({channel.guildName || 'Unknown'})
                         </option>
                       ))
-                    ) : (
-                      <option value="" disabled>No channels available</option>
-                    )}
+                    }
                   </select>
                 </div>
+                {/* Thread Selector */}
                 <div>
-                  <label htmlFor="thread-select" className="block mb-2 text-sm font-medium">Select Thread (optional):</label>
+                  <label htmlFor="thread-select" style={{ fontWeight: 500, marginBottom: 8, display: 'block' }}>Thread (optional)</label>
                   <select
                     id="thread-select"
-                    value={selectedThread?.id || "no_thread"}
-                    onChange={(e) => {
-                      if (e.target.value === "no_thread") {
-                        setSelectedThread(null);
-                        return;
-                      }
+                    value={selectedThread?.id || ""}
+                    onChange={e => {
                       const thread = selectedChannel?.threads?.find(t => t.id === e.target.value);
                       setSelectedThread(thread || null);
                     }}
-                    disabled={!selectedChannel}
+                    disabled={!selectedChannel || !selectedChannel.threads || selectedChannel.threads.length === 0}
                     style={{
                       width: '100%',
-                      padding: '0.5rem 2.5rem 0.5rem 1rem',
-                      borderRadius: '0.75rem',
-                      background: 'hsl(var(--secondary))',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '0.5rem',
                       border: '1px solid hsl(var(--border))',
+                      background: 'hsl(var(--secondary))',
                       color: 'hsl(var(--foreground))',
-                      fontSize: '0.875rem',
+                      fontSize: '1rem',
                       fontWeight: 500,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      appearance: 'none',
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-                      backgroundRepeat: 'no-repeat',
-                      backgroundPosition: 'right 0.5rem center',
-                      backgroundSize: '1rem',
+                      marginBottom: 0,
                     }}
                   >
-                    <option value="no_thread">No thread</option>
+                    <option value="">No thread</option>
                     {selectedChannel?.threads?.map(thread => (
                       <option key={thread.id} value={thread.id}>
                         {thread.name}
@@ -1038,103 +823,65 @@ const BotManager = () => {
                     ))}
                   </select>
                 </div>
-              </div>
-
-              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', height: '460px' }}>
-                <div style={{ 
-                  flex: '1', 
-                  overflowY: 'auto', 
-                  marginBottom: '1rem',
-                  background: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '0.75rem',
-                  padding: '1rem'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <h3 style={{ fontWeight: 'bold' }}>Message History</h3>
-                    <button
-                      onClick={() => {
-                        if (selectedChannel) {
-                          queryClient.invalidateQueries(['messages', selectedChannel.id]);
-                          setOutput('Refreshing messages...');
-                        }
-                      }}
-                      disabled={!selectedChannel || isLoadingMessages}
-                      style={{
-                        padding: '0.25rem 0.5rem',
-                        borderRadius: '0.25rem',
-                        fontSize: '0.75rem',
-                        background: 'hsl(var(--primary))',
-                        color: 'white',
-                        border: 'none',
-                        cursor: selectedChannel ? 'pointer' : 'not-allowed',
-                        opacity: selectedChannel ? 1 : 0.5
-                      }}
-                    >
-                      Refresh
-                    </button>
-                  </div>
-                  {isLoadingMessages ? (
-                    <div style={{ textAlign: 'center', padding: '2rem' }}>
-                      <div style={{
-                        width: '24px',
-                        height: '24px',
-                        border: '2px solid hsl(var(--primary))',
-                        borderTopColor: 'transparent',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite',
-                        margin: '0 auto'
-                      }}></div>
-                      <p style={{ marginTop: '0.5rem' }}>Loading messages...</p>
-                    </div>
-                  ) : messages.length > 0 ? (
-                    <div>
-                      {messages.map(msg => (
-                        <div key={msg.id} style={{
-                          padding: '0.5rem',
-                          marginBottom: '0.5rem',
-                          borderRadius: '0.5rem',
-                          background: 'hsl(var(--secondary))',
-                          borderLeft: '3px solid hsl(var(--primary))'
-                        }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                            <span style={{ fontWeight: 'bold' }}>{msg.author}</span>
-                            <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>
-                              {new Date(msg.timestamp).toLocaleString()}
-                            </span>
-                          </div>
-                          <div>{msg.content}</div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '2rem', color: 'hsl(var(--muted-foreground))' }}>
-                      {selectedChannel ? 'No messages in this channel' : 'Select a channel to view messages'}
-                    </div>
-                  )}
+                {/* Message Composer */}
+                <div>
+                  <label htmlFor="message-composer" style={{ fontWeight: 500, marginBottom: 8, display: 'block' }}>Message</label>
+                  <textarea
+                    id="message-composer"
+                    placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
+                    value={message}
+                    onChange={e => setMessage(e.target.value)}
+                    disabled={!selectedChannel}
+                    style={{
+                      width: '100%',
+                      minHeight: 100,
+                      padding: '1rem',
+                      borderRadius: '0.5rem',
+                      border: '1px solid hsl(var(--border))',
+                      background: 'hsl(var(--card))',
+                      color: 'hsl(var(--foreground))',
+                      fontSize: '1rem',
+                      fontFamily: 'inherit',
+                      resize: 'vertical'
+                    }}
+                  />
                 </div>
-                
-                <textarea
-                  placeholder={selectedChannel ? "Type your message here..." : "Select a channel first..."}
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  disabled={!selectedChannel}
-                  style={{
-                    width: '100%',
-                    background: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '0.75rem',
-                    padding: '1rem',
-                    height: '120px',
-                    fontSize: '0.9rem',
-                    color: 'hsl(var(--foreground))',
-                    fontFamily: 'monospace',
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    resize: 'none',
-                  }}
-                />
-
+                {/* Send Button */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                  <button
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      borderRadius: '0.5rem',
+                      background: message.trim() && selectedChannel ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
+                      color: 'white',
+                      fontWeight: 600,
+                      fontSize: '1rem',
+                      border: 'none',
+                      cursor: message.trim() && selectedChannel ? 'pointer' : 'not-allowed',
+                      opacity: message.trim() && selectedChannel ? 1 : 0.7
+                    }}
+                    onClick={handleSendMessage}
+                    disabled={!message.trim() || !selectedChannel || isSending}
+                  >
+                    {isSending ? 'Sending...' : 'Send'}
+                  </button>
+                  <button
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      borderRadius: '0.5rem',
+                      background: 'hsl(var(--muted))',
+                      color: 'hsl(var(--foreground))',
+                      fontWeight: 600,
+                      fontSize: '1rem',
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => setMessage('')}
+                  >
+                    Clear
+                  </button>
+                </div>
+                {/* Error/Output */}
                 {localError && (
                   <div style={{
                     backgroundColor: 'rgba(220, 38, 38, 0.1)',
@@ -1147,7 +894,6 @@ const BotManager = () => {
                     {localError}
                   </div>
                 )}
-              
                 {output && !localError && (
                   <div style={{
                     backgroundColor: 'rgba(34, 197, 94, 0.1)',
@@ -1160,59 +906,8 @@ const BotManager = () => {
                     {output}
                   </div>
                 )}
-              
-                <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                  <button
-                    style={{
-                      ...styles.button,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                    onClick={() => setMessage('')}
-                  >
-                    <Trash2 size={16} />
-                    Clear
-                  </button>
-                  <button
-                    style={{
-                      ...styles.button,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      backgroundColor: message.trim() && selectedChannel ? 'var(--primary)' : 'var(--muted)',
-                      color: 'white',
-                      cursor: message.trim() && selectedChannel ? 'pointer' : 'not-allowed',
-                      padding: '10px 20px',
-                      borderRadius: '0.5rem',
-                      border: 'none',
-                      fontWeight: 'bold'
-                    }}
-                    onClick={handleSendMessage}
-                    disabled={!message.trim() || !selectedChannel || isSending}
-                  >
-                    {isSending ? (
-                      <>
-                        <div style={{
-                          width: '16px',
-                          height: '16px',
-                          border: '2px solid white',
-                          borderTopColor: 'transparent',
-                          borderRadius: '50%',
-                          animation: 'spin 1s linear infinite'
-                        }}></div>
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Send size={16} />
-                        Send Message
-                      </>
-                    )}
-                  </button>
-                  </div>
-                </div>
               </div>
+            </div>
           )}
 
           {activeTab === 'Slash Commands' && (
