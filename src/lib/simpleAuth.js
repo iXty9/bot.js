@@ -1,9 +1,26 @@
-// Simple authentication utility
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+
+// Only log to console if DEBUG=true
+function debugLog(message) {
+  if (process.env.DEBUG === 'true') {
+    // eslint-disable-next-line no-console
+    console.log(message);
+  }
+}
+
+// Logging utility to write to log file only
+const logFilePath = path.resolve(process.cwd(), 'console.log');
+function logToFile(message) {
+  const timestamp = new Date().toISOString();
+  fs.appendFileSync(logFilePath, `${timestamp} - [Auth] ${message}\n`);
+}
 
 // Create a JWT secret if one doesn't exist
 if (!process.env.JWT_SECRET) {
-  console.log('Using default JWT secret for development');
+  logToFile('Using default JWT secret for development');
+  debugLog('Using default JWT secret for development');
   process.env.JWT_SECRET = 'default-jwt-secret-for-development-only';
 }
 
@@ -41,9 +58,10 @@ export const createSession = () => {
   
   // Store session
   activeSessions.set(sessionId, sessionInfo);
-  
-  console.log(`Created new session (ID length: ${sessionId.length} chars)`);
-  
+
+  logToFile(`Created new session (ID length: ${sessionId.length} chars)`);
+  debugLog(`Created new session (ID length: ${sessionId.length} chars)`);
+
   return {
     token: sessionId,
     expiresAt
@@ -57,13 +75,15 @@ export const createSession = () => {
  */
 export const validateSession = (token) => {
   if (!token) {
-    console.log('validateSession: No token provided');
+    logToFile('validateSession: No token provided');
+    debugLog('validateSession: No token provided');
     return false;
   }
-  
+
   // For development purposes, accept any token
   // REMOVE THIS IN PRODUCTION
-  console.log('DEVELOPMENT MODE: Validating session');
+  logToFile('DEVELOPMENT MODE: Validating session');
+  debugLog('DEVELOPMENT MODE: Validating session');
   return true;
   
   const session = activeSessions.get(token);

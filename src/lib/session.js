@@ -1,6 +1,22 @@
-// Session management utilities for the web UI
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+
+// Only log to console if DEBUG=true
+function debugLog(message) {
+  if (process.env.DEBUG === 'true') {
+    // eslint-disable-next-line no-console
+    console.log(message);
+  }
+}
+
+// Logging utility to write to log file only
+const logFilePath = path.resolve(process.cwd(), 'console.log');
+function logToFile(message) {
+  const timestamp = new Date().toISOString();
+  fs.appendFileSync(logFilePath, `${timestamp} - [Session] ${message}\n`);
+}
 
 // In-memory store of active sessions (would be replaced with Redis/DB in production)
 const activeSessions = new Map();
@@ -25,12 +41,16 @@ export const createSession = () => {
   
   // Store session
   activeSessions.set(sessionId, sessionInfo);
-  
-  console.log(`Creating new session (ID length: ${sessionId.length} chars)`);
-  console.log(`Using JWT_SECRET (length: ${JWT_SECRET.length} characters)`);
-  console.log(`JWT library version: ${jwt.version || 'unknown'}`);
-  console.log(`Using algorithm: HS256`);
-  
+
+  logToFile(`Creating new session (ID length: ${sessionId.length} chars)`);
+  logToFile(`Using JWT_SECRET (length: ${JWT_SECRET.length} characters)`);
+  logToFile(`JWT library version: ${jwt.version || 'unknown'}`);
+  logToFile(`Using algorithm: HS256`);
+  debugLog(`Creating new session (ID length: ${sessionId.length} chars)`);
+  debugLog(`Using JWT_SECRET (length: ${JWT_SECRET.length} characters)`);
+  debugLog(`JWT library version: ${jwt.version || 'unknown'}`);
+  debugLog(`Using algorithm: HS256`);
+
   // Create JWT token
   const token = jwt.sign(
     { sessionId },
@@ -40,9 +60,10 @@ export const createSession = () => {
       algorithm: 'HS256'  // Explicitly set algorithm
     }
   );
-  
-  console.log(`Session token created, expires in 24 hours`);
-  
+
+  logToFile(`Session token created, expires in 24 hours`);
+  debugLog(`Session token created, expires in 24 hours`);
+
   return {
     token,
     expiresAt
@@ -57,43 +78,50 @@ export const createSession = () => {
 export const validateSession = (token) => {
   try {
     if (!token) {
-      console.log('No token provided for validation');
+      logToFile('No token provided for validation');
+      debugLog('No token provided for validation');
       return false;
     }
 
     // Verify JWT signature and expiration
     const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-    
+
     if (!decoded || !decoded.sessionId) {
-      console.log('Invalid token format: missing sessionId');
+      logToFile('Invalid token format: missing sessionId');
+      debugLog('Invalid token format: missing sessionId');
       return false;
     }
-    
+
     // Check if session exists in our store
     const session = activeSessions.get(decoded.sessionId);
     if (!session) {
-      console.log('Session not found in active sessions');
+      logToFile('Session not found in active sessions');
+      debugLog('Session not found in active sessions');
       return false;
     }
-    
+
     // Check if session has expired
     if (session.expiresAt < Date.now()) {
-      console.log('Session has expired');
+      logToFile('Session has expired');
+      debugLog('Session has expired');
       activeSessions.delete(decoded.sessionId);
       return false;
     }
-    
+
     // Update last activity
     session.lastActivity = Date.now();
     activeSessions.set(decoded.sessionId, session);
-    
+
     return true;
   } catch (error) {
-    console.error('Session validation error:', error);
+    logToFile(`Session validation error: ${error.message}`);
+    debugLog(`Session validation error: ${error.message}`);
     if (error.name === 'JsonWebTokenError') {
-      console.error('JWT validation failed:', error.message);
+      logToFile(`JWT validation failed: ${error.message}`);
+      debugLog(`JWT validation failed: ${error.message}`);
     } else if (error.name === 'TokenExpiredError') {
-      console.error('Token has expired');
+      logToFile('Token has expired');
+      debugLog('Token has expired');
     }
     return false;
   }

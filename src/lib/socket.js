@@ -1,28 +1,52 @@
 import { io } from 'socket.io-client';
 import { useState, useEffect } from 'react';
 
+// Only log to console if DEBUG=true
+function debugLog(message) {
+  if (process.env.DEBUG === 'true') {
+    // eslint-disable-next-line no-console
+    console.log(message);
+  }
+}
+
+// Logging utility to write to log file only
+function logToFile(message) {
+  // Only works in Node.js, not browser
+  if (typeof window === 'undefined') {
+    const fs = require('fs');
+    const path = require('path');
+    const logFilePath = path.resolve(process.cwd(), 'console.log');
+    const timestamp = new Date().toISOString();
+    fs.appendFileSync(logFilePath, `${timestamp} - [Socket] ${message}\n`);
+  }
+}
+
 let socket = null;
 let socketInitialized = false;
 
 export const initializeSocket = (token) => {
   if (socketInitialized) {
-    console.log('Socket already initialized, disconnecting old socket');
+    logToFile('Socket already initialized, disconnecting old socket');
+    debugLog('Socket already initialized, disconnecting old socket');
     if (socket) socket.disconnect();
   }
-  
+
   if (!token) {
-    console.error('No token provided for socket initialization');
+    logToFile('No token provided for socket initialization');
+    debugLog('No token provided for socket initialization');
     return null;
   }
-  
+
   try {
-    console.log('Initializing socket connection with auth token');
-    
+    logToFile('Initializing socket connection with auth token');
+    debugLog('Initializing socket connection with auth token');
+
     // Get the server URL from the current window location
     const url = window.location.origin;
-    
-    console.log(`Connecting to Socket.IO server at ${url}`);
-    
+
+    logToFile(`Connecting to Socket.IO server at ${url}`);
+    debugLog(`Connecting to Socket.IO server at ${url}`);
+
     socket = io(url, {
       auth: { token },
       transports: ['polling', 'websocket'], // Start with polling first, then upgrade
@@ -32,23 +56,27 @@ export const initializeSocket = (token) => {
       forceNew: true,
       autoConnect: true
     });
-    
+
     socket.on('connect', () => {
-      console.log('Socket connected successfully');
+      logToFile('Socket connected successfully');
+      debugLog('Socket connected successfully');
     });
-    
+
     socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
+      logToFile(`Socket disconnected: ${reason}`);
+      debugLog(`Socket disconnected: ${reason}`);
     });
-    
+
     socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+      logToFile(`Socket connection error: ${error.message}`);
+      debugLog(`Socket connection error: ${error.message}`);
     });
-    
+
     socketInitialized = true;
     return socket;
   } catch (error) {
-    console.error('Error initializing socket:', error);
+    logToFile(`Error initializing socket: ${error.message}`);
+    debugLog(`Error initializing socket: ${error.message}`);
     return null;
   }
 };
@@ -90,6 +118,7 @@ export const disconnectSocket = () => {
     socket.disconnect();
     socket = null;
     socketInitialized = false;
-    console.log('Socket disconnected and reference cleared');
+    logToFile('Socket disconnected and reference cleared');
+    debugLog('Socket disconnected and reference cleared');
   }
 };

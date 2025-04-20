@@ -14,6 +14,20 @@ import path from 'path'; // Importing path for path operations
 const logFile = fs.createWriteStream('console.log', { flags: 'a' }); // Log file setup
 let serverInstance = null; // To track server instance status
 
+// Helper to log info/intel to file only (not console)
+function logIntel(message) {
+  const timestamp = new Date().toISOString();
+  logFile.write(`${timestamp} - [Intel] ${message}\n`);
+}
+
+// Only log to console if DEBUG=true
+function debugLog(message) {
+  if (process.env.DEBUG === 'true') {
+    // eslint-disable-next-line no-console
+    console.log(message);
+  }
+}
+
 // SECTION: BotManager Class Definition
 // The BotManager class extends the EventEmitter to handle various bot-related events. It manages log retention, user statistics, and server operations. The class includes methods for recording bot activities, starting/stopping a server, and checking server status.
 
@@ -711,10 +725,8 @@ class BotManager extends EventEmitter {
 
   async listChannels() {
     try {
-      // Use debug log instead of console.log
-      if (process.env.DEBUG === 'true') {
-        console.debug('Listing channels from all guilds...');
-      }
+      logIntel('Fetching channels list...');
+      debugLog('Fetching channels list...');
       const channels = [];
       
       // Check if client is ready
@@ -725,22 +737,17 @@ class BotManager extends EventEmitter {
       
       // Get guilds
       const guilds = this.client.guilds.cache;
-      if (process.env.DEBUG === 'true') {
-        console.debug(`Found ${guilds.size} guilds`);
-      }
+      logIntel(`Found ${guilds.size} guilds`);
+      debugLog(`Found ${guilds.size} guilds`);
       
       for (const guild of guilds.values()) {
-        if (process.env.DEBUG === 'true') {
-          console.debug(`Processing guild: ${guild.name} (${guild.id})`);
-        }
-        
+        logIntel(`Processing guild: ${guild.name} (${guild.id})`);
+        debugLog(`Processing guild: ${guild.name} (${guild.id})`);
         try {
           // Fetch all channels in the guild
           const guildChannels = await guild.channels.fetch();
-          if (process.env.DEBUG === 'true') {
-            console.debug(`Found ${guildChannels.size} channels in guild ${guild.name}`);
-          }
-          
+          logIntel(`Found ${guildChannels.size} channels in guild ${guild.name}`);
+          debugLog(`Found ${guildChannels.size} channels in guild ${guild.name}`);
           for (const channel of guildChannels.values()) {
             // Check channel type - support both enum and numeric values
             const isTextChannel = 
@@ -752,10 +759,8 @@ class BotManager extends EventEmitter {
               channel.type === 15;
             
             if (isTextChannel || isForumChannel) {
-              if (process.env.DEBUG === 'true') {
-                console.debug(`Processing channel: ${channel.name} (${channel.id}, type: ${channel.type})`);
-              }
-              
+              logIntel(`Processing channel: ${channel.name} (${channel.id}, type: ${channel.type})`);
+              debugLog(`Processing channel: ${channel.name} (${channel.id}, type: ${channel.type})`);
               const channelInfo = {
                 id: channel.id,
                 name: channel.name,
@@ -768,10 +773,8 @@ class BotManager extends EventEmitter {
               if (isForumChannel) {
                 try {
                   const threads = await channel.threads.fetch();
-                  if (process.env.DEBUG === 'true') {
-                    console.debug(`Found ${threads.threads.size} threads in forum ${channel.name}`);
-                  }
-                  
+                  logIntel(`Found ${threads.threads.size} threads in forum ${channel.name}`);
+                  debugLog(`Found ${threads.threads.size} threads in forum ${channel.name}`);
                   channelInfo.threads = Array.from(threads.threads.values()).map(thread => ({
                     id: thread.id,
                     name: thread.name
@@ -791,8 +794,19 @@ class BotManager extends EventEmitter {
         }
       }
       
-      if (process.env.DEBUG === 'true') {
-        console.debug(`Returning ${channels.length} channels total`);
+      logIntel(`Returning ${channels.length} channels to client`);
+      debugLog(`Returning ${channels.length} channels to client`);
+      if (channels.length > 0) {
+        logIntel(`Channels being sent to client: ${JSON.stringify({
+          count: channels.length,
+          isArray: Array.isArray(channels),
+          firstChannel: channels[0]
+        })}`);
+        debugLog(`Channels being sent to client: ${JSON.stringify({
+          count: channels.length,
+          isArray: Array.isArray(channels),
+          firstChannel: channels[0]
+        })}`);
       }
       return channels;
     } catch (error) {
