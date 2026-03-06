@@ -5,3 +5,7 @@ node_modules/
 # Local-only env/log files
 .envt
 console.log
+
+# Local-only env/log files
+.envt
+console.log
